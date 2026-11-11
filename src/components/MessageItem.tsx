@@ -9,7 +9,7 @@ import { EmojiPicker } from './EmojiPicker';
 import { LinkIcon, TrashIcon } from './icons';
 import { LinkEmbed } from './LinkEmbed';
 import { PollCard } from './PollCard';
-import { Avatar } from './ProfileCard';
+import { Avatar, StyledName } from './ProfileCard';
 
 export function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -134,7 +134,7 @@ function MessageItemImpl(props: MessageItemProps) {
   return (
     <li
       id={`msg-${message.id}`}
-      className={`group relative flex gap-3 px-4 hover:bg-ae-hover/40 ${showHeader ? 'mt-3 pt-1 pb-0.5' : 'py-0.5'} ${mentioned && !mine ? 'ae-mentioned' : ''}`}
+      className={`ae-msg group relative flex gap-3 px-4 hover:bg-ae-hover/40 ${showHeader ? 'mt-3 pt-1 pb-0.5' : 'py-0.5'} ${mentioned && !mine ? 'ae-mentioned' : ''}`}
       onMouseLeave={() => setPicker(false)}
     >
       <div className="w-10 shrink-0">
@@ -174,10 +174,9 @@ function MessageItemImpl(props: MessageItemProps) {
             <button
               type="button"
               className="text-sm font-semibold hover:underline"
-              style={{ color: props.authorColor ?? author?.accent_color ?? undefined }}
               onClick={() => message.author_id && showProfile(message.author_id)}
             >
-              {name}
+              <StyledName profile={author} text={name} color={props.authorColor ?? author?.accent_color ?? undefined} />
             </button>
             <time className="text-xs text-ae-muted" dateTime={message.created_at} title={new Date(message.created_at).toLocaleString()}>
               {formatTime(message.created_at)}

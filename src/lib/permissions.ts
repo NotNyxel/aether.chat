@@ -1,5 +1,5 @@
 /**
- * Permission bitmask, mirrored 1:1 from `public.permission_bit()` (supabase/migrations/004).
+ * Permission bitmask, mirrored 1:1 from `public.permission_bit()` (supabase/migrations/006).
  * The database is the source of truth: these helpers only drive UI affordances
  * (hiding buttons, disabling inputs). RLS and RPC checks enforce the real rules.
  */
@@ -26,11 +26,14 @@ export const Permission = {
   MANAGE_NICKNAMES: 1n << 19n,
   MODERATE_MEMBERS: 1n << 20n,
   VIEW_AUDIT_LOG: 1n << 21n,
+  USE_SOUNDBOARD: 1n << 22n,
+  MANAGE_EXPRESSIONS: 1n << 23n,
+  REQUEST_TO_SPEAK: 1n << 24n,
 } as const;
 
 export type PermissionName = keyof typeof Permission;
 
-export const ALL_PERMISSIONS = (1n << 22n) - 1n;
+export const ALL_PERMISSIONS = (1n << 25n) - 1n;
 
 /** Labels, descriptions and grouping for the role editor and channel overrides. */
 export const PERMISSION_GROUPS: { title: string; items: { key: PermissionName; label: string; hint: string; channel?: boolean }[] }[] = [
@@ -70,10 +73,16 @@ export const PERMISSION_GROUPS: { title: string; items: { key: PermissionName; l
       { key: 'CONNECT', label: 'Connect', hint: 'Join voice and stream channels.', channel: true },
       { key: 'SPEAK', label: 'Speak', hint: 'Talk in voice channels.', channel: true },
       { key: 'STREAM', label: 'Video & Screen Share', hint: 'Turn on the camera and share the screen.', channel: true },
-      { key: 'MUTE_MEMBERS', label: 'Mute Members', hint: 'Server-mute others in voice (coming in Batch 4).', channel: true },
-      { key: 'DEAFEN_MEMBERS', label: 'Deafen Members', hint: 'Server-deafen others in voice (coming in Batch 4).', channel: true },
-      { key: 'MOVE_MEMBERS', label: 'Move Members', hint: 'Move members between voice channels (coming in Batch 4).', channel: true },
+      { key: 'USE_SOUNDBOARD', label: 'Use Soundboard', hint: 'Play soundboard sounds in voice.', channel: true },
+      { key: 'REQUEST_TO_SPEAK', label: 'Request to Speak', hint: 'Raise a hand to speak in stage channels.', channel: true },
+      { key: 'MUTE_MEMBERS', label: 'Mute Members', hint: 'Server-mute others in voice, and moderate stages (invite speakers, move to audience).', channel: true },
+      { key: 'DEAFEN_MEMBERS', label: 'Deafen Members', hint: 'Server-deafen others in voice.', channel: true },
+      { key: 'MOVE_MEMBERS', label: 'Move Members', hint: 'Move members between voice channels, disconnect them, and join full channels.', channel: true },
     ],
+  },
+  {
+    title: 'Expressions',
+    items: [{ key: 'MANAGE_EXPRESSIONS', label: 'Manage Expressions', hint: "Add, edit and remove the server's soundboard sounds." }],
   },
   {
     title: 'Advanced',

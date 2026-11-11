@@ -14,6 +14,7 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 | **0.1.0** | Servers, channels, live chat, P2P mesh voice, screen share, theme engine, rich profiles, settings |
 | **0.2.0** | Friends, blocks, DMs, group DMs, 1:1 and group calls, camera, replies, edits, reactions, uploads, typing, presence |
 | **0.3.0** | Renamed to aether.chat, built-in backend (no setup), signed auto-updates via GitHub Releases |
+| **0.7.0** | Batch 4: voice occupancy, moderator voice tools, stages, soundboard, RNNoise, video layouts, Go Live, connection stats, TURN; 24 themes, profile styling, animations |
 | **0.6.0** | Batch 3: desktop notifications, per-chat mute and levels, inbox, taskbar badge, auto-idle, status expiry, activity status, tray, start on boot, background shortcuts |
 | **0.5.0** | Batch 2: server settings, roles editor, channel permission overrides, timeouts, kick/ban, invites, audit log, drag-reorder, `@role` mentions |
 | **0.4.0** | Batch 1: emoji picker, autocomplete, unreads and mentions, pins, search, link previews, polls, forwarding, message links, lightbox, sound effects |
@@ -58,16 +59,18 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ✅ System tray: minimise to tray, start on boot, global shortcuts (mute, deafen and push-to-talk work while unfocused)
 - ✅ **Bonus:** single-instance (launching again focuses the running app)
 
-## Batch 4: Voice & video upgrades → 0.7.0
-- ⬜ See who is in a voice channel before joining (live occupancy)
-- ⬜ Moderator voice tools: server mute or deafen, move, disconnect
-- ⬜ Stage channels: speakers and audience, raise hand, invite to speak
-- ⬜ Soundboard (per-server sounds, played through the P2P mesh)
-- ⬜ ML noise suppression (RNNoise WASM) as an alternative to the browser's
-- ⬜ Video layouts: grid, speaker focus, pop-out and picture-in-picture
-- ⬜ Go Live from a server text channel ("watch stream")
-- ⬜ Per-user connection stats (ping, packet loss, bitrate)
-- ⬜ Optional TURN relay for networks that block P2P (bring-your-own TURN, default off to keep $0)
+## Batch 4: Voice & video upgrades → 0.7.0 ✅
+- ✅ See who is in a voice channel before joining (live occupancy)
+- ✅ Moderator voice tools: server mute or deafen, move, disconnect (audited, enforced by every peer)
+- ✅ Stage channels: speakers and audience, raise hand, invite to speak
+- ✅ Soundboard (8 built-in sounds plus per-server uploads, played through the P2P mesh)
+- ✅ ML noise suppression (RNNoise WASM) as an alternative to the browser's
+- ✅ Video layouts: grid, focus, speaker, pop-out (picture-in-picture) and fullscreen
+- ✅ Go Live from a server text channel ("watch stream" banner, LIVE badges)
+- ✅ Per-user connection stats (ping, packet loss, bitrate, direct or relay)
+- ✅ Optional TURN relay (bring your own, default off)
+- ✅ **Bonus:** no mic/camera permission prompts; 20 new themes; name fonts and effects, card styles, profile
+  effects, avatar shapes, pronouns and links; app-wide motion system
 
 ## Batch 5: Threads, forums & channel types → 0.8.0
 - ⬜ Threads from any message (public and private), auto-archive

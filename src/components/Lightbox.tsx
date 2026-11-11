@@ -17,7 +17,7 @@ export function Lightbox() {
 
   if (!image) return null;
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black/85 p-8" onMouseDown={() => close(null)}>
+    <div className="ae-backdrop fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black/85 p-8" onMouseDown={() => close(null)}>
       <img
         src={image.url}
         alt={image.alt ?? image.name ?? ''}

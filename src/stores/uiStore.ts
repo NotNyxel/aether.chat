@@ -3,7 +3,7 @@ import { create } from 'zustand';
 
 export type SettingsTab = 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows';
 
-export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit';
+export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit' | 'soundboard';
 
 export interface JumpTarget {
   scopeId: string;

@@ -33,6 +33,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Peer, type MediaConnection, type PeerOptions } from 'peerjs';
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import { createDenoiser, type Denoiser } from '../lib/denoise';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Public types and constants
@@ -68,6 +69,12 @@ export interface AudioProcessingSettings {
   inputGain: number;
   /** Caps outgoing audio and video bitrates. */
   bandwidthProfile: BandwidthProfile;
+  /** RNNoise machine-learning noise suppression (replaces the browser's when on). */
+  rnnoise: boolean;
+  /** Optional TURN relay for networks that block peer-to-peer. Empty = off. */
+  turnUrl: string;
+  turnUsername: string;
+  turnCredential: string;
 }
 
 export const DEFAULT_AUDIO_SETTINGS: AudioProcessingSettings = {
@@ -81,7 +88,34 @@ export const DEFAULT_AUDIO_SETTINGS: AudioProcessingSettings = {
   noiseGateDb: -55,
   inputGain: 1,
   bandwidthProfile: 'balanced',
+  rnnoise: false,
+  turnUrl: '',
+  turnUsername: '',
+  turnCredential: '',
 };
+
+/** STUN plus the user's own TURN relay, if configured. */
+export function iceServersFor(s: Pick<AudioProcessingSettings, 'turnUrl' | 'turnUsername' | 'turnCredential'>): RTCIceServer[] {
+  const urls = s.turnUrl
+    .split(/[\s,]+/)
+    .map((u) => u.trim())
+    .filter((u) => /^turns?:/i.test(u));
+  if (urls.length === 0) return ICE_SERVERS;
+  return [...ICE_SERVERS, { urls, username: s.turnUsername || undefined, credential: s.turnCredential || undefined }];
+}
+
+export interface PeerStats {
+  /** Round-trip time in ms, from the active ICE candidate pair. */
+  pingMs: number | null;
+  /** Percentage of incoming audio packets lost since the call started. */
+  lossPct: number | null;
+  /** Incoming audio bitrate in kbps over the last sample. */
+  inKbps: number | null;
+  /** Outgoing audio bitrate in kbps over the last sample. */
+  outKbps: number | null;
+  /** 'relay' when traffic goes through a TURN server. */
+  route: 'direct' | 'relay' | null;
+}
 
 export interface ScreenShareOptions {
   resolution: ScreenResolution;
@@ -154,6 +188,16 @@ export interface VoiceEngine {
   startCamera: () => Promise<void>;
   stopCamera: () => void;
   updateSettings: (patch: Partial<AudioProcessingSettings>) => Promise<void>;
+  /** Users whose audio we refuse to play (server-muted, stage audience, disconnected by a moderator). */
+  setRemoteBlocked: (userIds: string[]) => void;
+  /** Forces our outgoing audio off (server mute or stage audience) regardless of our own mute. */
+  setForcedMute: (forced: boolean) => void;
+  /** Forces incoming audio off (server deafen). */
+  setForcedDeafen: (forced: boolean) => void;
+  /** Plays a clip to everyone in the room (mixed into our outgoing audio) and to ourselves. */
+  playToRoom: (buffer: AudioBuffer, volume?: number) => boolean;
+  /** Connection quality to one peer. */
+  getPeerStats: (peerId: string) => Promise<PeerStats | null>;
 }
 
 /** Lists available audio and video devices. Labels are empty until permission is granted. */
@@ -194,12 +238,15 @@ interface LocalAudioGraph {
   master: GainNode;
   mic: MediaStream;
   source: MediaStreamAudioSourceNode;
+  denoiser: Denoiser | null;
   highPass: BiquadFilterNode;
   compressor: DynamicsCompressorNode;
   inputGain: GainNode;
   analyser: AnalyserNode;
   buffer: Float32Array<ArrayBuffer>;
   gate: GainNode;
+  /** Silences only the microphone path (soundboard clips bypass it). */
+  micMute: GainNode;
   destination: MediaStreamAudioDestinationNode;
   gateOpen: boolean;
   gateLastAboveAt: number;
@@ -321,7 +368,7 @@ function micConstraints(s: AudioProcessingSettings): MediaStreamConstraints {
     audio: {
       deviceId: s.inputDeviceId ? { exact: s.inputDeviceId } : undefined,
       echoCancellation: s.echoCancellation,
-      noiseSuppression: s.noiseSuppression,
+      noiseSuppression: s.noiseSuppression && !s.rnnoise,
       autoGainControl: s.autoGainControl,
       channelCount: 1,
       sampleRate: 48_000,
@@ -402,6 +449,9 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
   });
   const speakingRef = useRef<ReadonlySet<string>>(new Set());
   const volumePrefsRef = useRef<VolumePrefs>({});
+  const blockedRef = useRef<ReadonlySet<string>>(new Set());
+  const forcedRef = useRef({ mute: false, deafen: false });
+  const statsPrevRef = useRef(new Map<string, { at: number; inBytes: number; outBytes: number }>());
 
   useEffect(() => {
     userIdRef.current = userId;
@@ -461,7 +511,7 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
   const applyPeerGain = useCallback((rec: PeerRecord) => {
     const local = localRef.current;
     if (!local) return;
-    const target = rec.locallyMuted ? 0 : rec.volume;
+    const target = rec.locallyMuted || blockedRef.current.has(rec.userId) ? 0 : rec.volume;
     const t = local.ctx.currentTime;
     rec.audioGraph?.gain.gain.setTargetAtTime(target, t, 0.02);
     rec.screenAudio?.gain.gain.setTargetAtTime(target, t, 0.02);
@@ -873,7 +923,7 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
 
     const next = new Set<string>();
     const selfThreshold = gateDisabled ? REMOTE_SPEAKING_DB : s.noiseGateDb;
-    if (!flagsRef.current.muted && local.gateOpen && db >= selfThreshold) next.add(SELF_KEY);
+    if (!flagsRef.current.muted && !forcedRef.current.mute && local.gateOpen && db >= selfThreshold) next.add(SELF_KEY);
     for (const [peerId, rec] of recordsRef.current) {
       const g = rec.audioGraph;
       if (g && rmsDb(g.analyser, g.buffer) >= REMOTE_SPEAKING_DB) next.add(peerId);
@@ -890,7 +940,7 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
 
   // ── Local audio graph ─────────────────────────────────────────────────────────────────────
 
-  const buildLocalGraph = useCallback((ctx: AudioContext, mic: MediaStream, s: AudioProcessingSettings): LocalAudioGraph => {
+  const buildLocalGraph = useCallback((ctx: AudioContext, mic: MediaStream, s: AudioProcessingSettings, denoiser: Denoiser | null): LocalAudioGraph => {
     const source = ctx.createMediaStreamSource(mic);
 
     const highPass = ctx.createBiquadFilter();
@@ -920,24 +970,31 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
     const master = ctx.createGain();
     master.connect(ctx.destination);
 
-    source.connect(highPass);
+    if (denoiser) {
+      source.connect(denoiser.node);
+      denoiser.node.connect(highPass);
+    } else source.connect(highPass);
     highPass.connect(compressor);
     compressor.connect(inputGain);
     inputGain.connect(analyser);
     inputGain.connect(gate);
-    gate.connect(destination);
+    const micMute = ctx.createGain();
+    gate.connect(micMute);
+    micMute.connect(destination);
 
     return {
       ctx,
       master,
       mic,
       source,
+      denoiser,
       highPass,
       compressor,
       inputGain,
       analyser,
       buffer: new Float32Array(analyser.fftSize),
       gate,
+      micMute,
       destination,
       gateOpen: s.noiseGateDb <= -100,
       gateLastAboveAt: 0,
@@ -957,7 +1014,7 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
   const applyOutgoingEnabled = useCallback(() => {
     const local = localRef.current;
     if (!local) return;
-    const enabled = !flagsRef.current.muted;
+    const enabled = !flagsRef.current.muted && !forcedRef.current.mute;
     for (const track of local.destination.stream.getAudioTracks()) track.enabled = enabled;
   }, []);
 
@@ -1002,10 +1059,13 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
     if (local) {
       for (const t of local.mic.getTracks()) t.stop();
       for (const t of local.destination.stream.getTracks()) t.stop();
+      local.denoiser?.destroy();
       void local.ctx.close().catch(() => undefined);
     }
 
     flagsRef.current = { muted: false, deafened: false, mutedBeforeDeafen: false, joinedAt: 0 };
+    forcedRef.current = { mute: false, deafen: false };
+    statsPrevRef.current.clear();
     speakingRef.current = new Set();
     setSpeakingSet(new Set());
     setBaseParticipants([]);
@@ -1053,7 +1113,15 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
           void ctx.close();
           return;
         }
-        localRef.current = buildLocalGraph(ctx, mic, settingsRef.current);
+        // RNNoise is optional: if the model fails to load we fall back to the plain graph.
+        const denoiser = settingsRef.current.rnnoise ? await createDenoiser(ctx).catch(() => null) : null;
+        if (stale()) {
+          denoiser?.destroy();
+          for (const t of mic.getTracks()) t.stop();
+          void ctx.close();
+          return;
+        }
+        localRef.current = buildLocalGraph(ctx, mic, settingsRef.current, denoiser);
         await applyOutputDevice(ctx, settingsRef.current.outputDeviceId);
 
         // 2. PeerJS identity. A per-join nonce lets one user be in voice from several tabs or devices.
@@ -1061,7 +1129,7 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
         const peer = new Peer(peerId, {
           ...peerServerRef.current,
           debug: 0,
-          config: { iceServers: ICE_SERVERS, bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require' },
+          config: { iceServers: iceServersFor(settingsRef.current), bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require' },
         });
         peerRef.current = peer;
         await new Promise<void>((resolve, reject) => {
@@ -1162,7 +1230,7 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
     if (!nextMuted && flags.deafened) {
       flags.deafened = false;
       const local = localRef.current;
-      local?.master.gain.setTargetAtTime(1, local.ctx.currentTime, 0.02);
+      local?.master.gain.setTargetAtTime(forcedRef.current.deafen ? 0 : 1, local.ctx.currentTime, 0.02);
       setIsDeafened(false);
     }
     applyOutgoingEnabled();
@@ -1188,7 +1256,7 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
     } else {
       flags.muted = flags.mutedBeforeDeafen;
     }
-    local?.master.gain.setTargetAtTime(nextDeafened ? 0 : 1, local.ctx.currentTime, 0.02);
+    local?.master.gain.setTargetAtTime(nextDeafened || forcedRef.current.deafen ? 0 : 1, local.ctx.currentTime, 0.02);
     applyOutgoingEnabled();
     setIsDeafened(nextDeafened);
     setIsMuted(flags.muted);
@@ -1357,6 +1425,7 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
         next.inputDeviceId !== prev.inputDeviceId ||
         next.echoCancellation !== prev.echoCancellation ||
         next.noiseSuppression !== prev.noiseSuppression ||
+        next.rnnoise !== prev.rnnoise ||
         next.autoGainControl !== prev.autoGainControl;
       if (micChanged) {
         const session = sessionRef.current;
@@ -1366,9 +1435,15 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
           for (const tr of mic.getTracks()) tr.stop();
           return;
         }
+        // Turning RNNoise on or off swaps the denoiser in front of the high-pass filter.
+        if (next.rnnoise !== prev.rnnoise) {
+          current.denoiser?.destroy();
+          current.denoiser = next.rnnoise ? await createDenoiser(current.ctx).catch(() => null) : null;
+          current.denoiser?.node.connect(current.highPass);
+        }
         // Hot-swap the graph source. The outgoing destination track, and so every peer link, is untouched.
         const source = current.ctx.createMediaStreamSource(mic);
-        source.connect(current.highPass);
+        source.connect(current.denoiser?.node ?? current.highPass);
         current.source.disconnect();
         for (const tr of current.mic.getTracks()) tr.stop();
         current.source = source;
@@ -1387,6 +1462,100 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
     },
     [applyOutputDevice, applySenderLimits],
   );
+
+  // ── Moderation, soundboard, stats ─────────────────────────────────────────────────────────
+
+  const setRemoteBlocked = useCallback(
+    (userIds: string[]) => {
+      const next = new Set(userIds);
+      const prev = blockedRef.current;
+      if (next.size === prev.size && [...next].every((id) => prev.has(id))) return;
+      blockedRef.current = next;
+      for (const rec of recordsRef.current.values()) applyPeerGain(rec);
+    },
+    [applyPeerGain],
+  );
+
+  const setForcedMute = useCallback(
+    (forced: boolean) => {
+      if (forcedRef.current.mute === forced) return;
+      forcedRef.current.mute = forced;
+      applyOutgoingEnabled();
+    },
+    [applyOutgoingEnabled],
+  );
+
+  const setForcedDeafen = useCallback((forced: boolean) => {
+    if (forcedRef.current.deafen === forced) return;
+    forcedRef.current.deafen = forced;
+    const local = localRef.current;
+    local?.master.gain.setTargetAtTime(forced || flagsRef.current.deafened ? 0 : 1, local.ctx.currentTime, 0.02);
+  }, []);
+
+  const playToRoom = useCallback(
+    (buffer: AudioBuffer, volume = 1) => {
+      const local = localRef.current;
+      if (!local || forcedRef.current.mute) return false;
+      const src = local.ctx.createBufferSource();
+      src.buffer = buffer;
+      const gain = local.ctx.createGain();
+      gain.gain.value = clamp(volume, 0, 1.5);
+      src.connect(gain);
+      gain.connect(local.destination); // to every peer (bypasses the noise gate)
+      gain.connect(local.master); // and to us
+      // Our own mute disables the outgoing track; let the clip (and only the clip) through while it plays.
+      if (flagsRef.current.muted) {
+        local.micMute.gain.value = 0;
+        for (const t of local.destination.stream.getAudioTracks()) t.enabled = true;
+      }
+      src.onended = () => {
+        gain.disconnect();
+        local.micMute.gain.value = 1;
+        applyOutgoingEnabled();
+      };
+      src.start();
+      return true;
+    },
+    [applyOutgoingEnabled],
+  );
+
+  const getPeerStats = useCallback(async (peerId: string): Promise<PeerStats | null> => {
+    const pc = recordsRef.current.get(peerId)?.audioCall?.peerConnection;
+    if (!pc) return null;
+    const report = await pc.getStats();
+    let pingMs: number | null = null;
+    let route: PeerStats['route'] = null;
+    let inBytes = 0;
+    let outBytes = 0;
+    let lost = 0;
+    let received = 0;
+    const byId = new Map<string, Record<string, unknown>>();
+    report.forEach((r: Record<string, unknown>) => byId.set(r.id as string, r));
+    report.forEach((r: Record<string, unknown>) => {
+      if (r.type === 'candidate-pair' && (r.nominated || r.selected) && r.state === 'succeeded') {
+        if (typeof r.currentRoundTripTime === 'number') pingMs = Math.round(r.currentRoundTripTime * 1000);
+        const local = byId.get(r.localCandidateId as string);
+        route = local?.candidateType === 'relay' ? 'relay' : 'direct';
+      }
+      if (r.type === 'inbound-rtp' && r.kind === 'audio') {
+        inBytes += (r.bytesReceived as number) ?? 0;
+        lost += (r.packetsLost as number) ?? 0;
+        received += (r.packetsReceived as number) ?? 0;
+      }
+      if (r.type === 'outbound-rtp' && r.kind === 'audio') outBytes += (r.bytesSent as number) ?? 0;
+    });
+    const now = performance.now();
+    const prev = statsPrevRef.current.get(peerId);
+    statsPrevRef.current.set(peerId, { at: now, inBytes, outBytes });
+    const secs = prev ? (now - prev.at) / 1000 : 0;
+    return {
+      pingMs,
+      route,
+      lossPct: received + lost > 0 ? Math.round((lost / (received + lost)) * 1000) / 10 : null,
+      inKbps: prev && secs > 0 ? Math.round(((inBytes - prev.inBytes) * 8) / secs / 1000) : null,
+      outKbps: prev && secs > 0 ? Math.round(((outBytes - prev.outBytes) * 8) / secs / 1000) : null,
+    };
+  }, []);
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────────────────
 
@@ -1436,5 +1605,10 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
     startCamera,
     stopCamera,
     updateSettings,
+    setRemoteBlocked,
+    setForcedMute,
+    setForcedDeafen,
+    playToRoom,
+    getPeerStats,
   };
 }

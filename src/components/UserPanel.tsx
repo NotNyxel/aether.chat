@@ -42,11 +42,12 @@ function IconButton({ label, danger, active, onClick, children }: {
 }
 
 export function VoiceDock() {
-  const { voice, room, leave, toggleScreenShare, toggleCamera } = useCall();
+  const { voice, room, leave, toggleScreenShare, toggleCamera, notice, myVoiceState } = useCall();
   const openHome = useUiStore((s) => s.openHome);
   const selectServer = useUiStore((s) => s.selectServer);
   if (voice.status === 'idle' || !room) {
-    return voice.error ? <p className="border-t border-ae-border px-3 py-2 text-xs text-ae-danger">{voice.error}</p> : null;
+    const msg = voice.error ?? notice;
+    return msg ? <p className="ae-enter border-t border-ae-border px-3 py-2 text-xs text-ae-danger">{msg}</p> : null;
   }
 
   return (
@@ -74,6 +75,9 @@ export function VoiceDock() {
           </IconButton>
         </div>
       </div>
+      {myVoiceState?.server_mute && <p className="mt-1 text-xs text-ae-danger">🔇 Server muted by a moderator</p>}
+      {myVoiceState?.server_deaf && <p className="mt-1 text-xs text-ae-danger">🔕 Server deafened by a moderator</p>}
+      {room.stage && myVoiceState?.suppressed && <p className="mt-1 text-xs text-ae-muted">👥 You&apos;re in the audience</p>}
       {voice.error && <p className="mt-1 text-xs text-ae-danger">{voice.error}</p>}
     </div>
   );

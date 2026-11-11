@@ -3,6 +3,59 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [0.7.0] - 2026-11-11
+
+**Batch 4: voice & video upgrades, themes, profiles and motion**
+
+- **No more microphone or camera prompts.** aether.chat answers WebView2's permission prompt itself, like Discord
+  does. Windows' own privacy switches (Settings → Privacy → Microphone and Camera) still apply.
+- **See who's in voice before joining.** Every voice and stage channel lists who's inside, with mute, deafen,
+  camera and **LIVE** icons, plus a `2/5` counter on channels with a user limit.
+- **Moderator voice tools** (right-click or ⋯ on someone in a voice channel):
+  - server mute and server deafen, which follow the member between channels in the server;
+  - move to another channel;
+  - disconnect.
+
+  All of them are audited. Everyone else's app also stops playing a server-muted or disconnected member's audio.
+- **Stage channels:** speakers and an audience. Listeners raise a hand ✋. Stage moderators (Mute Members) see the
+  requests and can *Invite to speak* or move people back to the audience.
+- **Soundboard** (🎵 in calls):
+  - 8 built-in sounds, plus up to 48 custom sounds per server (Server Settings → Soundboard, up to 5 seconds and
+    1 MB);
+  - sounds play to everyone in the call through the peer-to-peer mesh;
+  - new permissions: *Use Soundboard* and *Manage Expressions*.
+- **AI noise suppression:** RNNoise runs locally on your PC (Settings → Voice & Audio).
+- **Video layouts:**
+  - Grid, Focus (double-click any tile) and Speaker (follows whoever is talking);
+  - **pop-out** picture-in-picture and fullscreen for any stream or camera.
+- **Go Live banner:** text channels show "Alex is streaming in 🔊 Gaming" with a *Watch stream* button, and
+  streaming channels get a LIVE badge.
+- **Connection stats:** signal bars on every call tile. Hover for ping, packet loss, bitrate, and whether the
+  connection is direct or relayed.
+- **Optional TURN relay:** bring your own server for networks that block peer-to-peer (Settings → Voice &
+  Audio).
+- **20 new themes**, 24 in total, including 4 light ones:
+  - dark: Midnight, Dracula, Catppuccin Mocha, Tokyo Night, Rosé Pine, Gruvbox, Solarized Dark, Monokai,
+    Synthwave, Vaporwave, Forest, Ocean, Sunset, Crimson, Matrix, High Contrast;
+  - light: Daylight, Catppuccin Latte, Sakura, Paper.
+- **Profile customization:**
+  - name fonts: Rounded, Serif, Display, Handwritten, Mono, Pixel;
+  - name effects: Gradient, Rainbow, Shimmer, Glow, Neon, with your own colours;
+  - card styles: Gradient, Glass, Aurora (animated);
+  - profile effects: Sparkles, Stars, Snow, Hearts, Petals, Confetti, Fireflies, Bubbles, Rain;
+  - avatar shapes: Squircle, Hexagon;
+  - 7 new avatar frames: Rainbow, Fire, Ice, Hearts, Sparkle, Halo, Radar;
+  - pronouns, and up to 5 profile links.
+- **Motion everywhere:**
+  - menus, dialogs and settings spring in;
+  - messages slide up as they arrive;
+  - buttons press down when clicked;
+  - speaking rings pulse and badges pop;
+  - an optional ambient aurora background.
+
+  Choose Full, Subtle, Off or Follow Windows in Settings → Appearance.
+- Database: `supabase/migrations/006_voice_and_profiles.sql`.
+
 ## [0.6.0] - 2026-11-11
 
 **Batch 3: notifications and presence**

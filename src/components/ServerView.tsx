@@ -4,13 +4,14 @@ import { useProfile, useServerMembers } from '../hooks/useChatData';
 import { activeCustomStatus } from '../hooks/useDesktop';
 import { PresenceDot, useActivityOf, usePresenceMap } from '../hooks/usePresence';
 import { useMemberStyles, useServerLive } from '../hooks/useServerAdmin';
+import { useVoiceStates } from '../hooks/useVoiceStates';
 import { useUiStore } from '../stores/uiStore';
-import type { Channel, Server, ServerMember } from '../types/db';
+import type { Channel, Server, ServerMember, VoiceState } from '../types/db';
 import { useCall } from './CallContext';
 import { ChannelGlyph } from './ChannelSidebar';
 import { UsersIcon } from './icons';
 import { MessagePane } from './MessagePane';
-import { Avatar } from './ProfileCard';
+import { Avatar, StyledName } from './ProfileCard';
 import { VoiceRoom } from './VoiceRoom';
 
 function MemberRow({ userId, nickname, owner, offline, color, timedOut }: {
@@ -38,8 +39,8 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut }: {
           <PresenceDot status={status} size={11} className="absolute -right-0.5 -bottom-0.5 z-10" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm" style={{ color: color ?? undefined }}>
-            {nickname || p?.display_name || p?.username || '…'}
+          <span className="block truncate text-sm">
+            <StyledName profile={p} text={nickname || p?.display_name || p?.username || '…'} color={color} />
           </span>
           {!offline && (playing || customStatus) && (
             <span className="block truncate text-xs text-ae-muted">{playing ? <>Playing <b>{playing}</b></> : customStatus}</span>
@@ -108,6 +109,55 @@ function MemberList({ server }: { server: Server }) {
   );
 }
 
+/** "LIVE: Alex is streaming in Gaming. Watch stream" banner above text channels (Discord's Go Live). */
+function LiveBanner({ streams, channels, userId }: { streams: VoiceState[]; channels: Channel[]; userId: string }) {
+  const { joinChannel, room } = useCall();
+  const first = streams[0];
+  const { data: p } = useProfile(first?.user_id);
+  if (!first) return null;
+  const ch = channels.find((c) => c.id === first.channel_id);
+  if (!ch) return null;
+  const inThere = room?.kind === 'channel' && room.id === ch.id;
+  return (
+    <div className="ae-enter flex items-center gap-3 border-b border-ae-border bg-gradient-to-r from-ae-danger/15 to-transparent px-4 py-2 text-sm">
+      <span className="ae-live rounded bg-ae-danger px-1.5 text-[10px] font-bold text-white">LIVE</span>
+      <Avatar profile={p} size={22} showFrame={false} />
+      <span className="min-w-0 flex-1 truncate">
+        <b>{first.user_id === userId ? 'You are' : `${p?.display_name || p?.username || 'Someone'} is`}</b> streaming in{' '}
+        <b>
+          {ch.type === 'stream' ? '🎙' : '🔊'} {ch.name}
+        </b>
+        {streams.length > 1 && <span className="text-ae-muted"> and {streams.length - 1} other stream{streams.length > 2 ? 's' : ''}</span>}
+      </span>
+      {!inThere && (
+        <button type="button" className="ae-press rounded-ae bg-ae-accent px-3 py-1 text-xs font-semibold text-ae-on-accent" onClick={() => joinChannel(ch)}>
+          Watch stream
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Occupancy({ states }: { states: VoiceState[] }) {
+  return (
+    <div className="flex justify-center -space-x-2">
+      {states.slice(0, 8).map((s) => (
+        <OccupantFace key={s.user_id} userId={s.user_id} />
+      ))}
+      {states.length > 8 && <span className="grid h-10 w-10 place-items-center rounded-full bg-ae-surface text-xs">+{states.length - 8}</span>}
+    </div>
+  );
+}
+
+function OccupantFace({ userId }: { userId: string }) {
+  const { data: p } = useProfile(userId);
+  return (
+    <span className="rounded-full ring-2 ring-ae-bg" title={p?.display_name || p?.username}>
+      <Avatar profile={p} size={40} showFrame={false} />
+    </span>
+  );
+}
+
 const NSFW_KEY = 'aether.nsfw.ack';
 
 function NsfwGate({ channel, onAccept }: { channel: Channel; onAccept: () => void }) {
@@ -159,6 +209,8 @@ export function ServerView({ server, channel, channels, userId }: { server: Serv
   const { data: members = [] } = useServerMembers(server.id);
   useServerLive(server.id);
   const [nsfwAcked, setNsfwAcked] = useState<string[]>([]);
+  const { states: voiceStates, byChannel } = useVoiceStates(server.id);
+  const streams = useMemo(() => voiceStates.filter((v) => v.streaming), [voiceStates]);
   const memberIds = useMemo(() => members.map((m) => m.user_id).filter((id) => id !== userId), [members, userId]);
 
   if (!channel || !scope) return <p className="m-auto text-sm text-ae-muted">Pick a channel.</p>;
@@ -177,6 +229,7 @@ export function ServerView({ server, channel, channels, userId }: { server: Serv
         memberIds={memberIds}
         channels={channels}
         placeholder={`Message #${channel.name}`}
+        top={streams.length > 0 ? <LiveBanner streams={streams} channels={channels} userId={userId} /> : undefined}
         header={
           <>
             <ChannelGlyph type="text" size={18} />
@@ -211,7 +264,7 @@ export function ServerView({ server, channel, channels, userId }: { server: Serv
         <h1 className="font-semibold">{channel.name}</h1>
       </header>
       {here ? (
-        <VoiceRoom userId={userId} voice={voice} onShareScreen={toggleScreenShare} onToggleCamera={toggleCamera} onLeave={leave} />
+        <VoiceRoom userId={userId} voice={voice} server={server} onShareScreen={toggleScreenShare} onToggleCamera={toggleCamera} onLeave={leave} />
       ) : (
         <div className="grid flex-1 place-items-center">
           <div className="space-y-4 text-center">
@@ -219,15 +272,27 @@ export function ServerView({ server, channel, channels, userId }: { server: Serv
               <ChannelGlyph type={channel.type} size={48} />
             </div>
             <h2 className="text-xl font-bold">{channel.name}</h2>
-            <p className="max-w-sm text-sm text-ae-muted">
-              Audio and video travel directly between participants (peer-to-peer). Nothing is relayed through a server.
-            </p>
+            {(byChannel.get(channel.id) ?? []).length > 0 ? (
+              <>
+                <Occupancy states={byChannel.get(channel.id) ?? []} />
+                <p className="text-sm text-ae-muted">
+                  {(byChannel.get(channel.id) ?? []).length} {channel.type === 'stream' ? 'in the stage' : 'in voice'}
+                  {(byChannel.get(channel.id) ?? []).some((v) => v.streaming) && ' · someone is live'}
+                </p>
+              </>
+            ) : (
+              <p className="max-w-sm text-sm text-ae-muted">
+                {channel.type === 'stream'
+                  ? 'A stage: speakers talk, everyone else listens and can raise a hand to speak.'
+                  : 'Audio and video travel directly between participants (peer-to-peer). Nothing is relayed through a server.'}
+              </p>
+            )}
             <button
               type="button"
-              onClick={() => joinChannel(channel.id, channel.name)}
+              onClick={() => joinChannel(channel)}
               className="rounded-ae bg-ae-success px-6 py-2.5 text-sm font-semibold text-black"
             >
-              Join voice
+              {channel.type === 'stream' ? 'Join stage' : 'Join voice'}
             </button>
           </div>
         </div>

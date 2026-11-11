@@ -6,12 +6,13 @@
  * `contain: layout paint style` and `isolation: isolate`, so nothing can paint outside it,
  * including position: fixed overlays.
  */
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { activeCustomStatus } from '../hooks/useDesktop';
 import { useActivityOf } from '../hooks/usePresence';
 import { Markdown } from '../lib/markdown';
 import { isHexColor } from '../theme/presets';
-import type { UserProfile } from '../types/db';
+import type { ProfileEffect, UserProfile } from '../types/db';
+import { openExternal } from '../lib/platform';
 import { PauseIcon, PlayIcon } from './icons';
 import { ScopedCss } from './ThemeEngine';
 
@@ -56,7 +57,10 @@ export function BadgeRow({ badgeIds }: { badgeIds: string[] }) {
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
 interface AvatarProps {
-  profile: Pick<UserProfile, 'username' | 'display_name' | 'avatar_url' | 'avatar_frame' | 'accent_color'> | null | undefined;
+  profile:
+    | (Pick<UserProfile, 'username' | 'display_name' | 'avatar_url' | 'avatar_frame' | 'accent_color'> & Partial<Pick<UserProfile, 'avatar_shape'>>)
+    | null
+    | undefined;
   size?: number;
   speaking?: boolean;
   /** Show the animated frame. Turn off in dense lists to save GPU. */
@@ -75,7 +79,7 @@ export function Avatar({ profile, size = 40, speaking = false, showFrame = true 
   useEffect(() => setBroken(false), [profile?.avatar_url]);
 
   return (
-    <div className="ae-avatar" data-frame={frame} data-speaking={speaking} style={style}>
+    <div className="ae-avatar" data-frame={frame} data-shape={profile?.avatar_shape ?? 'circle'} data-speaking={speaking} style={style}>
       <div className="ae-avatar-inner" style={{ fontSize: size * 0.4 }}>
         {profile?.avatar_url && !broken ? (
           <img src={profile.avatar_url} alt="" draggable={false} onError={() => setBroken(true)} />
@@ -83,6 +87,94 @@ export function Avatar({ profile, size = 40, speaking = false, showFrame = true 
           <span aria-hidden="true">{name.slice(0, 1).toUpperCase()}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Styled display names
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+type NameProfile = Partial<Pick<UserProfile, 'display_name' | 'username' | 'name_font' | 'name_effect' | 'name_color_a' | 'name_color_b' | 'accent_color'>>;
+
+/**
+ * A display name with the user's chosen font and effect. `color` (e.g. a role colour) applies
+ * unless the user picked a colour effect, which wins, like Discord's gradient role names.
+ */
+export function StyledName({ profile, text, color, className = '' }: { profile: NameProfile | null | undefined; text?: string; color?: string | null; className?: string }) {
+  const a = isHexColor(profile?.name_color_a) ? profile!.name_color_a! : isHexColor(profile?.accent_color) ? profile!.accent_color! : 'var(--ae-accent)';
+  const b = isHexColor(profile?.name_color_b) ? profile!.name_color_b! : 'var(--ae-text)';
+  const effect = profile?.name_effect ?? 'none';
+  return (
+    <span
+      className={`ae-name ${className}`}
+      data-font={profile?.name_font ?? 'default'}
+      data-effect={effect}
+      style={{ '--name-a': a, '--name-b': b, color: effect === 'none' ? (color ?? undefined) : undefined } as CSSProperties}
+    >
+      {text ?? (profile?.display_name || profile?.username || '…')}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Profile effects (particles over the card)
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+const EFFECTS: Record<Exclude<ProfileEffect, 'none'>, { glyphs: string[]; count: number; motion: 'fall' | 'rise' | 'twinkle' | 'wander'; size: [number, number] }> = {
+  sparkles: { glyphs: ['✦', '✧', '⋆'], count: 16, motion: 'twinkle', size: [10, 18] },
+  snow: { glyphs: ['❄', '•', '❅'], count: 22, motion: 'fall', size: [8, 16] },
+  hearts: { glyphs: ['💗', '💖', '💕'], count: 12, motion: 'rise', size: [12, 20] },
+  fireflies: { glyphs: ['●'], count: 14, motion: 'wander', size: [4, 7] },
+  confetti: { glyphs: ['▮', '▲', '●', '■'], count: 26, motion: 'fall', size: [6, 10] },
+  rain: { glyphs: ['│'], count: 30, motion: 'fall', size: [10, 16] },
+  stars: { glyphs: ['★', '☆', '✶'], count: 14, motion: 'twinkle', size: [8, 16] },
+  bubbles: { glyphs: ['○', '◯'], count: 14, motion: 'rise', size: [10, 22] },
+  petals: { glyphs: ['🌸', '🌺', '❀'], count: 12, motion: 'fall', size: [12, 18] },
+};
+const CONFETTI_COLORS = ['#ff5f6d', '#ffc371', '#5ee6a8', '#4facfe', '#a18cd1', '#f9f871'];
+
+export function ProfileEffectLayer({ effect, color }: { effect: ProfileEffect | null | undefined; color?: string }) {
+  const parts = useMemo(() => {
+    if (!effect || effect === 'none') return [];
+    const fx = EFFECTS[effect];
+    // Deterministic pseudo-random layout so the card doesn't reshuffle on every render.
+    let seed = effect.length * 9301;
+    const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+    return Array.from({ length: fx.count }, (_, i) => {
+      const size = fx.size[0] + rand() * (fx.size[1] - fx.size[0]);
+      const duration = fx.motion === 'fall' ? 5 + rand() * 6 : fx.motion === 'rise' ? 6 + rand() * 5 : 2 + rand() * 3;
+      const style = {
+        left: `${rand() * 100}%`,
+        top: fx.motion === 'fall' ? '-6%' : fx.motion === 'rise' ? '100%' : `${rand() * 100}%`,
+        fontSize: size,
+        opacity: fx.motion === 'fall' ? 0.85 : undefined,
+        animation: `ae-${fx.motion} ${duration}s ${fx.motion === 'fall' || fx.motion === 'rise' ? 'linear' : 'ease-in-out'} ${-rand() * duration}s infinite`,
+        '--drift': `${(rand() - 0.5) * 60}px`,
+        '--spin': `${(rand() - 0.5) * 720}deg`,
+        color:
+          effect === 'confetti'
+            ? CONFETTI_COLORS[i % CONFETTI_COLORS.length]
+            : effect === 'fireflies'
+              ? '#ffe96b'
+              : effect === 'rain'
+                ? 'rgba(160, 200, 255, 0.6)'
+                : effect === 'snow' || effect === 'bubbles'
+                  ? 'rgba(255,255,255,0.85)'
+                  : (color ?? '#ffe08a'),
+        textShadow: effect === 'fireflies' ? '0 0 8px #ffe96b' : undefined,
+      } as CSSProperties;
+      return { glyph: fx.glyphs[i % fx.glyphs.length]!, style };
+    });
+  }, [effect, color]);
+  if (parts.length === 0) return null;
+  return (
+    <div className="ae-fx" aria-hidden="true">
+      {parts.map((p, i) => (
+        <span key={i} style={p.style}>
+          {p.glyph}
+        </span>
+      ))}
     </div>
   );
 }
@@ -162,11 +254,14 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
   return (
     <article
       data-ae-profile={scopeId}
-      className={`ae-profile-card relative w-[340px] overflow-hidden rounded-ae border border-ae-border text-ae-text shadow-2xl ${className}`}
+      className={`ae-profile-card ae-card relative w-[340px] overflow-hidden rounded-ae border border-ae-border text-ae-text shadow-2xl ${className}`}
+      data-card={profile.card_style ?? 'solid'}
       style={
         {
           '--pf-primary': primary,
           '--pf-accent': accent,
+          '--card-a': primary,
+          '--card-b': accent,
           background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 35%, var(--ae-bg-elevated)) 0%, var(--ae-bg-elevated) 55%)`,
           contain: 'layout paint style',
           isolation: 'isolate',
@@ -174,6 +269,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
       }
     >
       <ScopedCss css={profile.custom_css} scopeSelector={`[data-ae-profile="${scopeId}"]`} />
+      <ProfileEffectLayer effect={profile.profile_effect} color={isHexColor(profile.accent_color) ? profile.accent_color : undefined} />
 
       <div className="ae-profile-banner h-28 w-full" style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}>
         {profile.banner_url && <img src={profile.banner_url} alt="" className="h-full w-full object-cover" draggable={false} />}
@@ -181,7 +277,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
 
       <div className="relative px-4 pb-4">
         <div className="-mt-10 mb-2 flex items-end justify-between">
-          <div className="rounded-full p-1" style={{ background: 'var(--ae-bg-elevated)' }}>
+          <div className={`p-1 ${profile.avatar_shape === 'squircle' ? 'rounded-[30%]' : 'rounded-full'}`} style={{ background: profile.avatar_shape === 'hexagon' ? 'transparent' : 'var(--ae-bg-elevated)' }}>
             <Avatar profile={profile} size={80} />
           </div>
           <BadgeRow badgeIds={profile.badge_ids ?? []} />
@@ -189,8 +285,13 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
 
         <div className="ae-profile-body space-y-3 rounded-ae bg-ae-sunken/60 p-3">
           <header>
-            <h2 className="text-lg leading-tight font-bold">{profile.display_name || profile.username}</h2>
-            <p className="text-sm text-ae-muted">@{profile.username}</p>
+            <h2 className="text-lg leading-tight font-bold">
+              <StyledName profile={profile} />
+            </h2>
+            <p className="text-sm text-ae-muted">
+              @{profile.username}
+              {profile.pronouns && <span> · {profile.pronouns}</span>}
+            </p>
             {customStatus && (
               <p className="mt-1 text-sm">
                 {profile.status_emoji && <span className="mr-1">{profile.status_emoji}</span>}
@@ -218,6 +319,25 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
 
           {profile.audio_status_url && <AudioStatusClip url={profile.audio_status_url} />}
 
+          {(profile.profile_links ?? []).length > 0 && (
+            <section>
+              <h3 className="mb-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Links</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {profile.profile_links.map((l) => (
+                  <button
+                    key={l.url}
+                    type="button"
+                    title={l.url}
+                    onClick={() => void openExternal(l.url)}
+                    className="ae-press rounded-full border border-ae-border bg-ae-surface px-2.5 py-1 text-xs hover:border-ae-accent"
+                  >
+                    🔗 {l.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section>
             <h3 className="mb-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Member since</h3>
             <p className="text-sm">{memberSince}</p>
@@ -237,8 +357,8 @@ export function ProfilePopover({ profile, onClose, footer }: { profile: UserProf
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/50" onMouseDown={onClose}>
-      <div onMouseDown={(e) => e.stopPropagation()} className="space-y-2">
+    <div className="ae-backdrop fixed inset-0 z-40 grid place-items-center bg-black/50" onMouseDown={onClose}>
+      <div onMouseDown={(e) => e.stopPropagation()} className="ae-dialog space-y-2">
         <ProfileCard profile={profile} />
         {footer}
       </div>

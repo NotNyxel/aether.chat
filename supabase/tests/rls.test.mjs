@@ -297,9 +297,9 @@ await expectOk('dave joins the server', async () => {
   const code = (await as(A, `insert into public.server_invites (server_id) values ($1) returning code`, [srv2])).rows[0].code;
   await as(D, `select public.join_server($1)`, [code]);
 });
-await expectOk('owner has all 22 permission bits', async () => {
-  const r = await as(A, `select public.server_permissions($1) p`, [srv2]);
-  if (Number(r.rows[0].p) !== 2 ** 22 - 1) throw new Error(String(r.rows[0].p));
+await expectOk('owner has every permission bit', async () => {
+  const r = await as(A, `select public.server_permissions($1) p, public.all_permissions() a`, [srv2]);
+  if (Number(r.rows[0].p) !== Number(r.rows[0].a)) throw new Error(String(r.rows[0].p));
 });
 const MOD_PERMS = (1 << 15) | (1 << 19) | (1 << 20) | (1 << 21); // kick, manage nicknames, moderate, audit log
 const modRole = (await expectOk('owner creates a mentionable Mod role', () =>
@@ -429,6 +429,110 @@ await expectOk('inbox hides mentions in servers you cannot see', async () => {
 });
 await expectOk('custom status expiry is writable', () =>
   as(C, `update public.users set custom_status = 'brb', custom_status_expires_at = now() + interval '1 hour' where id = '${C}'`));
+
+// ── Batch 4: voice states, moderation, stage, soundboard, profiles ──────────────────────
+console.log('\n# Batch 4: voice & profiles');
+const E = '55555555-5555-5555-5555-555555555555';
+await db.exec(`insert into auth.users (id, raw_user_meta_data) values ('${E}', '{"username":"erin"}')`);
+const stage2 = (await as(A, `select id from public.channels where server_id = $1 and type = 'stream'`, [srv2])).rows[0].id;
+await expectOk('erin joins the server', async () => {
+  const code = (await as(A, `insert into public.server_invites (server_id) values ($1) returning code`, [srv2])).rows[0].code;
+  await as(E, `select public.join_server($1)`, [code]);
+});
+await expectOk('owner now has all 25 bits; @everyone gained soundboard + request to speak', async () => {
+  const r = await as(E, `select public.server_permissions($1) p`, [srv2]);
+  const p = BigInt(r.rows[0].p);
+  if (!(p & (1n << 22n)) || !(p & (1n << 24n)) || (p & (1n << 23n))) throw new Error(p.toString(2));
+});
+await expectError('outsider cannot join the voice channel', () => as(B, `select public.voice_join($1)`, [voice2]), 'permission');
+await expectOk('erin joins voice; members see her, outsiders do not', async () => {
+  await as(E, `select public.voice_join($1)`, [voice2]);
+  const seen = (await as(A, `select channel_id from public.voice_states where user_id = '${E}'`)).rows[0]?.channel_id;
+  const leak = (await as(B, `select count(*)::int n from public.voice_states`)).rows[0].n;
+  if (seen !== voice2 || leak !== 0) throw new Error(`${seen} ${leak}`);
+});
+await expectOk('heartbeat updates own flags', async () => {
+  await as(E, `select public.voice_update(true, false, true, false)`);
+  const r = (await as(E, `select self_mute, streaming from public.voice_states where user_id = '${E}'`)).rows[0];
+  if (!r.self_mute || !r.streaming) throw new Error(JSON.stringify(r));
+});
+await expectError('voice_states cannot be written directly', () => as(E, `update public.voice_states set server_mute = false where user_id = '${E}'`), 'permission denied');
+await expectError('erin cannot server-mute the owner', () => as(E, `select public.voice_moderate('${A}', true, null)`), 'not in voice');
+await expectOk('owner joins and server-mutes erin (audited)', async () => {
+  await as(A, `select public.voice_join($1)`, [voice2]);
+  await as(A, `select public.voice_moderate('${E}', true, null)`);
+  const r = (await as(A, `select server_mute from public.voice_states where user_id = '${E}'`)).rows[0];
+  const log = (await as(A, `select count(*)::int n from public.audit_log where action = 'voice_server_mute'`)).rows[0].n;
+  if (!r.server_mute || log !== 1) throw new Error(`${r.server_mute} ${log}`);
+});
+await expectError('erin cannot server-mute the owner back', () => as(E, `select public.voice_moderate('${A}', true, null)`), 'Mute Members');
+await expectOk('server mute follows erin into the stage, where she joins the audience', async () => {
+  await as(E, `select public.voice_join($1)`, [stage2]);
+  const r = (await as(E, `select server_mute, suppressed from public.voice_states where user_id = '${E}'`)).rows[0];
+  if (!r.server_mute || !r.suppressed) throw new Error(JSON.stringify(r));
+});
+await expectOk('erin raises her hand', async () => {
+  await as(E, `select public.stage_request_to_speak(true)`);
+  const r = (await as(A, `select request_to_speak_at from public.voice_states where user_id = '${E}'`)).rows[0];
+  if (!r.request_to_speak_at) throw new Error('no hand');
+});
+await expectError('erin cannot make herself a speaker', () => as(E, `select public.stage_set_speaker('${E}', true)`), 'stage moderators');
+await expectOk('owner invites erin to speak', async () => {
+  await as(A, `select public.stage_set_speaker('${E}', true)`);
+  const r = (await as(A, `select suppressed, request_to_speak_at from public.voice_states where user_id = '${E}'`)).rows[0];
+  if (r.suppressed || r.request_to_speak_at) throw new Error(JSON.stringify(r));
+});
+await expectOk('erin steps down to the audience herself', () => as(E, `select public.stage_set_speaker('${E}', false)`));
+await expectError('erin cannot move people', () => as(E, `select public.voice_move('${A}', $1)`, [stage2]), 'Move Members');
+await expectOk('owner moves erin back to the voice channel', async () => {
+  await as(A, `select public.voice_move('${E}', $1)`, [voice2]);
+  const r = (await as(A, `select channel_id, suppressed from public.voice_states where user_id = '${E}'`)).rows[0];
+  if (r.channel_id !== voice2 || r.suppressed) throw new Error(JSON.stringify(r));
+});
+await expectOk('owner disconnects erin (audited)', async () => {
+  await as(A, `select public.voice_disconnect('${E}')`);
+  const n = (await as(A, `select count(*)::int n from public.voice_states where user_id = '${E}'`)).rows[0].n;
+  const log = (await as(A, `select count(*)::int n from public.audit_log where action in ('voice_disconnect', 'voice_move')`)).rows[0].n;
+  if (n !== 0 || log !== 2) throw new Error(`${n} ${log}`);
+});
+await expectOk('user limit is enforced for regular members', async () => {
+  await as(A, `update public.channels set user_limit = 1 where id = $1`, [voice2]);
+  let blocked = false;
+  try { await as(E, `select public.voice_join($1)`, [voice2]); } catch (e) { blocked = e.message.includes('full'); }
+  await as(A, `update public.channels set user_limit = null where id = $1`, [voice2]);
+  if (!blocked) throw new Error('not blocked');
+});
+await expectOk('leaving the server leaves its voice', async () => {
+  await as(E, `select public.voice_join($1)`, [voice2]);
+  await as(A, `select public.kick_member($1, '${E}', null)`, [srv2]);
+  const n = (await as(A, `select count(*)::int n from public.voice_states where user_id = '${E}'`)).rows[0].n;
+  if (n !== 0) throw new Error('still in voice');
+});
+await expectOk('erin rejoins the server', async () => {
+  const code = (await as(A, `insert into public.server_invites (server_id) values ($1) returning code`, [srv2])).rows[0].code;
+  await as(E, `select public.join_server($1)`, [code]);
+});
+
+await expectError('members without Manage Expressions cannot add sounds', () =>
+  as(E, `insert into public.soundboard_sounds (server_id, name, url) values ($1, 'boom', 'https://x.test/boom.mp3')`, [srv2]), 'row-level security');
+await expectOk('owner adds a sound (audited); members can list it, outsiders cannot', async () => {
+  await as(A, `insert into public.soundboard_sounds (server_id, name, emoji, url) values ($1, 'boom', '💥', 'https://x.test/boom.mp3')`, [srv2]);
+  const seen = (await as(E, `select count(*)::int n from public.soundboard_sounds`)).rows[0].n;
+  const leak = (await as(B, `select count(*)::int n from public.soundboard_sounds`)).rows[0].n;
+  const log = (await as(A, `select count(*)::int n from public.audit_log where action = 'sound_create'`)).rows[0].n;
+  if (seen !== 1 || leak !== 0 || log !== 1) throw new Error(`${seen} ${leak} ${log}`);
+});
+await expectError('soundboard uploads need Manage Expressions', () =>
+  as(E, `insert into storage.objects (bucket_id, name) values ('soundboard', $1)`, [`${srv2}/x.mp3`]), 'row-level security');
+
+await expectOk('profile customization fields are writable', () =>
+  as(E, `update public.users set pronouns = 'she/her', name_font = 'pixel', name_effect = 'rainbow', name_color_a = '#ff00aa',
+         profile_effect = 'sparkles', card_style = 'aurora', avatar_shape = 'squircle', theme_preset = 'tokyo-night',
+         profile_links = '[{"label":"GitHub","url":"https://github.com/erin"}]' where id = '${E}'`));
+await expectError('profile links must be https', () =>
+  as(E, `update public.users set profile_links = '[{"label":"x","url":"javascript:alert(1)"}]' where id = '${E}'`), 'check');
+await expectError('unknown profile effects are rejected', () =>
+  as(E, `update public.users set profile_effect = 'explode' where id = '${E}'`), 'check');
 
 await expectOk('presence status column is writable', () => as(C, `update public.users set presence_status = 'dnd' where id = '${C}'`));
 await expectError('badge_ids still not writable', () => as(C, `update public.users set badge_ids = '["staff"]' where id = '${C}'`));

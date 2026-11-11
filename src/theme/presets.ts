@@ -5,7 +5,31 @@
  * whole app without re-rendering React.
  */
 
-export type ThemePresetId = 'oled-dark' | 'cyberpunk' | 'nord' | 'aether-glass';
+export type ThemePresetId =
+  | 'oled-dark'
+  | 'cyberpunk'
+  | 'nord'
+  | 'aether-glass'
+  | 'midnight'
+  | 'dracula'
+  | 'catppuccin-mocha'
+  | 'tokyo-night'
+  | 'rose-pine'
+  | 'gruvbox'
+  | 'solarized-dark'
+  | 'monokai'
+  | 'synthwave'
+  | 'vaporwave'
+  | 'forest'
+  | 'ocean'
+  | 'sunset'
+  | 'crimson'
+  | 'matrix'
+  | 'high-contrast'
+  | 'daylight'
+  | 'catppuccin-latte'
+  | 'sakura'
+  | 'paper';
 
 export interface ThemeTokens {
   /** Page backdrop (may be a gradient). */
@@ -35,10 +59,41 @@ export interface ThemePreset {
   id: ThemePresetId;
   label: string;
   description: string;
+  /** Light themes flip the browser's built-in controls (scrollbars, date pickers) to light. */
+  light?: boolean;
   tokens: ThemeTokens;
 }
 
 const SYSTEM_FONT = `'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Inter', sans-serif`;
+
+/** Fills in the tokens most presets share, so each new preset only lists what makes it distinct. */
+function preset(
+  id: ThemePresetId,
+  label: string,
+  description: string,
+  t: Partial<ThemeTokens> & Pick<ThemeTokens, 'bg' | 'bgElevated' | 'surface' | 'surfaceHover' | 'border' | 'text' | 'textMuted' | 'accent'>,
+  light = false,
+): ThemePreset {
+  return {
+    id,
+    label,
+    description,
+    light,
+    tokens: {
+      backdrop: t.bg,
+      bgSunken: t.bg,
+      accentContrast: light ? '#ffffff' : '#0b0b0f',
+      danger: light ? '#d63447' : '#ff5c6c',
+      success: light ? '#1f9d55' : '#3ddc84',
+      warning: light ? '#c47f00' : '#f5b942',
+      radius: '10px',
+      blur: '0px',
+      font: SYSTEM_FONT,
+      glow: 'none',
+      ...t,
+    },
+  };
+}
 
 export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
   'oled-dark': {
@@ -142,9 +197,107 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
       glow: '0 0 18px color-mix(in srgb, var(--ae-accent) 35%, transparent)',
     },
   },
+  midnight: preset('midnight', 'Midnight', 'Deep navy with an electric-blue accent.', {
+    backdrop: 'radial-gradient(1000px 500px at 80% -10%, #12306b 0%, transparent 60%), #050a18',
+    bg: '#060b1a', bgElevated: '#0b1226', bgSunken: '#040812', surface: '#111a33', surfaceHover: '#1a2546', border: '#1f2b4d',
+    text: '#e6ecff', textMuted: '#8a97bd', accent: '#4d8dff', accentContrast: '#ffffff',
+  }),
+  dracula: preset('dracula', 'Dracula', 'The classic dark theme: purple, pink and cyan.', {
+    bg: '#282a36', bgElevated: '#21222c', bgSunken: '#191a21', surface: '#343746', surfaceHover: '#414558', border: '#44475a',
+    text: '#f8f8f2', textMuted: '#9ea8c7', accent: '#bd93f9', danger: '#ff5555', success: '#50fa7b', warning: '#f1fa8c',
+  }),
+  'catppuccin-mocha': preset('catppuccin-mocha', 'Catppuccin Mocha', 'Soothing pastels on a warm dark base.', {
+    bg: '#1e1e2e', bgElevated: '#181825', bgSunken: '#11111b', surface: '#313244', surfaceHover: '#45475a', border: '#313244',
+    text: '#cdd6f4', textMuted: '#9399b2', accent: '#cba6f7', danger: '#f38ba8', success: '#a6e3a1', warning: '#f9e2af', radius: '12px',
+  }),
+  'tokyo-night': preset('tokyo-night', 'Tokyo Night', 'Neon city lights after dark.', {
+    bg: '#1a1b26', bgElevated: '#16161e', bgSunken: '#13131a', surface: '#24283b', surfaceHover: '#2f344d', border: '#292e42',
+    text: '#c0caf5', textMuted: '#7a83ad', accent: '#7aa2f7', danger: '#f7768e', success: '#9ece6a', warning: '#e0af68',
+  }),
+  'rose-pine': preset('rose-pine', 'Rosé Pine', 'All natural pine, faux fur and a bit of soho vibes.', {
+    bg: '#191724', bgElevated: '#1f1d2e', bgSunken: '#15131f', surface: '#26233a', surfaceHover: '#312e48', border: '#2a2740',
+    text: '#e0def4', textMuted: '#908caa', accent: '#ebbcba', danger: '#eb6f92', success: '#9ccfd8', warning: '#f6c177', radius: '14px',
+  }),
+  gruvbox: preset('gruvbox', 'Gruvbox', 'Retro groove: warm, earthy contrast.', {
+    bg: '#282828', bgElevated: '#1d2021', bgSunken: '#1a1a1a', surface: '#3c3836', surfaceHover: '#504945', border: '#3c3836',
+    text: '#ebdbb2', textMuted: '#a89984', accent: '#fabd2f', danger: '#fb4934', success: '#b8bb26', warning: '#fe8019', radius: '4px',
+  }),
+  'solarized-dark': preset('solarized-dark', 'Solarized Dark', 'Precision colours for machines and people.', {
+    bg: '#002b36', bgElevated: '#073642', bgSunken: '#00212b', surface: '#0b3d4a', surfaceHover: '#124b5a', border: '#0e4554',
+    text: '#eee8d5', textMuted: '#93a1a1', accent: '#2aa198', danger: '#dc322f', success: '#859900', warning: '#b58900',
+  }),
+  monokai: preset('monokai', 'Monokai', "A coder's favourite: vivid on charcoal.", {
+    bg: '#272822', bgElevated: '#1f201b', bgSunken: '#1a1b16', surface: '#34352d', surfaceHover: '#414238', border: '#3e3d32',
+    text: '#f8f8f2', textMuted: '#a59f85', accent: '#a6e22e', danger: '#f92672', success: '#a6e22e', warning: '#fd971f', radius: '6px',
+  }),
+  synthwave: preset('synthwave', 'Synthwave', 'Outrun sunset: hot pink and chrome.', {
+    backdrop: 'linear-gradient(180deg, #1b0b2e 0%, #2d0f3f 55%, #511a4a 100%)',
+    bg: '#1b0b2e', bgElevated: '#24103a', bgSunken: '#130722', surface: '#33164f', surfaceHover: '#421d66', border: '#4d2475',
+    text: '#ffe9ff', textMuted: '#c79bd8', accent: '#ff3cac', accentContrast: '#ffffff', warning: '#fdee5d', success: '#36f9f6',
+    glow: '0 0 16px color-mix(in srgb, var(--ae-accent) 60%, transparent)',
+  }),
+  vaporwave: preset('vaporwave', 'Vaporwave', 'Pastel glass and dreamy gradients.', {
+    backdrop:
+      'radial-gradient(900px 600px at 0% 0%, #ff9ad5 0%, transparent 55%), radial-gradient(900px 600px at 100% 100%, #7ee8fa 0%, transparent 55%), #2b2142',
+    bg: 'rgba(43, 33, 66, 0.55)', bgElevated: 'rgba(255, 255, 255, 0.08)', bgSunken: 'rgba(20, 12, 36, 0.35)',
+    surface: 'rgba(255, 255, 255, 0.1)', surfaceHover: 'rgba(255, 255, 255, 0.17)', border: 'rgba(255, 255, 255, 0.18)',
+    text: '#fff5fd', textMuted: '#d9c6ec', accent: '#ff9ad5', radius: '16px', blur: '20px',
+    glow: '0 0 18px color-mix(in srgb, var(--ae-accent) 40%, transparent)',
+  }),
+  forest: preset('forest', 'Forest', 'Moss, pine and soft daylight through the leaves.', {
+    backdrop: 'radial-gradient(1000px 600px at 10% 110%, #1f4d2e 0%, transparent 60%), #0f1a13',
+    bg: '#0f1a13', bgElevated: '#13221a', bgSunken: '#0b140e', surface: '#1b2e22', surfaceHover: '#243c2d', border: '#264030',
+    text: '#e3f2e6', textMuted: '#93b39c', accent: '#5fd38d', radius: '12px',
+  }),
+  ocean: preset('ocean', 'Ocean', 'Deep-sea teal with bioluminescent highlights.', {
+    backdrop: 'radial-gradient(1000px 700px at 90% 110%, #0a5a6b 0%, transparent 60%), #04141c',
+    bg: '#04141c', bgElevated: '#082029', bgSunken: '#030e14', surface: '#0d2c38', surfaceHover: '#133a49', border: '#15404f',
+    text: '#dff6fb', textMuted: '#86b4c1', accent: '#2ee6d6', radius: '12px',
+  }),
+  sunset: preset('sunset', 'Sunset', 'Golden hour: amber and coral on dusk.', {
+    backdrop: 'radial-gradient(1100px 600px at 50% -20%, #7a2e1d 0%, transparent 60%), #1a0f12',
+    bg: '#1a0f12', bgElevated: '#221418', bgSunken: '#140b0e', surface: '#2f1b20', surfaceHover: '#3d232a', border: '#45282f',
+    text: '#ffeee6', textMuted: '#c7a199', accent: '#ff8a4c', radius: '12px',
+  }),
+  crimson: preset('crimson', 'Crimson', 'Black and blood red. Bold.', {
+    bg: '#0c0607', bgElevated: '#140a0c', bgSunken: '#080405', surface: '#1f0f12', surfaceHover: '#2c1418', border: '#3a161c',
+    text: '#fbeaec', textMuted: '#b08a90', accent: '#e11d48', accentContrast: '#ffffff', radius: '6px',
+    glow: '0 0 14px color-mix(in srgb, var(--ae-accent) 45%, transparent)',
+  }),
+  matrix: preset('matrix', 'Matrix', 'Phosphor green on black. Follow the white rabbit.', {
+    bg: '#000700', bgElevated: '#010d02', bgSunken: '#000400', surface: '#03170a', surfaceHover: '#06240f', border: '#0b3317',
+    text: '#c8ffd4', textMuted: '#4fbf6a', accent: '#00ff66', success: '#00ff66', radius: '0px',
+    font: `'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace`,
+    glow: '0 0 12px color-mix(in srgb, var(--ae-accent) 55%, transparent)',
+  }),
+  'high-contrast': preset('high-contrast', 'High Contrast', 'Maximum legibility: pure black, pure white, strong yellow.', {
+    bg: '#000000', bgElevated: '#000000', bgSunken: '#000000', surface: '#111111', surfaceHover: '#262626', border: '#ffffff',
+    text: '#ffffff', textMuted: '#e0e0e0', accent: '#ffd400', danger: '#ff6b6b', success: '#5cff8d', warning: '#ffd400', radius: '4px',
+  }),
+  daylight: preset('daylight', 'Daylight', 'Clean and bright. A light theme for sunny rooms.', {
+    backdrop: '#eef0f5', bg: '#ffffff', bgElevated: '#f4f5f8', bgSunken: '#e9ebf1', surface: '#e8eaf0', surfaceHover: '#dcdfe8', border: '#d7dae3',
+    text: '#14161c', textMuted: '#5c6273', accent: '#5b5bf7',
+  }, true),
+  'catppuccin-latte': preset('catppuccin-latte', 'Catppuccin Latte', 'Pastel light theme, soft on the eyes.', {
+    backdrop: '#e6e9ef', bg: '#eff1f5', bgElevated: '#e6e9ef', bgSunken: '#dce0e8', surface: '#ccd0da', surfaceHover: '#bcc0cc', border: '#ccd0da',
+    text: '#4c4f69', textMuted: '#6c6f85', accent: '#8839ef', danger: '#d20f39', success: '#40a02b', warning: '#df8e1d', radius: '12px',
+  }, true),
+  sakura: preset('sakura', 'Sakura', 'Cherry-blossom pink on warm white.', {
+    backdrop: 'radial-gradient(900px 500px at 100% 0%, #ffd6e7 0%, transparent 60%), #fff7fa',
+    bg: '#fffafc', bgElevated: '#fff0f5', bgSunken: '#ffe6ef', surface: '#ffe1ec', surfaceHover: '#ffd0e1', border: '#f7c9da',
+    text: '#3d2430', textMuted: '#8a6474', accent: '#e0569b', radius: '16px',
+  }, true),
+  paper: preset('paper', 'Paper', 'Solarized light: like reading a good book.', {
+    backdrop: '#f4eedb', bg: '#fdf6e3', bgElevated: '#f4eedb', bgSunken: '#ece5cf', surface: '#eee8d5', surfaceHover: '#e3dcc4', border: '#ddd5bb',
+    text: '#3b4a52', textMuted: '#657b83', accent: '#268bd2', radius: '6px',
+  }, true),
 };
 
-export const PRESET_ORDER: ThemePresetId[] = ['oled-dark', 'cyberpunk', 'nord', 'aether-glass'];
+export const PRESET_ORDER: ThemePresetId[] = [
+  'oled-dark', 'midnight', 'aether-glass', 'cyberpunk', 'synthwave', 'vaporwave', 'nord', 'dracula', 'catppuccin-mocha', 'tokyo-night',
+  'rose-pine', 'gruvbox', 'solarized-dark', 'monokai', 'forest', 'ocean', 'sunset', 'crimson', 'matrix', 'high-contrast',
+  'daylight', 'catppuccin-latte', 'sakura', 'paper',
+];
 
 /** Animated avatar frame presets (CSS in src/index.css). Stored in users.avatar_frame. */
 export const AVATAR_FRAMES = [
@@ -154,6 +307,13 @@ export const AVATAR_FRAMES = [
   { id: 'neon', label: 'Neon' },
   { id: 'orbit', label: 'Orbit' },
   { id: 'glitch', label: 'Glitch' },
+  { id: 'rainbow', label: 'Rainbow' },
+  { id: 'fire', label: 'Fire' },
+  { id: 'ice', label: 'Ice' },
+  { id: 'hearts', label: 'Hearts' },
+  { id: 'sparkle', label: 'Sparkle' },
+  { id: 'halo', label: 'Halo' },
+  { id: 'radar', label: 'Radar' },
 ] as const;
 
 export type AvatarFrameId = (typeof AVATAR_FRAMES)[number]['id'];

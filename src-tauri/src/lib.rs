@@ -101,6 +101,24 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--autostart"]),
         ))
+        // Answer the browser's "allow microphone / camera?" prompts ourselves, the way Discord's
+        // Electron shell does: aether.chat's own pages get them silently, anything else gets the
+        // normal prompt. Windows' own privacy switch (Settings → Privacy → Microphone) still applies.
+        .on_permission_request(|webview, kind| {
+            use tauri::webview::{PermissionKind, PermissionResponse};
+            let own_page = webview
+                .url()
+                .map(|u| matches!(u.host_str(), Some("tauri.localhost") | Some("localhost") | Some("127.0.0.1")))
+                .unwrap_or(false);
+            match kind {
+                PermissionKind::Microphone | PermissionKind::Camera | PermissionKind::Notifications | PermissionKind::Autoplay
+                    if own_page =>
+                {
+                    PermissionResponse::Allow
+                }
+                _ => PermissionResponse::Default,
+            }
+        })
         .invoke_handler(tauri::generate_handler![set_close_to_tray, idle_seconds, running_processes])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open aether.chat", true, None::<&str>)?;

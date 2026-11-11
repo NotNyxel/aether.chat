@@ -189,8 +189,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ae-avatar::before,
-  .ae-avatar::after {
+  :root[data-ae-animations='system'] .ae-avatar::before,
+  :root[data-ae-animations='system'] .ae-avatar::after {
     animation: none !important;
   }
 }

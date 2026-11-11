@@ -16,9 +16,9 @@ import { ALL_SOUNDS, playSound, SOUND_INFO } from '../lib/sounds';
 import { useSettingsStore, type Keybinds } from '../stores/settingsStore';
 import { useUiStore, type SettingsTab } from '../stores/uiStore';
 import { AVATAR_FRAMES, isHexColor, PRESET_ORDER, THEME_PRESETS } from '../theme/presets';
-import type { EditableProfile, UserProfile } from '../types/db';
+import type { AvatarShape, CardStyle, EditableProfile, NameEffect, NameFont, ProfileEffect, ProfileLink, UserProfile } from '../types/db';
 import { CloseIcon } from './icons';
-import { ProfileCard } from './ProfileCard';
+import { ProfileCard, StyledName } from './ProfileCard';
 import { ActivityTab, BackgroundShortcutsSection, DesktopNotificationsSection, WindowsTab } from './SettingsDesktop';
 import { useTheme } from './ThemeEngine';
 
@@ -133,7 +133,111 @@ const EDITABLE_KEYS: (keyof EditableProfile)[] = [
   'custom_css',
   'audio_status_url',
   'theme_preset',
+  'pronouns',
+  'name_font',
+  'name_effect',
+  'name_color_a',
+  'name_color_b',
+  'profile_effect',
+  'card_style',
+  'avatar_shape',
+  'profile_links',
 ];
+
+const NAME_FONTS: { id: NameFont; label: string }[] = [
+  { id: 'default', label: 'Default' },
+  { id: 'rounded', label: 'Rounded' },
+  { id: 'serif', label: 'Serif' },
+  { id: 'display', label: 'Display' },
+  { id: 'handwritten', label: 'Handwritten' },
+  { id: 'mono', label: 'Mono' },
+  { id: 'pixel', label: 'Pixel' },
+];
+const NAME_EFFECTS: { id: NameEffect; label: string }[] = [
+  { id: 'none', label: 'None' },
+  { id: 'gradient', label: 'Gradient' },
+  { id: 'rainbow', label: 'Rainbow' },
+  { id: 'shimmer', label: 'Shimmer' },
+  { id: 'glow', label: 'Glow' },
+  { id: 'neon', label: 'Neon' },
+];
+const PROFILE_EFFECTS: { id: ProfileEffect; label: string }[] = [
+  { id: 'none', label: 'None' },
+  { id: 'sparkles', label: '✦ Sparkles' },
+  { id: 'stars', label: '★ Stars' },
+  { id: 'snow', label: '❄ Snow' },
+  { id: 'hearts', label: '💗 Hearts' },
+  { id: 'petals', label: '🌸 Petals' },
+  { id: 'confetti', label: '🎉 Confetti' },
+  { id: 'fireflies', label: '✨ Fireflies' },
+  { id: 'bubbles', label: '○ Bubbles' },
+  { id: 'rain', label: '🌧 Rain' },
+];
+const CARD_STYLES: { id: CardStyle; label: string }[] = [
+  { id: 'solid', label: 'Solid' },
+  { id: 'gradient', label: 'Gradient' },
+  { id: 'glass', label: 'Glass' },
+  { id: 'aurora', label: 'Aurora (animated)' },
+];
+const AVATAR_SHAPES: { id: AvatarShape; label: string }[] = [
+  { id: 'circle', label: '● Circle' },
+  { id: 'squircle', label: '▢ Squircle' },
+  { id: 'hexagon', label: '⬢ Hexagon' },
+];
+
+function Chips<T extends string>({ options, value, onChange }: { options: { id: T; label: string }[]; value: T; onChange: (v: T) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          onClick={() => onChange(o.id)}
+          className={`ae-press rounded-ae border px-3 py-1.5 text-xs ${value === o.id ? 'border-ae-accent bg-ae-accent/15' : 'border-ae-border hover:bg-ae-hover'}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LinksEditor({ links, onChange }: { links: ProfileLink[]; onChange: (l: ProfileLink[]) => void }) {
+  const [label, setLabel] = useState('');
+  const [url, setUrl] = useState('');
+  const valid = label.trim() && /^https:\/\/\S+$/.test(url.trim());
+  return (
+    <div className="space-y-2">
+      {links.map((l, i) => (
+        <div key={`${l.url}-${i}`} className="flex items-center gap-2 rounded-ae bg-ae-surface px-3 py-1.5 text-sm">
+          <span className="font-semibold">{l.label}</span>
+          <span className="flex-1 truncate text-xs text-ae-muted">{l.url}</span>
+          <button type="button" className="text-ae-muted hover:text-ae-danger" onClick={() => onChange(links.filter((_, j) => j !== i))}>
+            <CloseIcon size={14} />
+          </button>
+        </div>
+      ))}
+      {links.length < 5 && (
+        <div className="flex gap-2">
+          <input className={`${inputCls} w-36`} placeholder="GitHub" maxLength={32} value={label} onChange={(e) => setLabel(e.target.value)} />
+          <input className={inputCls} placeholder="https://…" maxLength={256} value={url} onChange={(e) => setUrl(e.target.value)} />
+          <button
+            type="button"
+            disabled={!valid}
+            className="shrink-0 rounded-ae bg-ae-surface px-3 text-sm hover:bg-ae-hover disabled:opacity-40"
+            onClick={() => {
+              onChange([...links, { label: label.trim(), url: url.trim() }]);
+              setLabel('');
+              setUrl('');
+            }}
+          >
+            Add
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function toDraft(p: UserProfile): EditableProfile {
   return Object.fromEntries(EDITABLE_KEYS.map((k) => [k, p[k]])) as EditableProfile;
@@ -220,6 +324,9 @@ function ProfileTab({ userId }: { userId: string }) {
             <Field label="Custom status">
               <input className={inputCls} maxLength={128} value={text('custom_status')} onChange={(e) => setText('custom_status', e.target.value)} />
             </Field>
+            <Field label="Pronouns">
+              <input className={inputCls} maxLength={40} placeholder="they/them" value={text('pronouns')} onChange={(e) => setText('pronouns', e.target.value)} />
+            </Field>
           </div>
           <Field label="Bio (Markdown)" hint="Supports **bold**, *italic*, `code`, ||spoilers||, > quotes, lists and links.">
             <textarea className={`${inputCls} min-h-28 font-mono`} maxLength={4000} value={text('bio')} onChange={(e) => setText('bio', e.target.value)} />
@@ -259,6 +366,41 @@ function ProfileTab({ userId }: { userId: string }) {
             <ColorField label="Primary color" value={draft.primary_color} onChange={(v) => set('primary_color', v)} />
             <ColorField label="Accent color" value={draft.accent_color} onChange={(v) => set('accent_color', v)} />
           </div>
+        </Section>
+
+        <Section title="Name style" description="How your name looks in chat, the member list and your profile.">
+          <Field label="Font">
+            <Chips options={NAME_FONTS} value={draft.name_font ?? 'default'} onChange={(v) => set('name_font', v)} />
+          </Field>
+          <Field label="Effect">
+            <Chips options={NAME_EFFECTS} value={draft.name_effect ?? 'none'} onChange={(v) => set('name_effect', v)} />
+          </Field>
+          {['gradient', 'shimmer', 'glow', 'neon'].includes(draft.name_effect ?? 'none') && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <ColorField label="Name colour 1" value={draft.name_color_a} onChange={(v) => set('name_color_a', v)} />
+              {['gradient', 'neon'].includes(draft.name_effect ?? 'none') && (
+                <ColorField label="Name colour 2" value={draft.name_color_b} onChange={(v) => set('name_color_b', v)} />
+              )}
+            </div>
+          )}
+          <p className="rounded-ae bg-ae-sunken px-3 py-2 text-lg font-semibold">
+            <StyledName profile={{ ...profile, ...draft }} />
+          </p>
+        </Section>
+
+        <Section title="Profile card" description="Decorate your card. Effects respect everyone's motion settings.">
+          <Field label="Card style">
+            <Chips options={CARD_STYLES} value={draft.card_style ?? 'solid'} onChange={(v) => set('card_style', v)} />
+          </Field>
+          <Field label="Profile effect">
+            <Chips options={PROFILE_EFFECTS} value={draft.profile_effect ?? 'none'} onChange={(v) => set('profile_effect', v)} />
+          </Field>
+          <Field label="Avatar shape">
+            <Chips options={AVATAR_SHAPES} value={draft.avatar_shape ?? 'circle'} onChange={(v) => set('avatar_shape', v)} />
+          </Field>
+          <Field label="Links" hint="Up to 5 https links, shown as buttons on your card.">
+            <LinksEditor links={draft.profile_links ?? []} onChange={(l) => set('profile_links', l)} />
+          </Field>
         </Section>
 
         <Section title="Audio status" description="A short clip people can play from your profile card.">
@@ -331,7 +473,7 @@ function AppearanceTab() {
   return (
     <div className="space-y-6">
       <Section title="Theme">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PRESET_ORDER.map((id) => {
             const preset = THEME_PRESETS[id];
             const t = preset.tokens;
@@ -341,7 +483,7 @@ function AppearanceTab() {
                 key={id}
                 type="button"
                 onClick={() => setTheme({ presetId: id })}
-                className={`overflow-hidden rounded-ae border text-left ${active ? 'border-ae-accent ae-glow' : 'border-ae-border hover:border-ae-muted'}`}
+                className={`ae-lift overflow-hidden rounded-ae border text-left ${active ? 'border-ae-accent ae-glow' : 'border-ae-border hover:border-ae-muted'}`}
               >
                 <div className="flex h-16 gap-1 p-2" style={{ background: t.backdrop }}>
                   <div className="w-6 rounded" style={{ background: t.bgSunken }} />
@@ -352,7 +494,10 @@ function AppearanceTab() {
                   </div>
                 </div>
                 <div className="p-3">
-                  <p className="text-sm font-semibold">{preset.label}</p>
+                  <p className="text-sm font-semibold">
+                    {preset.label}
+                    {preset.light && <span className="ml-2 rounded bg-ae-surface px-1.5 text-[10px] text-ae-muted">LIGHT</span>}
+                  </p>
                   <p className="text-xs text-ae-muted">{preset.description}</p>
                 </div>
               </button>
@@ -373,10 +518,28 @@ function AppearanceTab() {
         )}
       </Section>
 
-      <Section title="Motion">
+      <Section title="Motion" description="Springy menus, sliding messages, glowing speakers and live badges.">
+        <Field label="Animations">
+          <Chips
+            options={[
+              { id: 'full', label: 'Full' },
+              { id: 'subtle', label: 'Subtle (no decorative loops)' },
+              { id: 'off', label: 'Off' },
+              { id: 'system', label: 'Follow Windows' },
+            ]}
+            value={theme.animations}
+            onChange={(v) => setTheme({ animations: v })}
+          />
+        </Field>
+        <Toggle
+          label="Ambient background"
+          hint="A slow, faint aurora in your accent colour drifting behind everything."
+          checked={theme.ambientBackground}
+          onChange={(v) => setTheme({ ambientBackground: v })}
+        />
         <Toggle
           label="Reduce motion"
-          hint="Stops animated avatar frames and other decorative animation."
+          hint="Stops every animation, including avatar frames and profile effects."
           checked={theme.reduceMotion}
           onChange={(v) => setTheme({ reduceMotion: v })}
         />
@@ -589,13 +752,37 @@ function VoiceTab() {
 
       <Section title="Processing">
         <Toggle label="Echo cancellation" checked={audio.echoCancellation} onChange={(v) => setAudio({ echoCancellation: v })} />
-        <Toggle label="Noise suppression" checked={audio.noiseSuppression} onChange={(v) => setAudio({ noiseSuppression: v })} />
+        <Toggle
+          label="AI noise suppression (RNNoise)"
+          hint="A small neural network removes keyboards, fans and background chatter. Runs on your PC; replaces the browser's noise suppression."
+          checked={audio.rnnoise}
+          onChange={(v) => setAudio({ rnnoise: v })}
+        />
+        {!audio.rnnoise && (
+          <Toggle label="Standard noise suppression" checked={audio.noiseSuppression} onChange={(v) => setAudio({ noiseSuppression: v })} />
+        )}
         <Toggle
           label="Automatic gain control"
           hint="Usually best off; aether.chat's compressor already levels your voice."
           checked={audio.autoGainControl}
           onChange={(v) => setAudio({ autoGainControl: v })}
         />
+      </Section>
+      <Section
+        title="TURN relay (advanced)"
+        description="Some networks (strict NAT, corporate Wi-Fi) block peer-to-peer. A TURN server relays the audio instead. Bring your own (e.g. a free tier from a TURN provider, or coturn); leave empty to stay direct. Applies the next time you join."
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label="TURN URL(s)" hint="turn:host:3478 or turns:host:5349, comma-separated">
+            <input className={inputCls} value={audio.turnUrl} placeholder="turn:turn.example.com:3478" onChange={(e) => setAudio({ turnUrl: e.target.value })} />
+          </Field>
+          <Field label="Username">
+            <input className={inputCls} value={audio.turnUsername} autoComplete="off" onChange={(e) => setAudio({ turnUsername: e.target.value })} />
+          </Field>
+          <Field label="Credential">
+            <input className={inputCls} type="password" value={audio.turnCredential} autoComplete="off" onChange={(e) => setAudio({ turnCredential: e.target.value })} />
+          </Field>
+        </div>
       </Section>
     </div>
   );
@@ -849,7 +1036,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Settings">
+    <div className="ae-zoom-in fixed inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Settings">
       <nav className="ae-panel flex w-60 shrink-0 flex-col gap-1 border-r border-ae-border p-4">
         <p className="mb-2 px-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Settings</p>
         {TABS.map((t) => (

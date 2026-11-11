@@ -1,6 +1,6 @@
 [package]
 name = "aetherchat"
-version = "0.6.0"
+version = "0.7.0"
 description = "AetherChat: lightweight P2P chat, voice and screen share"
 edition = "2021"
 

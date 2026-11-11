@@ -3,12 +3,31 @@
 export type ChannelType = 'category' | 'text' | 'voice' | 'stream';
 export type PresenceStatus = 'online' | 'idle' | 'dnd' | 'invisible';
 
+export type NameFont = 'default' | 'serif' | 'mono' | 'rounded' | 'display' | 'handwritten' | 'pixel';
+export type NameEffect = 'none' | 'gradient' | 'rainbow' | 'glow' | 'neon' | 'shimmer';
+export type ProfileEffect = 'none' | 'sparkles' | 'snow' | 'hearts' | 'fireflies' | 'confetti' | 'rain' | 'stars' | 'bubbles' | 'petals';
+export type CardStyle = 'solid' | 'glass' | 'gradient' | 'aurora';
+export type AvatarShape = 'circle' | 'squircle' | 'hexagon';
+export interface ProfileLink {
+  label: string;
+  url: string;
+}
+
 export interface UserProfile {
   id: string;
   username: string;
   display_name: string | null;
   custom_status: string | null;
   custom_status_expires_at: string | null;
+  pronouns: string | null;
+  name_font: NameFont;
+  name_effect: NameEffect;
+  name_color_a: string | null;
+  name_color_b: string | null;
+  profile_effect: ProfileEffect;
+  card_style: CardStyle;
+  avatar_shape: AvatarShape;
+  profile_links: ProfileLink[];
   status_emoji: string | null;
   bio: string | null;
   avatar_url: string | null;
@@ -32,6 +51,15 @@ export type EditableProfile = Pick<
   | 'display_name'
   | 'custom_status'
   | 'custom_status_expires_at'
+  | 'pronouns'
+  | 'name_font'
+  | 'name_effect'
+  | 'name_color_a'
+  | 'name_color_b'
+  | 'profile_effect'
+  | 'card_style'
+  | 'avatar_shape'
+  | 'profile_links'
   | 'status_emoji'
   | 'bio'
   | 'avatar_url'
@@ -267,4 +295,32 @@ export interface NotificationSetting {
   muted_until: string | null;
   suppress_everyone: boolean;
   updated_at: string;
+}
+
+export interface VoiceState {
+  user_id: string;
+  channel_id: string;
+  server_id: string;
+  self_mute: boolean;
+  self_deaf: boolean;
+  streaming: boolean;
+  camera: boolean;
+  server_mute: boolean;
+  server_deaf: boolean;
+  /** Stage audience member. */
+  suppressed: boolean;
+  request_to_speak_at: string | null;
+  joined_at: string;
+  updated_at: string;
+}
+
+export interface SoundboardSound {
+  id: string;
+  server_id: string;
+  name: string;
+  emoji: string | null;
+  url: string;
+  volume: number;
+  created_by: string | null;
+  created_at: string;
 }

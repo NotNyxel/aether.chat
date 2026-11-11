@@ -82,19 +82,25 @@ That's it. There's nothing to configure. The app keeps itself up to date: when a
 ### 🎙️ Voice, video & calls
 | | |
 |---|---|
-| **Voice channels** | Join any voice or stream channel. Everyone connects directly to everyone (P2P mesh). |
+| **Voice channels** | Join any voice channel. Everyone connects directly to everyone (P2P mesh). See who's inside before joining. |
+| **Stage channels** | Speakers and an audience. Raise your hand to speak; stage moderators invite speakers. |
+| **Moderation** | Server mute and deafen, move, disconnect. Audited, and enforced by every participant's app. |
+| **Soundboard** | 8 built-in sounds plus up to 48 per server, played to everyone in the call. |
+| **Layouts** | Grid, focus, speaker. Pop-out (picture-in-picture) and fullscreen. "Watch stream" banner in text channels. |
+| **Connection stats** | Ping, packet loss, bitrate and direct or relay on every tile. Optional bring-your-own TURN relay. |
 | **DM & group calls** | Call from a DM header (voice or video). The others get a ringing card with Accept or Decline. |
 | **Camera** | Turn your camera on in any call. Quality follows your bandwidth profile (360p to 720p). |
 | **Screen share** | 720p or 1080p at 15, 30 or 60 FPS, with optional system or tab audio. |
-| **Audio pipeline** | High-pass filter, compressor, noise gate with a live meter, per-user volume (0–200%), mute and deafen. |
+| **Audio pipeline** | RNNoise AI noise suppression (optional), high-pass filter, compressor, noise gate with a live meter, per-user volume (0–200%), mute and deafen. No mic or camera permission prompts. |
 | **Push-to-talk & keybinds** | Rebindable mute, deafen and PTT shortcuts. |
 
 ### 🎨 Customization
 | | |
 |---|---|
-| **Themes** | OLED Dark, Cyberpunk, Nord and aetherOS Glass, plus a custom accent color or your profile accent. |
+| **Themes** | 24 themes, including Dracula, Catppuccin, Tokyo Night, Rosé Pine, Synthwave, Vaporwave and Matrix, and four light themes. Plus a custom accent or your profile accent, and an optional ambient aurora background. |
+| **Motion** | Springy menus and dialogs, sliding messages, pressable buttons, pulsing speakers. Full, Subtle, Off or Follow Windows. |
 | **Custom CSS** | App-wide CSS that is sanitized and sandboxed (it can't escape the app or load scripts). |
-| **Profiles** | Banner, animated avatar frames (pulse, aurora, neon, orbit, glitch), Markdown bio, badges, an audio status clip, profile colors and sandboxed profile CSS. |
+| **Profiles** | Banner, 13 animated avatar frames, avatar shapes, name fonts and effects (gradient, rainbow, shimmer, glow, neon), card styles (gradient, glass, animated aurora), profile effects (snow, sparkles, confetti and more), pronouns, links, Markdown bio, badges, an audio status clip, profile colors and sandboxed profile CSS. |
 
 ### 🔔 Notifications & presence
 | | |
@@ -193,6 +199,7 @@ Migrations live in `supabase/`. Run them in order in the Supabase SQL editor:
 |---|---|
 | `schema.sql` | Users, servers, channels, roles and permission bitmasks, messages, invites, bans, storage buckets |
 | `migrations/002_social.sql` | Friends, blocks, DMs, group DMs, calls, reactions, presence status, Realtime topic authorization |
+| `migrations/006_voice_and_profiles.sql` | Voice states (occupancy), voice moderation and stage RPCs, soundboard table and bucket, 3 new permissions, profile customization columns, any theme id |
 | `migrations/005_notifications.sql` | Notification settings (levels, mute, @everyone suppression) honoured by unread counts, custom status expiry, `recent_mentions` for the inbox |
 | `migrations/004_server_management.sql` | New permissions, timeouts, `@role` mentions, NSFW channels, channel and role reordering, kick and nickname RPCs, custom invite codes, audit log |
 | `migrations/003_messaging.sql` | Polls and votes, pins, full-text search index, mentions and `@everyone`, forwards, per-channel unread state, `unread_summary()` |
@@ -257,7 +264,9 @@ Features ship in themed batches, one minor version each. See **[ROADMAP.md](ROAD
 ## Known limitations
 - **Voice rooms work best with up to about 8–10 people** (full mesh, no media server).
 - **Some strict networks can't connect peer-to-peer** (symmetric NAT, some corporate networks). There's no TURN relay
-  by default, to keep the cost at $0.
+  by default, to keep the cost at $0. You can add your own under Settings → Voice & Audio.
+- **Voice moderation is enforced by the participants' apps.** A peer-to-peer mesh has no server to cut anyone off,
+  so a modified client could ignore a server mute. Everyone else's app still won't play that member's audio.
 - **Clicking a desktop notification doesn't jump to the message** in the desktop app yet (the notification plugin
   has no click events on Windows). Open the Inbox to jump to it.
 - **Windows only** for now.

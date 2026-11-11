@@ -9,12 +9,12 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-4" onMouseDown={onClose}>
+    <div className="ae-backdrop fixed inset-0 z-40 grid place-items-center bg-black/60 p-4" onMouseDown={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="ae-panel w-full max-w-md space-y-4 rounded-ae border border-ae-border p-6 shadow-2xl"
+        className="ae-panel ae-dialog w-full max-w-md space-y-4 rounded-ae border border-ae-border p-6 shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-bold">{title}</h2>

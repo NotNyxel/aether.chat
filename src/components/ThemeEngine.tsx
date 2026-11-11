@@ -183,8 +183,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     for (const [key, value] of Object.entries(tokens)) root.style.setProperty(cssVarName(key), value);
     root.dataset.aeTheme = theme.presetId;
     root.dataset.aeReduceMotion = String(theme.reduceMotion);
-    root.style.colorScheme = 'dark';
-  }, [tokens, theme.presetId, theme.reduceMotion]);
+    root.dataset.aeAmbient = String(theme.ambientBackground);
+    root.dataset.aeAnimations = theme.animations;
+    const light = !!THEME_PRESETS[theme.presetId]?.light;
+    root.dataset.aeLight = String(light);
+    root.style.colorScheme = light ? 'light' : 'dark';
+  }, [tokens, theme.presetId, theme.reduceMotion, theme.ambientBackground, theme.animations]);
 
   const customCss = useMemo(
     () =>

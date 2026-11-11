@@ -23,6 +23,7 @@ import { useProfiles } from './ConversationBits';
 import { CloseIcon, PlusIcon } from './icons';
 import { DisplayName, formatTime } from './MessageItem';
 import { Avatar } from './ProfileCard';
+import { SoundboardTab } from './SoundboardSettings';
 import { ColorField, Field, inputCls, Section, Toggle } from './SettingsPanel';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -735,6 +736,15 @@ const ACTION_LABELS: Record<string, { icon: string; text: string }> = {
   member_nickname: { icon: '🏷️', text: 'changed the nickname of' },
   invite_create: { icon: '✉️', text: 'created invite' },
   invite_delete: { icon: '✉️', text: 'revoked invite' },
+  voice_server_mute: { icon: '🔇', text: 'server-muted' },
+  voice_server_unmute: { icon: '🎤', text: 'removed the server mute for' },
+  voice_server_deafen: { icon: '🔕', text: 'server-deafened' },
+  voice_server_undeafen: { icon: '🔔', text: 'removed the server deafen for' },
+  voice_move: { icon: '↪️', text: 'moved' },
+  voice_disconnect: { icon: '📴', text: 'disconnected' },
+  sound_create: { icon: '🎵', text: 'added the sound' },
+  sound_update: { icon: '🎵', text: 'updated the sound' },
+  sound_delete: { icon: '🗑️', text: 'removed the sound' },
 };
 
 function AuditRow({ e }: { e: AuditEntry }) {
@@ -848,6 +858,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
       label: 'Members',
       show: [Permission.MANAGE_ROLES, Permission.KICK_MEMBERS, Permission.BAN_MEMBERS, Permission.MODERATE_MEMBERS, Permission.MANAGE_NICKNAMES].some(rank.can),
     },
+    { id: 'soundboard', label: 'Soundboard', show: true },
     { id: 'invites', label: 'Invites', show: rank.can(Permission.CREATE_INVITE) },
     { id: 'bans', label: 'Bans', show: rank.can(Permission.BAN_MEMBERS) },
     { id: 'audit', label: 'Audit Log', show: rank.can(Permission.VIEW_AUDIT_LOG) },
@@ -856,7 +867,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
   const active = visible.some((t) => t.id === tab) ? tab : 'overview';
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Server settings">
+    <div className="ae-zoom-in fixed inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Server settings">
       <nav className="ae-panel flex w-60 shrink-0 flex-col gap-1 border-r border-ae-border p-4">
         <p className="mb-2 truncate px-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">{server.name}</p>
         {visible.map((t) => (
@@ -876,6 +887,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
           {active === 'overview' && <OverviewTab server={server} userId={userId} rank={rank} />}
           {active === 'roles' && <RolesTab server={server} rank={rank} />}
           {active === 'members' && <MembersTab server={server} rank={rank} />}
+          {active === 'soundboard' && <SoundboardTab server={server} canManage={rank.can(Permission.MANAGE_EXPRESSIONS)} />}
           {active === 'invites' && <InvitesTab server={server} rank={rank} userId={userId} />}
           {active === 'bans' && <BansTab server={server} />}
           {active === 'audit' && <AuditTab server={server} />}

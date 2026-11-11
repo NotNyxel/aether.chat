@@ -1,0 +1,470 @@
+/* ═════════════════════════════════════════════════════════════════════════════════════════
+   aether.chat motion & effects (Batch 4).
+   Levels: data-ae-animations = full | subtle | off | system on <html>. "subtle" keeps short fades
+   but drops decorative loops; "off" and Reduce Motion stop everything; "system" follows the OS.
+   ═════════════════════════════════════════════════════════════════════════════════════════ */
+:root {
+  --ae-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ae-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Elements appearing: lists, banners, rows */
+@keyframes ae-enter {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+.ae-enter {
+  animation: ae-enter 240ms var(--ae-ease-out) both;
+}
+
+/* Popovers and menus: scale up from slightly smaller */
+@keyframes ae-pop {
+  from {
+    opacity: 0;
+    scale: 0.94;
+  }
+}
+.ae-pop {
+  animation: ae-pop 180ms var(--ae-ease-spring) both;
+  transform-origin: top center;
+}
+
+/* Full-screen panels */
+@keyframes ae-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ae-zoom-in {
+  from {
+    opacity: 0;
+    scale: 1.03;
+  }
+}
+.ae-fade {
+  animation: ae-fade 200ms ease-out both;
+}
+.ae-zoom-in {
+  animation: ae-zoom-in 260ms var(--ae-ease-out) both;
+}
+
+/* Dialog: backdrop fades, panel springs in */
+.ae-backdrop {
+  animation: ae-fade 180ms ease-out both;
+}
+.ae-dialog {
+  animation: ae-pop 260ms var(--ae-ease-spring) both;
+  transform-origin: center;
+}
+
+/* Messages slide up as they arrive */
+@keyframes ae-msg-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+.ae-msg {
+  animation: ae-msg-in 220ms var(--ae-ease-out) both;
+}
+
+/* Tactile buttons. Uses the `scale` property, so Tailwind's `translate` utilities on positioned
+   buttons are untouched. */
+button,
+[role='button'] {
+  transition:
+    scale 120ms var(--ae-ease-out),
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease,
+    border-radius 200ms var(--ae-ease-out),
+    opacity 150ms ease,
+    box-shadow 200ms ease,
+    translate 200ms var(--ae-ease-out);
+}
+button:not(:disabled):active,
+[role='button']:active {
+  scale: 0.96;
+}
+.ae-press:not(:disabled):hover {
+  scale: 1.05;
+}
+.ae-press:not(:disabled):active {
+  scale: 0.92;
+}
+
+/* Server rail: icons lift on hover */
+nav[aria-label='Servers'] > div > button:hover,
+nav[aria-label='Servers'] > button:hover {
+  translate: 0 -1px;
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--ae-accent) 70%, transparent);
+}
+
+/* Call tiles */
+.ae-tile {
+  transition:
+    border-color 200ms ease,
+    box-shadow 250ms ease;
+  animation: ae-pop 260ms var(--ae-ease-spring) both;
+}
+@keyframes ae-speaking {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px var(--ae-success),
+      0 0 0 0 color-mix(in srgb, var(--ae-success) 45%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px var(--ae-success),
+      0 0 0 6px color-mix(in srgb, var(--ae-success) 0%, transparent);
+  }
+}
+.ae-speaking {
+  animation: ae-speaking 1.2s ease-out infinite;
+}
+
+/* LIVE badges breathe */
+@keyframes ae-live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+.ae-live {
+  animation: ae-live 1.6s ease-in-out infinite;
+}
+
+/* Red count badges pop in */
+@keyframes ae-badge {
+  from {
+    scale: 0.4;
+    opacity: 0;
+  }
+}
+.bg-ae-danger.rounded-full {
+  animation: ae-badge 260ms var(--ae-ease-spring) both;
+}
+
+/* Hover lift for cards */
+.ae-lift {
+  transition:
+    translate 200ms var(--ae-ease-out),
+    box-shadow 200ms ease;
+}
+.ae-lift:hover {
+  translate: 0 -2px;
+  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.6);
+}
+
+/* Ambient background: a slow accent-tinted aurora drifting over the app */
+@keyframes ae-ambient {
+  0% {
+    transform: translate3d(-4%, -3%, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate3d(4%, 3%, 0) rotate(8deg) scale(1.08);
+  }
+  100% {
+    transform: translate3d(-4%, -3%, 0) rotate(0deg) scale(1);
+  }
+}
+:root[data-ae-ambient='true'] body::after {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  z-index: 60;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 35% at 20% 15%, color-mix(in srgb, var(--ae-accent) 55%, transparent), transparent 70%),
+    radial-gradient(35% 30% at 85% 80%, color-mix(in srgb, var(--ae-accent) 35%, #00d4ff), transparent 70%);
+  opacity: 0.07;
+  mix-blend-mode: screen;
+  animation: ae-ambient 28s ease-in-out infinite;
+}
+:root[data-ae-ambient='true'][data-ae-light='true'] body::after {
+  mix-blend-mode: multiply;
+  opacity: 0.05;
+}
+
+/* ── New avatar frames ─────────────────────────────────────────────────────────────────── */
+.ae-avatar[data-frame='rainbow']::before {
+  inset: -3px;
+  background: conic-gradient(red, orange, yellow, lime, cyan, blue, violet, red);
+  animation: ae-spin 3s linear infinite;
+}
+.ae-avatar[data-frame='fire']::before {
+  inset: -4px;
+  background: conic-gradient(from 180deg, #ff2d00, #ff9a00, #ffd000, #ff6a00, #ff2d00);
+  filter: blur(1.5px);
+  animation:
+    ae-spin 2.4s linear infinite,
+    ae-frame-pulse 0.9s ease-in-out infinite;
+}
+.ae-avatar[data-frame='ice']::before {
+  inset: -3px;
+  background: conic-gradient(#e0f7ff, #7fd8ff, #ffffff, #4fc3f7, #e0f7ff);
+  box-shadow: 0 0 12px #7fd8ff;
+  animation: ae-spin 7s linear infinite;
+}
+.ae-avatar[data-frame='halo']::before {
+  inset: -5px;
+  background: transparent;
+  border: 2px solid #ffe08a;
+  box-shadow:
+    0 0 10px #ffd54f,
+    inset 0 0 8px #ffd54f;
+  animation: ae-frame-pulse 2.6s ease-in-out infinite;
+}
+.ae-avatar[data-frame='radar']::before {
+  inset: -4px;
+  background: conic-gradient(from 0deg, transparent 0 270deg, var(--frame-color) 360deg);
+  animation: ae-spin 1.6s linear infinite;
+}
+.ae-avatar[data-frame='hearts']::after,
+.ae-avatar[data-frame='sparkle']::after {
+  content: '💗';
+  position: absolute;
+  z-index: 2;
+  right: -4px;
+  top: -6px;
+  font-size: calc(var(--avatar-size, 40px) * 0.32);
+  animation: ae-float 2.2s ease-in-out infinite;
+}
+.ae-avatar[data-frame='sparkle']::after {
+  content: '✨';
+}
+.ae-avatar[data-frame='hearts']::before {
+  background: linear-gradient(135deg, #ff7ab6, #ff2f6d);
+  animation: ae-frame-pulse 1.6s ease-in-out infinite;
+}
+.ae-avatar[data-frame='sparkle']::before {
+  background: conic-gradient(#fff6b0, #ffd1f7, #b8f2ff, #fff6b0);
+  animation: ae-spin 5s linear infinite;
+}
+@keyframes ae-float {
+  0%,
+  100% {
+    translate: 0 0;
+    rotate: -8deg;
+  }
+  50% {
+    translate: 0 -4px;
+    rotate: 8deg;
+  }
+}
+
+/* Avatar shapes */
+.ae-avatar[data-shape='squircle'],
+.ae-avatar[data-shape='squircle'] > .ae-avatar-inner {
+  border-radius: 30%;
+}
+.ae-avatar[data-shape='hexagon'] > .ae-avatar-inner,
+.ae-avatar[data-shape='hexagon']::before {
+  clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%);
+  border-radius: 0;
+}
+
+/* ── Display names ─────────────────────────────────────────────────────────────────────── */
+.ae-name[data-font='serif'] {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+.ae-name[data-font='mono'] {
+  font-family: 'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace;
+}
+.ae-name[data-font='rounded'] {
+  font-family: 'Nunito', 'Segoe UI', sans-serif;
+  font-weight: 800;
+}
+.ae-name[data-font='display'] {
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+}
+.ae-name[data-font='handwritten'] {
+  font-family: 'Pacifico', 'Segoe Script', cursive;
+  font-weight: 400;
+}
+.ae-name[data-font='pixel'] {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.72em;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.ae-name[data-effect='gradient'],
+.ae-name[data-effect='rainbow'],
+.ae-name[data-effect='shimmer'] {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent !important;
+}
+.ae-name[data-effect='gradient'] {
+  background-image: linear-gradient(90deg, var(--name-a), var(--name-b));
+}
+.ae-name[data-effect='rainbow'] {
+  background-image: linear-gradient(90deg, #ff5f6d, #ffc371, #f9f871, #5ee6a8, #4facfe, #a18cd1, #ff5f6d);
+  background-size: 200% 100%;
+  animation: ae-slide-bg 4s linear infinite;
+}
+.ae-name[data-effect='shimmer'] {
+  background-image: linear-gradient(100deg, var(--name-a) 35%, #ffffff 50%, var(--name-a) 65%);
+  background-size: 250% 100%;
+  animation: ae-slide-bg 2.8s linear infinite;
+}
+.ae-name[data-effect='glow'] {
+  color: var(--name-a) !important;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--name-a) 70%, transparent);
+}
+.ae-name[data-effect='neon'] {
+  color: #fff !important;
+  text-shadow:
+    0 0 4px var(--name-a),
+    0 0 10px var(--name-a),
+    0 0 18px var(--name-b);
+  animation: ae-flicker 4s steps(1) infinite;
+}
+@keyframes ae-slide-bg {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ── Profile card styles and effects ───────────────────────────────────────────────────── */
+.ae-card[data-card='glass'] .ae-profile-body {
+  background: color-mix(in srgb, var(--ae-bg-elevated) 45%, transparent);
+  backdrop-filter: blur(14px);
+  border: 1px solid color-mix(in srgb, #fff 12%, transparent);
+}
+.ae-card[data-card='gradient'] {
+  background: linear-gradient(160deg, var(--card-a) 0%, var(--ae-bg-elevated) 55%, var(--card-b) 130%) !important;
+}
+.ae-card[data-card='aurora'] {
+  background:
+    radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--card-a) 55%, transparent), transparent 60%),
+    radial-gradient(120% 80% at 100% 100%, color-mix(in srgb, var(--card-b) 55%, transparent), transparent 60%),
+    var(--ae-bg-elevated) !important;
+  background-size:
+    160% 160%,
+    160% 160%,
+    auto !important;
+  animation: ae-aurora 12s ease-in-out infinite;
+}
+@keyframes ae-aurora {
+  0%,
+  100% {
+    background-position:
+      0% 0%,
+      100% 100%,
+      0 0;
+  }
+  50% {
+    background-position:
+      30% 20%,
+      70% 80%,
+      0 0;
+  }
+}
+
+.ae-fx {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 3;
+}
+.ae-fx > span {
+  position: absolute;
+  will-change: transform, opacity;
+  user-select: none;
+  line-height: 1;
+}
+@keyframes ae-fall {
+  from {
+    transform: translate3d(0, -40px, 0) rotate(0deg);
+  }
+  to {
+    transform: translate3d(var(--drift, 0px), 620px, 0) rotate(var(--spin, 0deg));
+  }
+}
+@keyframes ae-rise {
+  from {
+    transform: translate3d(0, 0, 0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(var(--drift, 0px), -560px, 0) scale(1.1);
+    opacity: 0;
+  }
+}
+@keyframes ae-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes ae-wander {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translate(var(--drift, 20px), -24px);
+    opacity: 1;
+  }
+}
+
+/* ── Motion levels ─────────────────────────────────────────────────────────────────────── */
+:root[data-ae-animations='subtle'] .ae-fx,
+:root[data-ae-animations='subtle'] body::after {
+  display: none;
+}
+:root[data-ae-animations='subtle'] .ae-speaking,
+:root[data-ae-animations='subtle'] .ae-live,
+:root[data-ae-animations='subtle'] .ae-card,
+:root[data-ae-animations='subtle'] .ae-name {
+  animation: none !important;
+}
+:root[data-ae-animations='off'] *,
+:root[data-ae-animations='off'] *::before,
+:root[data-ae-animations='off'] *::after,
+:root[data-ae-reduce-motion='true'] *,
+:root[data-ae-reduce-motion='true'] *::before,
+:root[data-ae-reduce-motion='true'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+:root[data-ae-animations='off'] .ae-fx,
+:root[data-ae-reduce-motion='true'] .ae-fx,
+:root[data-ae-animations='off'] body::after,
+:root[data-ae-reduce-motion='true'] body::after {
+  display: none;
+}
+/* "Follow Windows": honour the OS reduce-motion / animation-effects switch. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ae-animations='system'] .ae-fx,
+  :root[data-ae-animations='system'] body::after {
+    display: none !important;
+  }
+  :root[data-ae-animations='system'] *,
+  :root[data-ae-animations='system'] *::before,
+  :root[data-ae-animations='system'] *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

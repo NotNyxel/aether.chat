@@ -24,6 +24,10 @@ export interface ThemeSettings {
   customCss: string;
   customCssEnabled: boolean;
   reduceMotion: boolean;
+  /** Slowly drifting accent-coloured glow behind the app. */
+  ambientBackground: boolean;
+  /** How lively the interface is: full (springy), subtle, or off. */
+  animations: 'full' | 'subtle' | 'off' | 'system';
 }
 
 export interface Keybinds {
@@ -97,6 +101,8 @@ export const DEFAULT_THEME: ThemeSettings = {
   customCss: '',
   customCssEnabled: false,
   reduceMotion: false,
+  ambientBackground: true,
+  animations: 'full',
 };
 
 export const DEFAULT_KEYBINDS: Keybinds = {

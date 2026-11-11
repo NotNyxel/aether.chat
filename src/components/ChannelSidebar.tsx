@@ -1,38 +1,24 @@
 /** Server sidebar: channels grouped by category, invites, channel creation, leave/delete server. */
 import { useMemo, useState } from 'react';
-import { useCreateChannel, useCreateInvite, useDeleteServer, useLeaveServer, useProfile, useServerPermissions } from '../hooks/useChatData';
+import { useCreateChannel, useCreateInvite, useDeleteServer, useLeaveServer, useServerPermissions } from '../hooks/useChatData';
 import { isRowUnread, useUnreadSummary } from '../hooks/useMessageExtras';
 import { useNotifyResolver } from '../hooks/useNotifications';
 import { NotificationOptions } from './NotificationMenu';
+import { useVoiceStates } from '../hooks/useVoiceStates';
+import { VoiceOccupantList } from './VoiceOccupants';
 import { useChannelActions } from '../hooks/useServerAdmin';
 import { hasPermission, Permission } from '../lib/permissions';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, ChannelType, Server } from '../types/db';
 import { useCall } from './CallContext';
 import { Dialog, PromptForm } from './Dialog';
-import { CameraIcon, HashIcon, LinkIcon, LogOutIcon, MicOffIcon, PlusIcon, ScreenIcon, StageIcon, TrashIcon, VolumeIcon } from './icons';
-import { Avatar } from './ProfileCard';
+import { HashIcon, LinkIcon, LogOutIcon, PlusIcon, StageIcon, TrashIcon, VolumeIcon } from './icons';
 import { UserPanel } from './UserPanel';
 
 export function ChannelGlyph({ type, size = 16 }: { type: ChannelType; size?: number }) {
   if (type === 'voice') return <VolumeIcon size={size} />;
   if (type === 'stream') return <StageIcon size={size} />;
   return <HashIcon size={size} />;
-}
-
-function VoiceMember({ userId, speaking, muted, camera, screen }: { userId: string; speaking: boolean; muted: boolean; camera: boolean; screen: boolean }) {
-  const { data: profile } = useProfile(userId);
-  return (
-    <li className="flex items-center gap-2 py-0.5 pl-8 text-sm text-ae-muted">
-      <Avatar profile={profile} size={20} speaking={speaking} showFrame={false} />
-      <span className="truncate">{profile?.display_name || profile?.username || '…'}</span>
-      <span className="ml-auto flex items-center gap-1">
-        {screen && <ScreenIcon size={12} className="text-ae-accent" />}
-        {camera && <CameraIcon size={12} />}
-        {muted && <MicOffIcon size={12} className="text-ae-danger" />}
-      </span>
-    </li>
-  );
 }
 
 export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
@@ -43,8 +29,9 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
 }) {
   const selectChannel = useUiStore((s) => s.selectChannel);
   const selectServer = useUiStore((s) => s.selectServer);
-  const { voice, room } = useCall();
+  const { joinChannel } = useCall();
   const { data: perms = 0n } = useServerPermissions(server.id);
+  const { byChannel } = useVoiceStates(server.id);
   const createInvite = useCreateInvite();
   const createChannel = useCreateChannel(server.id);
   const leaveServer = useLeaveServer(userId);
@@ -260,6 +247,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                       <button
                         type="button"
                         onClick={() => selectChannel(server.id, ch.id)}
+                        onDoubleClick={() => (ch.type === 'voice' || ch.type === 'stream') && joinChannel(ch)}
                         className={`flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left text-sm ${
                           isActive
                             ? 'bg-ae-surface text-ae-text'
@@ -273,6 +261,14 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                         <ChannelGlyph type={ch.type} />
                         <span className="truncate">{ch.name}</span>
                         {ch.nsfw && <span className="rounded bg-ae-danger/20 px-1 text-[9px] font-bold text-ae-danger">18+</span>}
+                        {(byChannel.get(ch.id) ?? []).some((v) => v.streaming) && (
+                          <span className="ae-live rounded bg-ae-danger px-1 text-[9px] font-bold text-white">LIVE</span>
+                        )}
+                        {ch.user_limit != null && (ch.type === 'voice' || ch.type === 'stream') && (
+                          <span className="ml-auto rounded bg-ae-sunken px-1 text-[10px] text-ae-muted">
+                            {(byChannel.get(ch.id) ?? []).length}/{ch.user_limit}
+                          </span>
+                        )}
                         {mentions > 0 && <span className="ml-auto rounded-full bg-ae-danger px-1.5 text-[11px] font-bold text-white">{mentions}</span>}
                       </button>
                       {canOpenChannelSettings && (
@@ -285,13 +281,8 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                           ⚙
                         </button>
                       )}
-                      {room?.kind === 'channel' && room.id === ch.id && voice.status !== 'idle' && (
-                        <ul>
-                          <VoiceMember userId={userId} speaking={voice.isSpeaking} muted={voice.isMuted} camera={voice.isCameraOn} screen={voice.isSharingScreen} />
-                          {voice.participants.map((p) => (
-                            <VoiceMember key={p.peerId} userId={p.userId} speaking={p.speaking} muted={p.muted} camera={p.cameraOn} screen={p.sharingScreen} />
-                          ))}
-                        </ul>
+                      {(ch.type === 'voice' || ch.type === 'stream') && (
+                        <VoiceOccupantList channel={ch} states={byChannel.get(ch.id) ?? []} channels={channels} perms={perms} isOwner={isOwner} me={userId} />
                       )}
                     </li>
                   );

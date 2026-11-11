@@ -1,0 +1,17 @@
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+
+# Updater signing key, password, release scratch. NEVER commit.
+.secrets/
+
+# Tauri build output
+src-tauri/target/
+src-tauri/gen/schemas/
+
+.claude/settings.local.json
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "aether.chat",
+  "mainBinaryName": "aetherchat",
+  "version": "0.3.0",
+  "identifier": "app.aetherchat.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "aether.chat",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 940,
+        "minHeight": 560,
+        "center": true,
+        "backgroundColor": "#000000"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; media-src 'self' https: blob: mediastream:; connect-src 'self' ipc: http://ipc.localhost https: wss:; font-src 'self' data:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
+    "publisher": "aether.chat",
+    "category": "SocialNetworking",
+    "shortDescription": "Lightweight P2P chat, voice and video",
+    "longDescription": "aether.chat is a zero-cost messaging client: text over Supabase, voice, video and screen share directly peer-to-peer over WebRTC.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "installerHooks": "./windows/hooks.nsh"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDA3NjM2RkRERjMyMUI4MzcKUldRM3VDSHozVzlqQjc0NE9YcDF5dU54QlNncGVqZzErZFFwRm5LK240Vmk3Zmkyb3FWY2tJb2sK",
+      "endpoints": ["https://github.com/__GITHUB_OWNER__/aether.chat-releases/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
+  }
+}

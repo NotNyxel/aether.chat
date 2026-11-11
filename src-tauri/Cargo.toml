@@ -1,0 +1,26 @@
+[package]
+name = "aetherchat"
+version = "0.3.0"
+description = "AetherChat: lightweight P2P chat, voice and screen share"
+edition = "2021"
+
+[lib]
+name = "aetherchat_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
+
+# Small, fast release binary.
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

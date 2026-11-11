@@ -1,5 +1,5 @@
 /** A DM or group DM: header with call buttons, the in-call panel, chat history and (for groups) members. */
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { PresenceDot, usePresenceOf } from '../hooks/usePresence';
 import { useActiveCalls, useConversationActions } from '../hooks/useSocialData';
@@ -45,15 +45,11 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
   const others = otherMemberIds(conv, userId);
   const dmPartner = usePresenceOf(conv.type === 'dm' ? others[0] : null);
 
+  const scope = useMemo(() => ({ kind: 'conversation' as const, id: conv.id }), [conv.id]);
+  const memberIds = useMemo(() => conv.conversation_members.map((m) => m.user_id).filter((id) => id !== userId), [conv.conversation_members, userId]);
+
   const inThisCall = room?.kind === 'conversation' && room.id === conv.id && voice.status !== 'idle';
   const callActive = activeCalls.some((c) => c.conversation_id === conv.id);
-
-  // Mark the conversation read when it is opened and whenever new messages arrive while it is open.
-  const { markRead } = actions;
-  useEffect(() => {
-    markRead.mutate(conv.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conv.id, conv.last_message_at]);
 
   const header = (
     <>
@@ -125,8 +121,10 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
     <>
       <MessagePane
         key={conv.id}
-        scope={{ kind: 'conversation', id: conv.id }}
+        scope={scope}
         userId={userId}
+        serverId={null}
+        memberIds={memberIds}
         header={header}
         top={top}
         aside={aside}

@@ -1,5 +1,6 @@
 /** Home sidebar: Friends entry and the Direct Messages list (DMs + group DMs) with unread and call markers. */
 import { useState } from 'react';
+import { useUnreadSummary } from '../hooks/useMessageExtras';
 import { useActiveCalls, useConversationActions, useConversations, useFriendships } from '../hooks/useSocialData';
 import { useUiStore } from '../stores/uiStore';
 import type { Conversation } from '../types/db';
@@ -8,7 +9,7 @@ import { GroupDialog } from './GroupDialog';
 import { CloseIcon, PhoneIcon, PlusIcon, UsersIcon } from './icons';
 import { UserPanel } from './UserPanel';
 
-function ConversationRow({ conv, me, active, inCall }: { conv: Conversation; me: string; active: boolean; inCall: boolean }) {
+function ConversationRow({ conv, me, active, inCall, count }: { conv: Conversation; me: string; active: boolean; inCall: boolean; count: number }) {
   const openHome = useUiStore((s) => s.openHome);
   const actions = useConversationActions();
   const title = useConversationTitle(conv, me);
@@ -30,7 +31,13 @@ function ConversationRow({ conv, me, active, inCall }: { conv: Conversation; me:
           {conv.type === 'group' && <span className="block truncate text-xs text-ae-muted">{memberCount} members</span>}
         </span>
         {inCall && <PhoneIcon size={14} className="text-ae-success" />}
-        {unread && !active && <span className="h-2 w-2 shrink-0 rounded-full bg-ae-text" aria-label="Unread" />}
+        {!active && count > 0 ? (
+          <span className="shrink-0 rounded-full bg-ae-danger px-1.5 text-[11px] font-bold text-white" aria-label={`${count} unread`}>
+            {count > 99 ? '99+' : count}
+          </span>
+        ) : (
+          unread && !active && <span className="h-2 w-2 shrink-0 rounded-full bg-ae-text" aria-label="Unread" />
+        )}
       </button>
       <button
         type="button"
@@ -55,6 +62,8 @@ export function HomeSidebar({ userId }: { userId: string }) {
   const { data: friendships = [] } = useFriendships();
   const { data: activeCalls = [] } = useActiveCalls();
   const [groupOpen, setGroupOpen] = useState(false);
+  const { data: unread = [] } = useUnreadSummary();
+  const counts = new Map(unread.map((r) => [r.scope_id, r.mention_count]));
 
   const pending = friendships.filter((f) => f.status === 'pending' && f.addressee_id === userId).length;
   const visible = conversations.filter((c) => !c.conversation_members.find((m) => m.user_id === userId)?.hidden);
@@ -88,7 +97,7 @@ export function HomeSidebar({ userId }: { userId: string }) {
         <ul className="space-y-0.5">
           {visible.length === 0 && <li className="px-2 py-3 text-xs text-ae-muted">No conversations yet. Message a friend to start one.</li>}
           {visible.map((c) => (
-            <ConversationRow key={c.id} conv={c} me={userId} active={homeTarget === c.id} inCall={callIds.has(c.id)} />
+            <ConversationRow key={c.id} conv={c} me={userId} active={homeTarget === c.id} inCall={callIds.has(c.id)} count={counts.get(c.id) ?? 0} />
           ))}
         </ul>
       </div>

@@ -1,15 +1,16 @@
 // Run with: npm run test:db
-// Runs AetherChat's schema + migration 002 against real Postgres (PGlite) with Supabase stubs,
-// then exercises the social flows as two different authenticated users with RLS enforced.
+// Applies aether.chat's schema.sql + every file in supabase/migrations (in order) to real Postgres
+// (PGlite) with Supabase stubs, then exercises the flows as several users with RLS enforced.
 import { PGlite } from '@electric-sql/pglite';
 import { citext } from '@electric-sql/pglite/contrib/citext';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const schemaPath = join(here, '..', 'schema.sql');
-const migrationPath = join(here, '..', 'migrations', '002_social.sql');
+const migrationsDir = join(here, '..', 'migrations');
+const migrationPaths = readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort().map((f) => join(migrationsDir, f));
 const db = new PGlite({ extensions: { citext } });
 
 const STUBS = `
@@ -73,12 +74,12 @@ async function expectError(label, fn, match) {
   }
 }
 
-console.log('Applying stubs, schema.sql, 002_social.sql');
+console.log(`Applying stubs, schema.sql, ${migrationPaths.length} migration(s)`);
 await db.exec(STUBS);
 await db.exec('create extension if not exists citext with schema extensions;');
 await db.exec(readFileSync(schemaPath, 'utf8'));
-await db.exec(readFileSync(migrationPath, 'utf8'));
-console.log('  ok   both files applied');
+for (const m of migrationPaths) await db.exec(readFileSync(m, 'utf8'));
+console.log('  ok   all files applied');
 
 // Users via the auth trigger
 await db.exec(`insert into auth.users (id, raw_user_meta_data) values
@@ -200,6 +201,91 @@ await expectOk('alice creates a server and posts in #general', async () => {
   if (r.rows[0].n !== 1) throw new Error('missing');
   if (!(await topicCheck(A, `typing:${ch}`))) throw new Error('typing topic denied for own channel');
 });
+
+console.log('\nBatch 1: mentions, unreads, pins, polls, search, forwards');
+const srv = (await as(A, `select id from public.servers where name = 'Test'`)).rows[0].id;
+const general = (await as(A, `select id from public.channels where server_id = $1 and type = 'text'`, [srv])).rows[0].id;
+await expectOk('carol joins the server by invite', async () => {
+  const code = (await as(A, `insert into public.server_invites (server_id) values ($1) returning code`, [srv])).rows[0].code;
+  await as(C, `select public.join_server($1)`, [code]);
+});
+await expectOk('@mention is resolved to a user id', async () => {
+  const r = await as(A, `insert into public.messages (channel_id, content) values ($1, 'hey @carol look') returning mentions`, [general]);
+  if (!r.rows[0].mentions.includes(C)) throw new Error(JSON.stringify(r.rows[0]));
+});
+await expectOk('owner can @everyone, carol cannot (no MENTION_EVERYONE)', async () => {
+  const a = await as(A, `insert into public.messages (channel_id, content) values ($1, '@everyone hi') returning mention_everyone`, [general]);
+  const c = await as(C, `insert into public.messages (channel_id, content) values ($1, '@everyone spam') returning mention_everyone`, [general]);
+  if (a.rows[0].mention_everyone !== true || c.rows[0].mention_everyone !== false) throw new Error(`${a.rows[0].mention_everyone} ${c.rows[0].mention_everyone}`);
+});
+await expectOk('unread_summary: carol has 2 mentions in #general', async () => {
+  // carol posted after alice, which marks the channel read for her; rewind her read state to before alice's messages
+  await db.exec(`update public.channel_read_states set last_read_at = now() - interval '1 hour' where user_id = '${C}'`);
+  const r = await as(C, `select * from public.unread_summary() where scope_id = $1`, [general]);
+  const row = r.rows[0];
+  if (!row || row.mention_count !== 2) throw new Error(JSON.stringify(row));
+});
+await expectOk('mark_channel_read clears it', async () => {
+  await as(C, `select public.mark_channel_read($1)`, [general]);
+  const row = (await as(C, `select * from public.unread_summary() where scope_id = $1`, [general])).rows[0];
+  if (row.mention_count !== 0) throw new Error(JSON.stringify(row));
+});
+await expectOk('outsider sees no unread rows for the server', async () => {
+  const r = await as(B, `select count(*)::int n from public.unread_summary() where server_id = $1`, [srv]);
+  if (r.rows[0].n !== 0) throw new Error('leak');
+});
+const msgForPin = (await as(C, `select id from public.messages where channel_id = $1 and author_id = '${C}' limit 1`, [general])).rows[0].id;
+await expectError('carol cannot pin in a server channel', () => as(C, `update public.messages set pinned = true where id = $1`, [msgForPin]), 'MANAGE_MESSAGES');
+await expectOk('owner pins: pinned_at / pinned_by recorded', async () => {
+  const r = await as(A, `update public.messages set pinned = true where id = $1 returning pinned_at, pinned_by`, [msgForPin]);
+  if (!r.rows[0]?.pinned_at || r.rows[0].pinned_by !== A) throw new Error(JSON.stringify(r.rows));
+});
+const pollMsg = (await expectOk('create a poll (normalized by trigger)', async () => {
+  const r = await as(A, `insert into public.messages (channel_id, poll) values ($1, $2::jsonb) returning id, poll`,
+    [general, JSON.stringify({ question: ' Lunch? ', options: [{ text: 'Pizza' }, { text: 'Sushi', emoji: '\u{1F363}' }], multi: false, duration_hours: 24, junk: 1 })]);
+  const p = r.rows[0].poll;
+  if (p.question !== 'Lunch?' || p.options.length !== 2 || !p.expires_at || 'junk' in p) throw new Error(JSON.stringify(p));
+  return r;
+}))?.rows[0].id;
+await expectError('poll needs at least 2 options', () => as(A, `insert into public.messages (channel_id, poll) values ($1, $2::jsonb)`,
+  [general, JSON.stringify({ question: 'x', options: [{ text: 'only' }], duration_hours: 1 })]));
+await expectError('bad poll duration rejected', () => as(A, `insert into public.messages (channel_id, poll) values ($1, $2::jsonb)`,
+  [general, JSON.stringify({ question: 'x', options: [{ text: 'a' }, { text: 'b' }], duration_hours: 5 })]), 'duration');
+await expectOk('carol votes, then changes her vote', async () => {
+  await as(C, `select public.vote_poll($1, array[0]::smallint[])`, [pollMsg]);
+  await as(C, `select public.vote_poll($1, array[1]::smallint[])`, [pollMsg]);
+  const r = await as(A, `select option_id from public.poll_votes where message_id = $1`, [pollMsg]);
+  if (r.rows.length !== 1 || r.rows[0].option_id !== 1) throw new Error(JSON.stringify(r.rows));
+});
+await expectError('single-choice poll rejects two answers', () => as(C, `select public.vote_poll($1, array[0,1]::smallint[])`, [pollMsg]), 'only one');
+await expectError('outsider cannot vote', () => as(B, `select public.vote_poll($1, array[0]::smallint[])`, [pollMsg]), 'not found');
+await expectOk('outsider cannot see votes', async () => {
+  const r = await as(B, `select count(*)::int n from public.poll_votes`);
+  if (r.rows[0].n !== 0) throw new Error('leak');
+});
+await expectError('poll cannot be edited after posting', () => as(A, `update public.messages set poll = null where id = $1`, [pollMsg]), 'permission denied');
+await expectOk('full-text search finds a message', async () => {
+  const r = await as(C, `select count(*)::int n from public.messages where channel_id = $1 and to_tsvector('simple', content) @@ websearch_to_tsquery('simple', 'look')`, [general]);
+  if (r.rows[0].n !== 1) throw new Error(`${r.rows[0].n}`);
+});
+const dmAC = (await as(A, `select public.open_dm('${C}') id`)).rows[0].id;
+await expectOk('carol forwards a server message into her DM with alice', async () => {
+  const r = await as(C, `insert into public.messages (conversation_id, content, forwarded_from) values ($1, 'fwd', $2::jsonb) returning forwarded_from`,
+    [dmAC, JSON.stringify({ message_id: msgForPin })]);
+  const f = r.rows[0].forwarded_from;
+  if (f.message_id !== msgForPin || f.channel_id !== general || f.author_id !== C) throw new Error(JSON.stringify(f));
+});
+await expectError('bob cannot forward a message he cannot read', async () => {
+  // bob can post in his group with carol, but cannot read the server message he tries to forward
+  await as(B, `insert into public.messages (conversation_id, content, forwarded_from) values ($1, 'x', $2::jsonb)`, [grp, JSON.stringify({ message_id: msgForPin })]);
+}, 'cannot forward');
+await expectOk('DM unread count for alice (1 unread from carol)', async () => {
+  const row = (await as(A, `select * from public.unread_summary() where scope_id = $1`, [dmAC])).rows[0];
+  if (row.mention_count !== 1) throw new Error(JSON.stringify(row));
+});
+await expectOk('spoiler + alt attachments accepted', () => as(A, `insert into public.messages (channel_id, attachments) values ($1, $2::jsonb)`,
+  [general, JSON.stringify([{ url: 'https://x.test/a.png', name: 'a.png', size: 10, content_type: 'image/png', spoiler: true, alt: 'a cat' }])]));
+
 await expectOk('presence status column is writable', () => as(C, `update public.users set presence_status = 'dnd' where id = '${C}'`));
 await expectError('badge_ids still not writable', () => as(C, `update public.users set badge_ids = '["staff"]' where id = '${C}'`));
 

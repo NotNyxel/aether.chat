@@ -1,11 +1,12 @@
 /**
  * Incoming DM / group call: a ringing card with Accept and Decline. Driven by Realtime INSERTs on
- * public.calls. The ringtone is synthesized with Web Audio (no audio asset) and stays silent in
- * Do Not Disturb.
+ * public.calls. The ringtone comes from the sound engine (toggle it under Notifications & Sounds)
+ * and stays silent in Do Not Disturb.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { useActiveCalls, useConversations, useSocialRealtime } from '../hooks/useSocialData';
+import { loopSound } from '../lib/sounds';
 import { useUiStore } from '../stores/uiStore';
 import type { Call, Conversation } from '../types/db';
 import { useCall } from './CallContext';
@@ -17,33 +18,7 @@ const RING_TIMEOUT_MS = 30_000;
 function useRingtone(active: boolean) {
   useEffect(() => {
     if (!active) return;
-    const ctx = new AudioContext();
-    const ring = () => {
-      const t = ctx.currentTime;
-      for (const [offset, freq] of [
-        [0, 880],
-        [0.18, 660],
-        [0.6, 880],
-        [0.78, 660],
-      ] as const) {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0, t + offset);
-        gain.gain.linearRampToValueAtTime(0.12, t + offset + 0.02);
-        gain.gain.linearRampToValueAtTime(0, t + offset + 0.16);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(t + offset);
-        osc.stop(t + offset + 0.18);
-      }
-    };
-    void ctx.resume().then(ring);
-    const timer = setInterval(ring, 2_000);
-    return () => {
-      clearInterval(timer);
-      void ctx.close();
-    };
+    return loopSound('callIncoming', 2_000, 30_000);
   }, [active]);
 }
 

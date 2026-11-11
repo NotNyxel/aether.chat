@@ -1,6 +1,7 @@
 /** Server sidebar: channels grouped by category, invites, channel creation, leave/delete server. */
 import { useMemo, useState } from 'react';
 import { useCreateChannel, useCreateInvite, useDeleteServer, useLeaveServer, useProfile, useServerPermissions } from '../hooks/useChatData';
+import { isRowUnread, useUnreadSummary } from '../hooks/useMessageExtras';
 import { hasPermission, Permission } from '../lib/permissions';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, ChannelType, Server } from '../types/db';
@@ -49,6 +50,8 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
   const [newChannel, setNewChannel] = useState<{ parentId: string | null } | null>(null);
   const [newType, setNewType] = useState<ChannelType>('text');
   const [confirm, setConfirm] = useState<'leave' | 'delete' | null>(null);
+  const { data: unread = [] } = useUnreadSummary();
+  const unreadById = useMemo(() => new Map(unread.map((r) => [r.scope_id, r])), [unread]);
 
   const groups = useMemo(() => {
     const categories = channels.filter((c) => c.type === 'category');
@@ -109,17 +112,30 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                 </div>
               )}
               <ul className="space-y-0.5">
-                {items.map((ch) => (
-                  <li key={ch.id}>
+                {items.map((ch) => {
+                  const row = unreadById.get(ch.id);
+                  const isActive = ch.id === activeChannelId;
+                  const hasUnread = !isActive && isRowUnread(row);
+                  const mentions = isActive ? 0 : (row?.mention_count ?? 0);
+                  return (
+                  <li key={ch.id} className="relative">
+                    {hasUnread && <span className="absolute top-1/2 -left-2 h-2 w-1 -translate-y-1/2 rounded-r-full bg-ae-text" />}
                     <button
                       type="button"
                       onClick={() => selectChannel(server.id, ch.id)}
                       className={`flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left text-sm ${
-                        ch.id === activeChannelId ? 'bg-ae-surface text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'
+                        isActive
+                          ? 'bg-ae-surface text-ae-text'
+                          : hasUnread
+                            ? 'font-semibold text-ae-text hover:bg-ae-hover'
+                            : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'
                       }`}
                     >
                       <ChannelGlyph type={ch.type} />
                       <span className="truncate">{ch.name}</span>
+                      {mentions > 0 && (
+                        <span className="ml-auto rounded-full bg-ae-danger px-1.5 text-[11px] font-bold text-white">{mentions}</span>
+                      )}
                     </button>
                     {room?.kind === 'channel' && room.id === ch.id && voice.status !== 'idle' && (
                       <ul>
@@ -136,7 +152,8 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                       </ul>
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
           ),

@@ -1,46 +1,30 @@
 /**
- * Chat view shared by server text channels and DM / group DM conversations:
- * live history with author grouping, markdown, @mentions, replies, inline editing, reactions,
- * attachments (button, paste or drag-and-drop) and typing indicators.
+ * Chat view shared by server text channels and DMs / group DMs.
+ * History with grouping and a "new messages" divider, jump-to-message (from replies, links,
+ * pins and search), jump to present, auto mark-as-read, pins and search panels, drag-and-drop
+ * uploads, typing indicator and the composer.
  */
-import { useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import {
   useDeleteMessage,
   useEditMessage,
   useMessages,
   useProfile,
   useReactions,
-  useSendMessage,
+  useServerPermissions,
   useToggleReaction,
-  useUploadAttachment,
 } from '../hooks/useChatData';
+import { useMarkRead, usePollVotes, useTogglePin, useUnreadSummary, useVotePoll } from '../hooks/useMessageExtras';
 import { useTyping } from '../hooks/useTyping';
-import { Markdown } from '../lib/markdown';
+import { hasPermission, Permission } from '../lib/permissions';
 import { useUiStore } from '../stores/uiStore';
-import type { Attachment, Message, MessageScope } from '../types/db';
-import { CloseIcon, PlusIcon, TrashIcon } from './icons';
-import { Avatar } from './ProfileCard';
+import type { Channel, Message, MessageScope, PollVote } from '../types/db';
+import { Composer } from './Composer';
+import { DisplayName, MessageItem } from './MessageItem';
+import { PinsPanel, SearchPanel } from './MessagePanels';
 
 const GROUP_WINDOW_MS = 5 * 60_000;
-const QUICK_EMOJI = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '👀', '✅', '💯', '🙏', '😎'];
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  return d.toDateString() === today.toDateString() ? `Today at ${time}` : `${d.toLocaleDateString()} ${time}`;
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function DisplayName({ userId }: { userId: string | null }) {
-  const { data } = useProfile(userId);
-  return <>{data?.display_name || data?.username || 'Unknown'}</>;
-}
 
 function TypingLine({ typers }: { typers: string[] }) {
   if (typers.length === 0) return <div className="h-5" />;
@@ -53,248 +37,65 @@ function TypingLine({ typers }: { typers: string[] }) {
     </span>
   ));
   return (
-    <div className="flex h-5 items-center gap-1 px-1 text-xs text-ae-muted">
+    <div className="flex h-5 items-center gap-1 px-5 text-xs text-ae-muted">
       <span className="animate-pulse">●●●</span>
       {typers.length > 3 ? 'Several people are typing…' : <span>{names} {typers.length === 1 ? 'is' : 'are'} typing…</span>}
     </div>
   );
 }
 
-function AttachmentView({ a }: { a: Attachment }) {
-  if (a.content_type.startsWith('image/')) {
-    return (
-      <a href={a.url} target="_blank" rel="noreferrer" title={a.name}>
-        <img src={a.url} alt={a.name} loading="lazy" className="max-h-80 max-w-sm rounded-ae border border-ae-border object-contain" />
-      </a>
-    );
-  }
-  if (a.content_type.startsWith('video/')) {
-    return <video src={a.url} controls className="max-h-80 max-w-md rounded-ae border border-ae-border" />;
-  }
-  if (a.content_type.startsWith('audio/')) {
-    return <audio src={a.url} controls className="max-w-sm" />;
-  }
-  return (
-    <a
-      href={a.url}
-      target="_blank"
-      rel="noreferrer"
-      className="flex max-w-sm items-center gap-3 rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm hover:border-ae-accent"
-    >
-      <span className="text-2xl">📄</span>
-      <span className="min-w-0">
-        <span className="block truncate text-ae-accent">{a.name}</span>
-        <span className="text-xs text-ae-muted">{formatSize(a.size)}</span>
-      </span>
-    </a>
-  );
-}
-
-interface RowProps {
-  message: Message;
-  grouped: boolean;
-  me: string;
-  myUsername: string | null;
-  replyTarget: Message | null | undefined;
-  reactions: Map<string, string[]> | undefined;
-  editing: boolean;
-  onReply: () => void;
-  onStartEdit: () => void;
-  onSaveEdit: (content: string) => void;
-  onCancelEdit: () => void;
-  onDelete: () => void;
-  onReact: (emoji: string, active: boolean) => void;
-}
-
-function MessageRow(props: RowProps) {
-  const { message, grouped, me, editing } = props;
-  const { data: author } = useProfile(message.author_id);
-  const showProfile = useUiStore((s) => s.showProfile);
-  const [picker, setPicker] = useState(false);
-  const [draft, setDraft] = useState(message.content);
-  const name = author?.display_name || author?.username || 'Deleted user';
-  const mine = message.author_id === me;
-  const mentioned = !!props.myUsername && new RegExp(`(^|[^\\w@])@${props.myUsername.replace('.', '\\.')}\\b`, 'i').test(message.content);
-  const showHeader = !grouped || !!message.reply_to_id;
-
-  return (
-    <li
-      className={`group relative flex gap-3 px-4 hover:bg-ae-hover/40 ${showHeader ? 'mt-3 pt-1 pb-0.5' : 'py-0.5'} ${mentioned ? 'ae-mentioned' : ''}`}
-      onMouseLeave={() => setPicker(false)}
-    >
-      <div className="w-10 shrink-0">
-        {showHeader && (
-          <button type="button" onClick={() => message.author_id && showProfile(message.author_id)} className={message.reply_to_id ? 'mt-5' : ''}>
-            <Avatar profile={author} size={40} showFrame={false} />
-          </button>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        {message.reply_to_id && (
-          <p className="mb-0.5 truncate text-xs text-ae-muted">
-            ↪{' '}
-            {props.replyTarget ? (
-              <>
-                <strong>
-                  <DisplayName userId={props.replyTarget.author_id} />
-                </strong>{' '}
-                {props.replyTarget.content.slice(0, 120) || '[attachment]'}
-              </>
-            ) : (
-              <em>Original message not loaded</em>
-            )}
-          </p>
-        )}
-        {showHeader && (
-          <div className="flex items-baseline gap-2">
-            <button
-              type="button"
-              className="text-sm font-semibold hover:underline"
-              style={{ color: author?.accent_color ?? undefined }}
-              onClick={() => message.author_id && showProfile(message.author_id)}
-            >
-              {name}
-            </button>
-            <time className="text-xs text-ae-muted" dateTime={message.created_at}>
-              {formatTime(message.created_at)}
-            </time>
-          </div>
-        )}
-
-        {editing ? (
-          <div className="space-y-1">
-            <textarea
-              autoFocus
-              className="w-full resize-none rounded-ae border border-ae-accent bg-ae-sunken px-3 py-2 text-sm outline-none"
-              rows={Math.min(8, Math.max(2, draft.split('\n').length))}
-              value={draft}
-              maxLength={4000}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') props.onCancelEdit();
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (draft.trim()) props.onSaveEdit(draft.trim());
-                }
-              }}
-            />
-            <p className="text-xs text-ae-muted">Enter to save · Esc to cancel</p>
-          </div>
-        ) : (
-          message.content && <Markdown source={message.content} className="text-sm leading-relaxed" />
-        )}
-
-        {message.attachments.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-2">
-            {message.attachments.map((a) => (
-              <AttachmentView key={a.url} a={a} />
-            ))}
-          </div>
-        )}
-        {message.edited_at && !editing && <span className="text-[10px] text-ae-muted">(edited)</span>}
-
-        {props.reactions && props.reactions.size > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1">
-            {[...props.reactions].map(([emoji, users]) => {
-              const active = users.includes(me);
-              return (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => props.onReact(emoji, active)}
-                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
-                    active ? 'border-ae-accent bg-ae-accent/15' : 'border-ae-border bg-ae-sunken hover:border-ae-muted'
-                  }`}
-                >
-                  <span>{emoji}</span>
-                  <span>{users.length}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {!editing && (
-        <div className="absolute -top-3 right-4 hidden items-center gap-0.5 rounded-ae border border-ae-border bg-ae-elevated p-0.5 shadow group-hover:flex">
-          <button type="button" title="Add reaction" className="rounded px-1.5 py-0.5 text-sm hover:bg-ae-hover" onClick={() => setPicker((p) => !p)}>
-            🙂
-          </button>
-          <button type="button" title="Reply" className="rounded px-1.5 py-0.5 text-sm hover:bg-ae-hover" onClick={props.onReply}>
-            ↩
-          </button>
-          {mine && (
-            <button
-              type="button"
-              title="Edit"
-              className="rounded px-1.5 py-0.5 text-sm hover:bg-ae-hover"
-              onClick={() => {
-                setDraft(message.content);
-                props.onStartEdit();
-              }}
-            >
-              ✎
-            </button>
-          )}
-          {mine && (
-            <button type="button" title="Delete" className="rounded px-1.5 py-0.5 text-ae-muted hover:bg-ae-hover hover:text-ae-danger" onClick={props.onDelete}>
-              <TrashIcon size={14} />
-            </button>
-          )}
-          {picker && (
-            <div className="absolute top-8 right-0 z-10 grid grid-cols-6 gap-1 rounded-ae border border-ae-border bg-ae-elevated p-2 shadow-xl">
-              {QUICK_EMOJI.map((e) => (
-                <button
-                  key={e}
-                  type="button"
-                  className="rounded p-1 text-lg hover:bg-ae-hover"
-                  onClick={() => {
-                    props.onReact(e, props.reactions?.get(e)?.includes(me) ?? false);
-                    setPicker(false);
-                  }}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </li>
-  );
+function dayKey(iso: string) {
+  return new Date(iso).toDateString();
 }
 
 interface MessagePaneProps {
   scope: MessageScope;
   userId: string;
-  /** Header content (channel name, DM name, call buttons…). */
+  /** Server id for channels (permissions, links, search); null for DMs. */
+  serverId: string | null;
+  /** Header content (channel name, DM name, call buttons…). Pins/search buttons are appended. */
   header: ReactNode;
   placeholder: string;
   emptyState: ReactNode;
+  /** Ids available for @mention autocomplete. */
+  memberIds: string[];
+  /** Server channels (for #channel autocomplete and server-wide search). */
+  channels?: Channel[];
   /** Content above the history, e.g. an in-progress call panel. */
   top?: ReactNode;
-  /** Right-hand panel, e.g. the member list. */
+  /** Right-hand panel when neither pins nor search is open, e.g. the member list. */
   aside?: ReactNode;
 }
 
-export function MessagePane({ scope, userId, header, placeholder, emptyState, top, aside }: MessagePaneProps) {
+export function MessagePane({ scope, userId, serverId, header, placeholder, emptyState, memberIds, channels = [], top, aside }: MessagePaneProps) {
+  const qc = useQueryClient();
   const messages = useMessages(scope);
   const reactionsQ = useReactions(scope);
-  const send = useSendMessage(scope);
+  const votesQ = usePollVotes(scope);
   const edit = useEditMessage(scope);
   const del = useDeleteMessage(scope);
   const react = useToggleReaction(scope, userId);
-  const upload = useUploadAttachment(scope);
+  const pin = useTogglePin(scope);
+  const vote = useVotePoll(scope, userId);
+  const markRead = useMarkRead();
+  const { data: unread } = useUnreadSummary();
   const { data: me } = useProfile(userId);
+  const { data: perms = 0n } = useServerPermissions(serverId);
   const { typers, notifyTyping, notifyStopped } = useTyping(scope.id, userId);
+  const jumpTarget = useUiStore((s) => s.jumpTarget);
+  const clearJump = useUiStore((s) => s.clearJump);
 
-  const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [pending, setPending] = useState<Attachment[]>([]);
-  const [uploading, setUploading] = useState(0);
+  const [panel, setPanel] = useState<'pins' | 'search' | null>(null);
+  const [searchSeed, setSearchSeed] = useState('');
+  const [dropped, setDropped] = useState<File[] | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [awayFromBottom, setAwayFromBottom] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const canPin = serverId ? hasPermission(perms, Permission.MANAGE_MESSAGES) : true;
+  const canMentionEveryone = !!serverId && hasPermission(perms, Permission.MENTION_EVERYONE);
 
   // Newest-first list, rendered inside flex-col-reverse so the view stays pinned to the bottom.
   const list = useMemo(() => messages.data?.pages.flat() ?? [], [messages.data]);
@@ -308,61 +109,141 @@ export function MessagePane({ scope, userId, header, placeholder, emptyState, to
     }
     return map;
   }, [reactionsQ.data]);
+  const votesByMessage = useMemo(() => {
+    const map = new Map<string, PollVote[]>();
+    for (const v of votesQ.data ?? []) map.set(v.message_id, [...(map.get(v.message_id) ?? []), v]);
+    return map;
+  }, [votesQ.data]);
 
-  const addFiles = (files: FileList | File[]) => {
-    for (const file of Array.from(files).slice(0, 10)) {
-      setUploading((n) => n + 1);
-      upload.mutate(file, {
-        onSuccess: (a) => setPending((p) => [...p, a].slice(0, 10)),
-        onSettled: () => setUploading((n) => n - 1),
-      });
+  // ── "New messages" divider: remember where you'd read up to when the chat opened ─────────────
+  const [lastReadAtOpen, setLastReadAtOpen] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (lastReadAtOpen !== undefined || !unread) return;
+    const row = unread.find((r) => r.scope_id === scope.id);
+    setLastReadAtOpen(row && row.last_message_at && row.last_read_at && row.last_message_at > row.last_read_at ? row.last_read_at : null);
+  }, [unread, scope.id, lastReadAtOpen]);
+  const dividerBeforeId = useMemo(() => {
+    if (!lastReadAtOpen) return null;
+    const t = new Date(lastReadAtOpen).getTime();
+    let candidate: string | null = null;
+    for (const m of list) {
+      if (new Date(m.created_at).getTime() <= t) break;
+      if (m.author_id !== userId) candidate = m.id;
     }
-  };
+    return candidate;
+  }, [list, lastReadAtOpen, userId]);
 
-  const submit = () => {
-    const content = draft.trim();
-    if ((!content && pending.length === 0) || send.isPending || uploading > 0) return;
-    send.mutate(
-      { content, replyToId: replyTo?.id ?? null, attachments: pending },
-      {
-        onSuccess: () => {
-          setDraft('');
-          setPending([]);
-          setReplyTo(null);
-          notifyStopped();
-        },
-      },
-    );
-  };
+  // ── Mark read when viewing (and again when new messages arrive or the window regains focus) ──
+  const newestId = list[0]?.id;
+  useEffect(() => {
+    const mark = () => {
+      if (document.hasFocus()) markRead(scope);
+    };
+    mark();
+    window.addEventListener('focus', mark);
+    return () => window.removeEventListener('focus', mark);
+  }, [scope, newestId, markRead]);
 
-  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      submit();
-    } else if (e.key === 'Escape') {
-      setReplyTo(null);
-    } else if (e.key === 'ArrowUp' && !draft) {
-      const last = list.find((m) => m.author_id === userId);
-      if (last) setEditingId(last.id);
-    }
-  };
+  // ── Jump to a message (loads older pages until it's found) ──────────────────────────────────
+  const { fetchNextPage } = messages;
+  useEffect(() => {
+    if (!jumpTarget || jumpTarget.scopeId !== scope.id) return;
+    let cancelled = false;
+    const find = () => document.getElementById(`msg-${jumpTarget.messageId}`);
+    const flash = (el: HTMLElement) => {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el.classList.remove('ae-flash');
+      void el.offsetWidth; // restart the animation
+      el.classList.add('ae-flash');
+    };
+    void (async () => {
+      for (let attempt = 0; attempt < 40 && !cancelled; attempt++) {
+        const el = find();
+        if (el) {
+          flash(el);
+          break;
+        }
+        const loaded = qc.getQueryData<{ pages: Message[][] }>(['messages', scope.id]);
+        if (loaded?.pages.flat().some((m) => m.id === jumpTarget.messageId)) {
+          await new Promise((r) => setTimeout(r, 60)); // rendered next frame
+          continue;
+        }
+        const res = await fetchNextPage();
+        if (!res.hasNextPage && !res.data?.pages.flat().some((m) => m.id === jumpTarget.messageId)) break;
+      }
+      if (!cancelled) clearJump();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [jumpTarget, scope.id, fetchNextPage, clearJump, qc]);
 
-  const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    if (e.clipboardData.files.length > 0) {
-      e.preventDefault();
-      addFiles(e.clipboardData.files);
-    }
-  };
+  const scrollToBottom = useCallback(() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }), []);
+
+  // Stable callbacks so memoized rows don't re-render on every keystroke.
+  const onReply = useCallback((m: Message) => setReplyTo(m), []);
+  const onStartEdit = useCallback((id: string) => setEditingId(id), []);
+  const onCancelEdit = useCallback(() => setEditingId(null), []);
+  const editMutate = edit.mutate;
+  const onSaveEdit = useCallback((id: string, content: string) => editMutate({ id, content }, { onSuccess: () => setEditingId(null) }), [editMutate]);
+  const delMutate = del.mutate;
+  const onDelete = useCallback(
+    (id: string) => {
+      if (window.confirm('Delete this message? This cannot be undone.')) delMutate(id);
+    },
+    [delMutate],
+  );
+  const reactMutate = react.mutate;
+  const onReact = useCallback((id: string, emoji: string, active: boolean) => reactMutate({ messageId: id, emoji, active }), [reactMutate]);
+  const pinMutate = pin.mutate;
+  const onTogglePin = useCallback((id: string, pinned: boolean) => pinMutate({ id, pinned }), [pinMutate]);
+  const voteMutate = vote.mutate;
+  const onVote = useCallback((id: string, optionIds: number[]) => voteMutate({ messageId: id, optionIds }), [voteMutate]);
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+    if (e.dataTransfer.files.length) setDropped(Array.from(e.dataTransfer.files));
   };
+
+  const rightPanel =
+    panel === 'pins' ? (
+      <PinsPanel scope={scope} serverId={serverId} canPin={canPin} onUnpin={(id) => pin.mutate({ id, pinned: false })} onClose={() => setPanel(null)} />
+    ) : panel === 'search' ? (
+      <SearchPanel key={searchSeed} scope={scope} serverId={serverId} channels={channels} initial={searchSeed} onClose={() => setPanel(null)} />
+    ) : (
+      aside
+    );
 
   return (
     <section className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ae-border px-4">{header}</header>
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ae-border px-4">
+        {header}
+        <div className="ml-3 flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            title="Pinned messages"
+            className={`text-lg leading-none ${panel === 'pins' ? '' : 'opacity-60 hover:opacity-100'}`}
+            onClick={() => setPanel(panel === 'pins' ? null : 'pins')}
+          >
+            📌
+          </button>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const value = new FormData(e.currentTarget).get('q')?.toString().trim() ?? '';
+              setSearchSeed(value);
+              setPanel('search');
+            }}
+          >
+            <input
+              name="q"
+              placeholder="Search"
+              className="w-36 rounded-ae border border-ae-border bg-ae-sunken px-2 py-1 text-xs outline-none transition-[width] focus:w-56 focus:border-ae-accent"
+            />
+          </form>
+        </div>
+      </header>
       {top}
 
       <div className="flex min-h-0 flex-1">
@@ -381,31 +262,57 @@ export function MessagePane({ scope, userId, header, placeholder, emptyState, to
             </div>
           )}
 
-          <div className="ae-scroll flex flex-1 flex-col-reverse overflow-y-auto pb-2">
+          <div
+            ref={scrollRef}
+            className="ae-scroll flex flex-1 flex-col-reverse overflow-y-auto pb-2"
+            onScroll={(e) => setAwayFromBottom((e.currentTarget.scrollTop ?? 0) < -500)}
+          >
             <ul className="flex flex-col-reverse">
               {list.map((m, i) => {
                 const older = list[i + 1];
+                const newDay = !older || dayKey(older.created_at) !== dayKey(m.created_at);
                 const grouped =
                   !!older &&
+                  !newDay &&
                   older.author_id === m.author_id &&
+                  !m.forwarded_from &&
                   new Date(m.created_at).getTime() - new Date(older.created_at).getTime() < GROUP_WINDOW_MS;
                 return (
-                  <MessageRow
-                    key={m.id}
-                    message={m}
-                    grouped={grouped}
-                    me={userId}
-                    myUsername={me?.username ?? null}
-                    replyTarget={m.reply_to_id ? byId.get(m.reply_to_id) : null}
-                    reactions={reactionsByMessage.get(m.id)}
-                    editing={editingId === m.id}
-                    onReply={() => setReplyTo(m)}
-                    onStartEdit={() => setEditingId(m.id)}
-                    onCancelEdit={() => setEditingId(null)}
-                    onSaveEdit={(content) => edit.mutate({ id: m.id, content }, { onSuccess: () => setEditingId(null) })}
-                    onDelete={() => del.mutate(m.id)}
-                    onReact={(emoji, active) => react.mutate({ messageId: m.id, emoji, active })}
-                  />
+                  <Fragment key={m.id}>
+                    <MessageItem
+                      message={m}
+                      serverId={serverId}
+                      grouped={grouped && dividerBeforeId !== m.id}
+                      me={userId}
+                      myUsername={me?.username ?? null}
+                      replyTarget={m.reply_to_id ? byId.get(m.reply_to_id) : null}
+                      reactions={reactionsByMessage.get(m.id)}
+                      votes={votesByMessage.get(m.id)}
+                      editing={editingId === m.id}
+                      canPin={canPin}
+                      onReply={onReply}
+                      onStartEdit={onStartEdit}
+                      onSaveEdit={onSaveEdit}
+                      onCancelEdit={onCancelEdit}
+                      onDelete={onDelete}
+                      onReact={onReact}
+                      onTogglePin={onTogglePin}
+                      onVote={onVote}
+                    />
+                    {dividerBeforeId === m.id && (
+                      <li className="mx-4 my-2 flex items-center gap-2 text-[11px] font-bold text-ae-danger uppercase" aria-label="New messages">
+                        <span className="h-px flex-1 bg-ae-danger" />
+                        New
+                      </li>
+                    )}
+                    {newDay && (
+                      <li className="mx-4 my-3 flex items-center gap-3 text-xs font-semibold text-ae-muted">
+                        <span className="h-px flex-1 bg-ae-border" />
+                        {new Date(m.created_at).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                        <span className="h-px flex-1 bg-ae-border" />
+                      </li>
+                    )}
+                  </Fragment>
                 );
               })}
             </ul>
@@ -429,84 +336,37 @@ export function MessagePane({ scope, userId, header, placeholder, emptyState, to
             </div>
           </div>
 
-          <div className="px-4 pb-1">
-            {replyTo && (
-              <div className="flex items-center justify-between rounded-t-ae border border-b-0 border-ae-border bg-ae-sunken px-3 py-1.5 text-xs text-ae-muted">
-                <span className="truncate">
-                  Replying to{' '}
-                  <strong className="text-ae-text">
-                    <DisplayName userId={replyTo.author_id} />
-                  </strong>
-                </span>
-                <button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">
-                  <CloseIcon size={14} />
-                </button>
-              </div>
-            )}
-            {(pending.length > 0 || uploading > 0) && (
-              <div className="flex flex-wrap gap-2 border border-b-0 border-ae-border bg-ae-sunken p-2">
-                {pending.map((a, i) => (
-                  <div key={a.url} className="relative rounded-ae border border-ae-border bg-ae-surface p-2 text-xs">
-                    {a.content_type.startsWith('image/') ? (
-                      <img src={a.url} alt="" className="h-16 w-16 rounded object-cover" />
-                    ) : (
-                      <span className="block max-w-32 truncate">📄 {a.name}</span>
-                    )}
-                    <button
-                      type="button"
-                      className="absolute -top-2 -right-2 grid h-5 w-5 place-items-center rounded-full bg-ae-danger text-white"
-                      onClick={() => setPending((p) => p.filter((_, j) => j !== i))}
-                      aria-label={`Remove ${a.name}`}
-                    >
-                      <CloseIcon size={12} />
-                    </button>
-                  </div>
-                ))}
-                {uploading > 0 && <span className="self-center text-xs text-ae-muted">Uploading {uploading}…</span>}
-              </div>
-            )}
-            <div
-              className={`flex items-end gap-2 border border-ae-border bg-ae-surface px-3 py-2 focus-within:border-ae-accent ${
-                replyTo || pending.length || uploading ? 'rounded-b-ae' : 'rounded-ae'
-              }`}
+          {awayFromBottom && (
+            <button
+              type="button"
+              onClick={scrollToBottom}
+              className="absolute right-6 bottom-28 z-20 rounded-full bg-ae-accent px-4 py-1.5 text-xs font-semibold text-ae-on-accent shadow-lg"
             >
-              <input
-                ref={fileRef}
-                type="file"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files) addFiles(e.target.files);
-                  e.target.value = '';
-                }}
-              />
-              <button
-                type="button"
-                title="Upload a file"
-                className="mb-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ae-muted/30 text-ae-text hover:bg-ae-accent hover:text-ae-on-accent"
-                onClick={() => fileRef.current?.click()}
-              >
-                <PlusIcon size={14} />
-              </button>
-              <textarea
-                rows={Math.min(8, Math.max(1, draft.split('\n').length))}
-                className="block w-full resize-none bg-transparent text-sm outline-none placeholder:text-ae-muted"
-                placeholder={placeholder}
-                maxLength={4000}
-                value={draft}
-                onChange={(e) => {
-                  setDraft(e.target.value);
-                  if (e.target.value) notifyTyping();
-                }}
-                onKeyDown={onKeyDown}
-                onPaste={onPaste}
-              />
-            </div>
-            <TypingLine typers={typers} />
-            {(send.isError || upload.isError) && <p className="text-xs text-ae-danger">{(send.error ?? upload.error)?.message}</p>}
-          </div>
+              Jump to present ↓
+            </button>
+          )}
+
+          <Composer
+            scope={scope}
+            placeholder={placeholder}
+            memberIds={memberIds}
+            channels={channels}
+            canMentionEveryone={canMentionEveryone}
+            replyTo={replyTo}
+            onCancelReply={() => setReplyTo(null)}
+            onEditLast={() => {
+              const last = list.find((m) => m.author_id === userId && !m.poll);
+              if (last) setEditingId(last.id);
+            }}
+            onSent={scrollToBottom}
+            onTyping={notifyTyping}
+            onStopTyping={notifyStopped}
+            droppedFiles={dropped}
+            onDroppedHandled={() => setDropped(null)}
+          />
+          <TypingLine typers={typers} />
         </div>
-        {aside}
+        {rightPanel}
       </div>
     </section>
   );

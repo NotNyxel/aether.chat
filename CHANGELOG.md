@@ -3,6 +3,37 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [0.4.0] - 2026-11-11
+
+**Batch 1: messaging power-ups and sound effects**
+
+- **Emoji picker:** about 1,900 emoji with search, categories and recents, available in the composer and for
+  reactions. Type `:fire` to get suggestions, and complete shortcodes like `:heart:` turn into the emoji.
+- **Autocomplete** for `@members`, `@everyone` / `@here` (if you have permission) and `#channels`. Use ↑ ↓ to
+  move, and Enter or Tab to pick.
+- **Mentions** are tracked by the server. Messages that mention you are highlighted, and red mention badges
+  appear on servers, channels and DMs.
+- **Unread tracking:** a white dot on servers and channels with new messages, a "NEW" divider where you left
+  off, and DM counts. "Jump to present" brings you back to the bottom.
+- **Pinned messages panel** (📌). Anyone can pin in DMs; servers need Manage Messages.
+- **Search** across a server or a conversation, with filters `from:`, `has:link|image|file|video|poll`,
+  `pinned:true`, `before:` and `after:`. Click a result to jump to the message.
+- **Link previews** for any website (title, description, image) and click-to-play YouTube embeds.
+  Wrap a link in `<…>` to hide its preview.
+- **Polls:** 2–10 answers with optional emoji, single or multiple choice, from 1 hour to 1 week, with live
+  results.
+- **Forward** a message to any DM, group or channel, with an optional comment.
+- **Message links:** copy a link to any message and paste it anywhere. Clicking it jumps there inside the app.
+  Reply previews jump to the original too.
+- **Image viewer:** click an image to open it full-screen. Uploads can be marked as **spoilers** and given
+  **alt text**.
+- **Markdown:** syntax-highlighted code blocks with a copy button (```` ```ts ````), `-# subtext`,
+  `<t:1700000000:R>` timestamps, and day separators in chat.
+- **Sound effects** (Settings → Notifications & Sounds): DM, mention, joining and leaving voice, someone
+  joining or leaving, mute, deafen, streams starting and stopping, incoming ringtone, outgoing ringback and call
+  ended. There's a volume control, a per-sound toggle and a preview for each. They're silent in Do Not Disturb.
+- Database: `supabase/migrations/003_messaging.sql`. New Edge Function: `link-preview`.
+
 ## [0.3.0] - 2026-11-11
 
 **Renamed to aether.chat · zero-setup · auto-updates**

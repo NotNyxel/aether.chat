@@ -7,6 +7,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useCallActions } from '../hooks/useSocialData';
 import { useVoiceEngine, type VoiceEngine } from '../hooks/useVoiceEngine';
+import { loopSound, playSound } from '../lib/sounds';
 import { useSupabase } from '../lib/supabase';
 import { useSettingsStore } from '../stores/settingsStore';
 
@@ -80,9 +81,45 @@ export function CallProvider({ userId, children }: { userId: string; children: R
   const leave = useCallback(() => {
     // Last one out ends the DM call so nobody keeps seeing "call in progress".
     if (room?.kind === 'conversation' && participantsRef.current === 0) calls.end.mutate(room.id);
+    if (voice.status === 'connected') playSound(room?.kind === 'conversation' ? 'callEnd' : 'voiceLeave');
     leaveEngine();
     setRoom(null);
-  }, [calls.end, leaveEngine, room]);
+  }, [calls.end, leaveEngine, room, voice.status]);
+
+  // ── Sound effects ─────────────────────────────────────────────────────────────────────────
+  const pushToTalk = useSettingsStore((s) => s.keybinds.pushToTalkEnabled);
+  const prev = useRef({ status: voice.status, count: 0, muted: false, deafened: false, streams: new Set<string>() });
+  useEffect(() => {
+    const p = prev.current;
+    const connected = voice.status === 'connected';
+    if (connected && p.status !== 'connected') playSound('voiceJoin');
+    if (connected && p.status === 'connected') {
+      const count = voice.participants.length;
+      if (count > p.count) playSound('userJoin');
+      else if (count < p.count) playSound('userLeave');
+
+      if (voice.isDeafened !== p.deafened) playSound(voice.isDeafened ? 'deafen' : 'undeafen');
+      else if (voice.isMuted !== p.muted && !pushToTalk) playSound(voice.isMuted ? 'mute' : 'unmute');
+
+      const streams = new Set(voice.participants.filter((x) => x.sharingScreen).map((x) => x.peerId));
+      if ([...streams].some((id) => !p.streams.has(id))) playSound('streamStart');
+      else if ([...p.streams].some((id) => !streams.has(id) && voice.participants.some((x) => x.peerId === id))) playSound('streamStop');
+      p.streams = streams;
+    } else {
+      p.streams = new Set();
+    }
+    p.status = voice.status;
+    p.count = connected ? voice.participants.length : 0;
+    p.muted = voice.isMuted;
+    p.deafened = voice.isDeafened;
+  }, [voice.status, voice.participants, voice.isMuted, voice.isDeafened, pushToTalk]);
+
+  // Outgoing ringback while you wait alone in a DM call (stops when someone joins, after 30 s, or on leave).
+  const waitingForAnswer = room?.kind === 'conversation' && voice.status === 'connected' && voice.participants.length === 0;
+  useEffect(() => {
+    if (!waitingForAnswer) return;
+    return loopSound('callOutgoing', 3_000, 30_000);
+  }, [waitingForAnswer]);
 
   const toggleScreenShare = useCallback(() => {
     if (voice.isSharingScreen) stopScreenShare();

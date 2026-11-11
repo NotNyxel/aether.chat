@@ -1,7 +1,9 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
 import { useEffect, useMemo } from 'react';
 import { useChannels, useProfile, useServers } from '../hooks/useChatData';
+import { useActivityFeed } from '../hooks/useActivityFeed';
 import { useKeybinds } from '../hooks/useKeybinds';
+import { useUnreadSummary } from '../hooks/useMessageExtras';
 import { PresenceProvider } from '../hooks/usePresence';
 import { useBlocks, useConversationActions, useConversations, useFriendActions, useFriendships } from '../hooks/useSocialData';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -11,9 +13,11 @@ import { CallProvider, useCall } from './CallContext';
 import { ChannelSidebar } from './ChannelSidebar';
 import { isUnread } from './ConversationBits';
 import { ConversationView } from './ConversationView';
+import { ForwardDialog } from './ForwardDialog';
 import { FriendsView } from './FriendsView';
 import { HomeSidebar } from './HomeSidebar';
 import { IncomingCall } from './IncomingCall';
+import { Lightbox } from './Lightbox';
 import { ProfilePopover } from './ProfileCard';
 import { ServerRail } from './ServerRail';
 import { ServerView } from './ServerView';
@@ -110,9 +114,16 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
   }, [channels.data, channelByServer, server]);
 
   const conversation = homeTarget === 'friends' ? null : (conversations.find((c) => c.id === homeTarget) ?? null);
+  const { data: unread = [] } = useUnreadSummary();
+  const dmIds = new Set(conversations.map((c) => c.id));
   const homeBadge =
-    conversations.filter((c) => c.id !== conversation?.id && isUnread(c, userId)).length +
+    unread.filter((r) => dmIds.has(r.scope_id) && r.scope_id !== conversation?.id).reduce((n, r) => n + r.mention_count, 0) +
+    conversations.filter((c) => c.id !== conversation?.id && isUnread(c, userId) && !unread.some((r) => r.scope_id === c.id && r.mention_count > 0)).length +
     friendships.filter((f) => f.status === 'pending' && f.addressee_id === userId).length;
+
+  // What the user is looking at right now (drives mark-as-read and notification sounds).
+  const viewingScopeId = server ? (channel?.type === 'text' ? channel.id : null) : (conversation?.id ?? null);
+  useActivityFeed(userId, viewingScopeId, me?.presence_status);
 
   return (
     <div className="flex h-full text-ae-text">
@@ -132,7 +143,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
             <p className="text-sm text-ae-muted">Have supabase/schema.sql and supabase/migrations/002_social.sql been run on this project?</p>
           </div>
         ) : server ? (
-          <ServerView server={server} channel={channel} userId={userId} />
+          <ServerView server={server} channel={channel} channels={channels.data ?? []} userId={userId} />
         ) : conversation ? (
           <ConversationView key={conversation.id} conv={conversation} userId={userId} />
         ) : (
@@ -142,6 +153,8 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
 
       <SettingsPanel userId={userId} onSignOut={onSignOut} />
       <IncomingCall userId={userId} silent={me?.presence_status === 'dnd'} />
+      <ForwardDialog me={userId} />
+      <Lightbox />
       {popoverUserId && <PopoverForUser me={userId} userId={popoverUserId} onClose={() => showProfile(null)} />}
     </div>
   );

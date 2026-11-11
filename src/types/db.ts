@@ -80,6 +80,23 @@ export interface Attachment {
   content_type: string;
   width?: number;
   height?: number;
+  spoiler?: boolean;
+  alt?: string;
+}
+
+export interface Poll {
+  question: string;
+  options: { text: string; emoji: string | null }[];
+  multi: boolean;
+  expires_at: string;
+}
+
+export interface ForwardedFrom {
+  message_id: string;
+  author_id: string | null;
+  created_at: string;
+  channel_id: string | null;
+  conversation_id: string | null;
 }
 
 export interface Message {
@@ -91,8 +108,31 @@ export interface Message {
   attachments: Attachment[];
   reply_to_id: string | null;
   pinned: boolean;
+  pinned_at: string | null;
+  pinned_by: string | null;
+  poll: Poll | null;
+  forwarded_from: ForwardedFrom | null;
+  mentions: string[];
+  mention_everyone: boolean;
   edited_at: string | null;
   created_at: string;
+}
+
+export interface PollVote {
+  message_id: string;
+  user_id: string;
+  option_id: number;
+  scope_id: string;
+  created_at: string;
+}
+
+export interface UnreadRow {
+  scope_id: string;
+  kind: 'channel' | 'dm' | 'group';
+  server_id: string | null;
+  last_message_at: string | null;
+  last_read_at: string | null;
+  mention_count: number;
 }
 
 /** Where messages live: a server text channel or a DM / group DM conversation. */

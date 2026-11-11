@@ -233,9 +233,10 @@ export function useMessages(scope: MessageScope) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter }, (p) =>
         qc.setQueryData<MessagePages>(key, (d) => upsertMessage(d, p.new as Message)),
       )
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter }, (p) =>
-        qc.setQueryData<MessagePages>(key, (d) => upsertMessage(d, p.new as Message)),
-      )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter }, (p) => {
+        qc.setQueryData<MessagePages>(key, (d) => upsertMessage(d, p.new as Message));
+        void qc.invalidateQueries({ queryKey: ['pins', scope.id] });
+      })
       // Delete events cannot be filtered server-side and carry only the primary key.
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (p) => {
         const id = (p.old as { id?: string }).id;
@@ -254,6 +255,8 @@ export interface SendMessageInput {
   content: string;
   replyToId?: string | null;
   attachments?: Attachment[];
+  /** Poll draft; the database normalizes it and sets expires_at from duration_hours. */
+  poll?: { question: string; options: { text: string; emoji?: string | null }[]; multi: boolean; duration_hours: number };
 }
 
 export function useSendMessage(scope: MessageScope) {
@@ -269,6 +272,7 @@ export function useSendMessage(scope: MessageScope) {
             content: input.content,
             reply_to_id: input.replyToId ?? null,
             attachments: input.attachments ?? [],
+            ...(input.poll ? { poll: input.poll } : {}),
           })
           .select('*')
           .single(),

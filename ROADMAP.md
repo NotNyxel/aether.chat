@@ -14,21 +14,24 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 | **0.1.0** | Servers, channels, live chat, P2P mesh voice, screen share, theme engine, rich profiles, settings |
 | **0.2.0** | Friends, blocks, DMs, group DMs, 1:1 and group calls, camera, replies, edits, reactions, uploads, typing, presence |
 | **0.3.0** | Renamed to aether.chat, built-in backend (no setup), signed auto-updates via GitHub Releases |
+| **0.4.0** | Batch 1: emoji picker, autocomplete, unreads and mentions, pins, search, link previews, polls, forwarding, message links, lightbox, sound effects |
 
 ---
 
-## Batch 1: Messaging power-ups → 0.4.0
-- ⬜ Full emoji picker (search, categories, recents, skin tones) and `:shortcode:` autocomplete
-- ⬜ Mention autocomplete: `@user`, `@role`, `@everyone` / `@here`, `#channel`
-- ⬜ Pinned messages panel (pin and unpin from the message menu)
-- ⬜ Message search (Postgres full-text): from:, in:, has:link/file/image, before:, after:
-- ⬜ Link embeds and previews (Open Graph via a Supabase Edge Function) and YouTube/Twitch inline players
-- ⬜ Unread markers per server channel, a "new messages" divider and jump-to-present
-- ⬜ Jump to replied message, message links (copy and open)
-- ⬜ Forward messages to another channel or DM
-- ⬜ Polls (multiple choice, duration, live results)
-- ⬜ Image lightbox, spoiler-tagged attachments, attachment alt text
-- ⬜ Markdown additions: subtext (`-#`), timestamps (`<t:…>`), syntax-highlighted code blocks
+## Batch 1: Messaging power-ups → 0.4.0 ✅
+- ✅ Full emoji picker (search, categories, recents) and `:shortcode:` autocomplete
+- ⬜ Emoji skin-tone selector (moved to Batch 7, together with custom emoji)
+- ✅ Mention autocomplete: `@user`, `@everyone` / `@here`, `#channel` (`@role` lands with the roles editor in Batch 2)
+- ✅ Pinned messages panel (pin and unpin from the message menu)
+- ✅ Message search (Postgres full-text): from:, has:link/file/image/video/poll, pinned:, before:, after:
+- ✅ Link embeds and previews (Open Graph via a Supabase Edge Function) and YouTube inline player
+- ✅ Unread markers per server channel, a "new messages" divider and jump-to-present
+- ✅ Jump to replied message, message links (copy and open)
+- ✅ Forward messages to another channel or DM
+- ✅ Polls (multiple choice, duration, live results)
+- ✅ Image lightbox, spoiler-tagged attachments, attachment alt text
+- ✅ Markdown additions: subtext (`-#`), timestamps (`<t:…>`), syntax-highlighted code blocks
+- ✅ **Bonus:** sound effects for messages, mentions, voice and calls, with per-sound settings
 
 ## Batch 2: Server management → 0.5.0
 - ⬜ Server settings: name, icon, banner, description, default notifications
@@ -82,7 +85,7 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ⬜ Server discovery (opt-in public directory, categories, search)
 - ⬜ Incoming webhooks (Edge Function endpoint per channel)
 - ⬜ Bot accounts and a slash-command framework
-- ⬜ Custom server emoji and stickers (upload, manage, use anywhere you're a member)
+- ⬜ Custom server emoji and stickers (upload, manage, use anywhere you're a member), emoji skin tones
 - ⬜ GIF picker (Tenor or GIPHY free tier, needs an API key)
 - ⬜ Connections on profiles (GitHub, Twitch, Spotify via OAuth)
 

@@ -278,6 +278,78 @@ body {
   padding: 0 2px;
   font-weight: 500;
 }
+.ae-mention-everyone {
+  background: color-mix(in srgb, var(--ae-warning) 22%, transparent);
+  color: var(--ae-warning);
+}
+.ae-subtext {
+  font-size: 0.75rem;
+  color: var(--ae-text-muted);
+}
+.ae-timestamp {
+  background: var(--ae-bg-sunken);
+  border-radius: 4px;
+  padding: 0 3px;
+}
+
+/* Jump-to-message flash and the "new messages" divider */
+@keyframes ae-flash {
+  0%,
+  30% {
+    background: color-mix(in srgb, var(--ae-accent) 22%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+.ae-flash {
+  animation: ae-flash 2.2s ease-out;
+}
+
+/* Code highlighting tokens follow the active theme */
+.hljs-comment,
+.hljs-quote {
+  color: var(--ae-text-muted);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-meta .hljs-keyword {
+  color: var(--ae-accent);
+}
+.hljs-string,
+.hljs-attr,
+.hljs-template-tag,
+.hljs-addition {
+  color: var(--ae-success);
+}
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-bullet {
+  color: var(--ae-warning);
+}
+.hljs-title,
+.hljs-title.function_,
+.hljs-section,
+.hljs-name {
+  color: color-mix(in srgb, var(--ae-accent) 60%, var(--ae-text));
+  font-weight: 600;
+}
+.hljs-type,
+.hljs-class .hljs-title,
+.hljs-variable.language_ {
+  color: color-mix(in srgb, var(--ae-warning) 60%, var(--ae-text));
+}
+.hljs-deletion,
+.hljs-regexp {
+  color: var(--ae-danger);
+}
+.hljs-meta {
+  color: var(--ae-text-muted);
+}
+
 .ae-mentioned {
   background: color-mix(in srgb, var(--ae-warning) 10%, transparent);
   box-shadow: inset 2px 0 0 var(--ae-warning);

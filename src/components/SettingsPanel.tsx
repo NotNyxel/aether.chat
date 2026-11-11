@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useProfile, useUpdateProfile, useUploadProfileMedia } from '../hooks/useChatData';
 import { listAudioDevices, type BandwidthProfile, type ScreenFrameRate, type ScreenResolution } from '../hooks/useVoiceEngine';
 import { comboFromEvent, formatCombo } from '../lib/keybinds';
+import { ALL_SOUNDS, playSound, SOUND_INFO } from '../lib/sounds';
 import { useSettingsStore, type Keybinds } from '../stores/settingsStore';
 import { useUiStore, type SettingsTab } from '../stores/uiStore';
 import { AVATAR_FRAMES, isHexColor, PRESET_ORDER, THEME_PRESETS } from '../theme/presets';
@@ -645,6 +646,74 @@ function KeybindRow({ label, hint, combo, onChange }: { label: string; hint: str
   );
 }
 
+function NotificationsTab() {
+  const sounds = useSettingsStore((s) => s.sounds);
+  const setSounds = useSettingsStore((s) => s.setSounds);
+  const groups: { title: string; ids: typeof ALL_SOUNDS }[] = [
+    { title: 'Messages', ids: ['message', 'mention', 'messageSent'] },
+    { title: 'Voice', ids: ['voiceJoin', 'voiceLeave', 'userJoin', 'userLeave', 'mute', 'unmute', 'deafen', 'undeafen', 'streamStart', 'streamStop'] },
+    { title: 'Calls', ids: ['callIncoming', 'callOutgoing', 'callEnd'] },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <Section
+        title="Sounds"
+        description="DM and mention sounds only play when you're not already looking at that chat. Do Not Disturb silences messages and ringing."
+      >
+        <Toggle label="Enable sound effects" checked={sounds.enabled} onChange={(v) => setSounds({ enabled: v })} />
+        <Slider
+          label="Volume"
+          value={sounds.volume}
+          min={0}
+          max={1}
+          step={0.05}
+          format={(v) => `${Math.round(v * 100)}%`}
+          onChange={(v) => setSounds({ volume: v })}
+        />
+      </Section>
+
+      {groups.map((g) => (
+        <Section key={g.title} title={g.title}>
+          <div className="space-y-2">
+            {g.ids.map((id) => {
+              const on = !sounds.disabled.includes(id);
+              return (
+                <div key={id} className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    title="Preview"
+                    aria-label={`Preview ${SOUND_INFO[id].label}`}
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ae-surface text-xs hover:bg-ae-hover"
+                    onClick={() => playSound(id, true)}
+                  >
+                    ▶
+                  </button>
+                  <label className="flex flex-1 cursor-pointer items-center justify-between gap-4">
+                    <span>
+                      <span className="block text-sm">{SOUND_INFO[id].label}</span>
+                      <span className="block text-xs text-ae-muted">{SOUND_INFO[id].hint}</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={on}
+                      disabled={!sounds.enabled}
+                      onChange={(e) =>
+                        setSounds({ disabled: e.target.checked ? sounds.disabled.filter((x) => x !== id) : [...sounds.disabled, id] })
+                      }
+                    />
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+      ))}
+    </div>
+  );
+}
+
 function KeybindsTab() {
   const keybinds = useSettingsStore((s) => s.keybinds);
   const setKeybinds = useSettingsStore((s) => s.setKeybinds);
@@ -751,6 +820,7 @@ const TABS: { id: SettingsTab; label: string }[] = [
   { id: 'profile', label: 'My Profile' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'voice', label: 'Voice & Audio' },
+  { id: 'notifications', label: 'Notifications & Sounds' },
   { id: 'keybinds', label: 'Keybinds' },
   { id: 'bandwidth', label: 'Streaming & Bandwidth' },
 ];
@@ -797,6 +867,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
           {tab === 'profile' && <ProfileTab userId={userId} />}
           {tab === 'appearance' && <AppearanceTab />}
           {tab === 'voice' && <VoiceTab />}
+          {tab === 'notifications' && <NotificationsTab />}
           {tab === 'keybinds' && <KeybindsTab />}
           {tab === 'bandwidth' && <BandwidthTab />}
         </div>

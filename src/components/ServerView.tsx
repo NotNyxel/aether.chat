@@ -67,11 +67,13 @@ function MemberList({ server }: { server: Server }) {
   );
 }
 
-export function ServerView({ server, channel, userId }: { server: Server; channel: Channel | null; userId: string }) {
+export function ServerView({ server, channel, channels, userId }: { server: Server; channel: Channel | null; channels: Channel[]; userId: string }) {
   const memberListOpen = useUiStore((s) => s.memberListOpen);
   const toggleMemberList = useUiStore((s) => s.toggleMemberList);
   const { voice, room, joinChannel, leave, toggleScreenShare, toggleCamera } = useCall();
   const scope = useMemo(() => (channel ? { kind: 'channel' as const, id: channel.id } : null), [channel]);
+  const { data: members = [] } = useServerMembers(server.id);
+  const memberIds = useMemo(() => members.map((m) => m.user_id).filter((id) => id !== userId), [members, userId]);
 
   if (!channel || !scope) return <p className="m-auto text-sm text-ae-muted">Pick a channel.</p>;
 
@@ -81,6 +83,9 @@ export function ServerView({ server, channel, userId }: { server: Server; channe
         key={channel.id}
         scope={scope}
         userId={userId}
+        serverId={server.id}
+        memberIds={memberIds}
+        channels={channels}
         placeholder={`Message #${channel.name}`}
         header={
           <>
@@ -90,7 +95,7 @@ export function ServerView({ server, channel, userId }: { server: Server; channe
             <button
               type="button"
               title={memberListOpen ? 'Hide member list' : 'Show member list'}
-              className={`ml-auto ${memberListOpen ? 'text-ae-text' : 'text-ae-muted hover:text-ae-text'}`}
+              className={`ml-auto shrink-0 ${memberListOpen ? 'text-ae-text' : 'text-ae-muted hover:text-ae-text'}`}
               onClick={toggleMemberList}
             >
               <UsersIcon size={18} />

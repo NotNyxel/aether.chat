@@ -1,6 +1,6 @@
 /**
  * Persistent local preferences (Zustand + localStorage): theme, audio pipeline, screen share
- * defaults and keybinds. Server data (profiles, messages) lives in TanStack Query,
+ * defaults, keybinds and sounds. Server data (profiles, messages) lives in TanStack Query,
  * not here.
  */
 import { create } from 'zustand';
@@ -11,6 +11,7 @@ import {
   type AudioProcessingSettings,
   type ScreenShareOptions,
 } from '../hooks/useVoiceEngine';
+import type { SoundId } from '../lib/sounds';
 import type { ThemePresetId } from '../theme/presets';
 
 export interface ThemeSettings {
@@ -31,17 +32,28 @@ export interface Keybinds {
   pushToTalkEnabled: boolean;
 }
 
+export interface SoundSettings {
+  /** Master switch for all sound effects. */
+  enabled: boolean;
+  /** 0-1. */
+  volume: number;
+  /** Individually turned-off sounds. */
+  disabled: SoundId[];
+}
+
 interface SettingsState {
   theme: ThemeSettings;
   audio: AudioProcessingSettings;
   screen: ScreenShareOptions;
   keybinds: Keybinds;
+  sounds: SoundSettings;
   /** Accent color from the signed-in user's profile (mirrored here so ThemeEngine can use it). */
   profileAccent: string | null;
   setTheme: (patch: Partial<ThemeSettings>) => void;
   setAudio: (patch: Partial<AudioProcessingSettings>) => void;
   setScreen: (patch: Partial<ScreenShareOptions>) => void;
   setKeybinds: (patch: Partial<Keybinds>) => void;
+  setSounds: (patch: Partial<SoundSettings>) => void;
   setProfileAccent: (accent: string | null) => void;
 }
 
@@ -61,6 +73,12 @@ export const DEFAULT_KEYBINDS: Keybinds = {
   pushToTalkEnabled: false,
 };
 
+export const DEFAULT_SOUNDS: SoundSettings = {
+  enabled: true,
+  volume: 0.7,
+  disabled: ['messageSent'],
+};
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
@@ -68,11 +86,13 @@ export const useSettingsStore = create<SettingsState>()(
       audio: DEFAULT_AUDIO_SETTINGS,
       screen: DEFAULT_SCREEN_SHARE,
       keybinds: DEFAULT_KEYBINDS,
+      sounds: DEFAULT_SOUNDS,
       profileAccent: null,
       setTheme: (patch) => set((s) => ({ theme: { ...s.theme, ...patch } })),
       setAudio: (patch) => set((s) => ({ audio: { ...s.audio, ...patch } })),
       setScreen: (patch) => set((s) => ({ screen: { ...s.screen, ...patch } })),
       setKeybinds: (patch) => set((s) => ({ keybinds: { ...s.keybinds, ...patch } })),
+      setSounds: (patch) => set((s) => ({ sounds: { ...s.sounds, ...patch } })),
       setProfileAccent: (profileAccent) => set({ profileAccent }),
     }),
     {
@@ -90,6 +110,7 @@ export const useSettingsStore = create<SettingsState>()(
           audio: { ...current.audio, ...p.audio },
           screen: { ...current.screen, ...p.screen },
           keybinds: { ...current.keybinds, ...p.keybinds },
+          sounds: { ...current.sounds, ...p.sounds },
         };
       },
     },

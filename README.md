@@ -48,9 +48,15 @@ That's it. There's nothing to configure. The app keeps itself up to date: when a
 | **Live messaging** | Messages, edits, deletes and reactions appear instantly for everyone (Supabase Realtime). |
 | **Markdown** | `**bold**`, `*italic*`, `__underline__`, `~~strike~~`, `` `code` ``, code blocks, quotes, lists, headings, `||spoilers||` and links. |
 | **Replies & edits** | Reply to any message. Edit your own inline, or press **↑** to edit your last message. |
-| **Reactions** | 12 quick reactions, with live counts. |
-| **Attachments** | Upload via the **+** button, paste or drag-and-drop (up to 25 MB). Images, video and audio preview inline. |
-| **Mentions** | `@username` is highlighted, and messages that mention you are marked. |
+| **Reactions** | Full emoji picker (search, categories, recents) plus quick reactions, with live counts. |
+| **Attachments** | Upload via the **+** button, paste or drag-and-drop (up to 25 MB). Mark as spoiler, add alt text, click an image for a full-screen viewer. |
+| **Autocomplete** | `@member`, `@everyone` / `@here`, `#channel` and `:emoji`. Completed `:shortcodes:` turn into emoji. |
+| **Mentions & unreads** | Mention badges on servers, channels and DMs. Unread dots, a "NEW" divider and *Jump to present*. |
+| **Pins & search** | Pinned-messages panel. Full-text search with `from:`, `has:`, `pinned:`, `before:` and `after:` filters, plus jump-to-result. |
+| **Link previews** | Title, description and image for any link, plus click-to-play YouTube. `<link>` hides a preview. |
+| **Polls** | 2–10 answers with emoji, single or multiple choice, 1 hour to 1 week, live results. |
+| **Forward & message links** | Forward any message to a DM or channel. Copy a link to a message; clicking it jumps there in-app. |
+| **Markdown extras** | Syntax-highlighted code blocks, `-# subtext`, `<t:unix:R>` timestamps, day separators. |
 | **Typing indicators** | "Alex is typing…" in every channel and DM. |
 
 ### 👥 Social
@@ -78,6 +84,11 @@ That's it. There's nothing to configure. The app keeps itself up to date: when a
 | **Themes** | OLED Dark, Cyberpunk, Nord and aetherOS Glass, plus a custom accent color or your profile accent. |
 | **Custom CSS** | App-wide CSS that is sanitized and sandboxed (it can't escape the app or load scripts). |
 | **Profiles** | Banner, animated avatar frames (pulse, aurora, neon, orbit, glitch), Markdown bio, badges, an audio status clip, profile colors and sandboxed profile CSS. |
+
+### 🔔 Sounds
+Synthesized sound effects for DMs, mentions, joining and leaving voice, others joining or leaving, mute and
+deafen, streams starting and stopping, incoming and outgoing calls, and calls ending. Volume, per-sound toggles
+and previews live in **Settings → Notifications & Sounds**. Do Not Disturb silences messages and ringing.
 
 ### ⚙️ App
 - **Automatic, signed updates** from GitHub Releases.
@@ -157,6 +168,15 @@ Migrations live in `supabase/`. Run them in order in the Supabase SQL editor:
 |---|---|
 | `schema.sql` | Users, servers, channels, roles and permission bitmasks, messages, invites, bans, storage buckets |
 | `migrations/002_social.sql` | Friends, blocks, DMs, group DMs, calls, reactions, presence status, Realtime topic authorization |
+| `migrations/003_messaging.sql` | Polls and votes, pins, full-text search index, mentions and `@everyone`, forwards, per-channel unread state, `unread_summary()` |
+
+Edge Functions live in `supabase/functions/` (`link-preview`: SSRF-safe Open Graph fetcher, signed-in users only).
+
+**Workflow for schema changes:**
+1. Add `supabase/migrations/NNN_name.sql`.
+2. Run `npm run test:db`. It applies every migration to an in-memory Postgres and runs the RLS test suite.
+3. Apply it to production with `node scripts/migrate.mjs supabase/migrations/NNN_name.sql`. This uses the
+   Supabase Management API and needs a personal access token in `.secrets/supabase.token`.
 
 Permissions use a Discord-style 64-bit mask (`src/lib/permissions.ts` mirrors `public.permission_bit()`).
 

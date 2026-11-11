@@ -1,9 +1,9 @@
 /** Ephemeral UI state: Home vs server view, selections, panels, dialogs, jump targets, lightbox. */
 import { create } from 'zustand';
 
-export type SettingsTab = 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows';
+export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows';
 
-export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit' | 'soundboard';
+export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit' | 'soundboard' | 'moderation' | 'automod';
 
 export interface JumpTarget {
   scopeId: string;

@@ -106,6 +106,16 @@ That's it. There's nothing to configure. The app keeps itself up to date: when a
 | **Custom CSS** | App-wide CSS that is sanitized and sandboxed (it can't escape the app or load scripts). |
 | **Profiles** | Banner, 13 animated avatar frames, avatar shapes, name fonts and effects (gradient, rainbow, shimmer, glow, neon), card styles (gradient, glass, animated aurora), profile effects (snow, sparkles, confetti and more), pronouns, links, Markdown bio, badges, an audio status clip, profile colors and sandboxed profile CSS. |
 
+### 🛡️ Accounts, privacy & safety
+| | |
+|---|---|
+| **Account security** | Two-factor authentication (authenticator app), change email or password, password reset, sign out everywhere. |
+| **Privacy** | Choose who can DM you and who can send friend requests. DMs from strangers wait in Message requests. |
+| **Profiles per server** | A different nickname, avatar, banner and bio in each server. Private notes and friend nicknames. |
+| **AutoMod** | Blocked words (wildcards, allow list), link filter, mention spam, flood and repeat detection. Block, time out or flag. |
+| **Reports** | Report any message or user. Moderators get a queue with one-click actions. |
+| **Your data** | Download everything as JSON, or delete your account. |
+
 ### 🔔 Notifications & presence
 | | |
 |---|---|
@@ -203,6 +213,7 @@ Migrations live in `supabase/`. Run them in order in the Supabase SQL editor:
 |---|---|
 | `schema.sql` | Users, servers, channels, roles and permission bitmasks, messages, invites, bans, storage buckets |
 | `migrations/002_social.sql` | Friends, blocks, DMs, group DMs, calls, reactions, presence status, Realtime topic authorization |
+| `migrations/008_privacy_safety.sql` | Privacy settings and message requests, per-server profiles, notes, mutuals, AutoMod rules and events, reports, ownership transfer, data export, account deletion |
 | `migrations/007_threads_forums_events.sql` | Threads (channels with a parent), thread members, forum/media/announcement subtypes, channel follows and publishing, scheduled events and RSVPs, 5 new permissions, channel-creation policy fix |
 | `migrations/006_voice_and_profiles.sql` | Voice states (occupancy), voice moderation and stage RPCs, soundboard table and bucket, 3 new permissions, profile customization columns, any theme id |
 | `migrations/005_notifications.sql` | Notification settings (levels, mute, @everyone suppression) honoured by unread counts, custom status expiry, `recent_mentions` for the inbox |
@@ -270,6 +281,9 @@ Features ship in themed batches, one minor version each. See **[ROADMAP.md](ROAD
 - **Voice rooms work best with up to about 8–10 people** (full mesh, no media server).
 - **Some strict networks can't connect peer-to-peer** (symmetric NAT, some corporate networks). There's no TURN relay
   by default, to keep the cost at $0. You can add your own under Settings → Voice & Audio.
+- **Account emails** (password reset, confirmations) use Supabase's built-in sender on the free plan, which only
+  delivers to the project's team members and a few emails an hour. Add a custom SMTP provider in the Supabase
+  dashboard (Authentication → SMTP) to email everyone.
 - **Voice moderation is enforced by the participants' apps.** A peer-to-peer mesh has no server to cut anyone off,
   so a modified client could ignore a server mute. Everyone else's app still won't play that member's audio.
 - **Clicking a desktop notification doesn't jump to the message** in the desktop app yet (the notification plugin

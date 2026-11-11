@@ -128,7 +128,7 @@ function CustomStatusDialog({ userId, onClose }: { userId: string; onClose: () =
         }}
       >
         <div className="flex gap-2">
-          <input className={`${input} w-14 text-center`} value={emoji} maxLength={8} placeholder="😀" onChange={(e) => setEmoji(e.target.value)} aria-label="Status emoji" />
+          <input className={`${input} !w-14 shrink-0 text-center`} value={emoji} maxLength={8} placeholder="😀" onChange={(e) => setEmoji(e.target.value)} aria-label="Status emoji" />
           <input className={input} value={text} maxLength={128} autoFocus placeholder="What's happening?" onChange={(e) => setText(e.target.value)} />
         </div>
         <label className="block text-sm">

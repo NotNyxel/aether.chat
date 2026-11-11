@@ -14,10 +14,15 @@ export function Dialog({ title, onClose, children, wide = false }: { title: stri
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`ae-panel ae-dialog w-full ${wide ? "max-w-xl" : "max-w-md"} space-y-4 rounded-ae border border-ae-border p-6 shadow-2xl`}
+        className={`ae-panel ae-dialog ae-scroll max-h-[calc(100vh-32px)] w-full overflow-y-auto ${wide ? "max-w-xl" : "max-w-md"} space-y-4 rounded-[calc(var(--ae-radius)+4px)] border border-ae-border p-6 shadow-2xl`}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold">{title}</h2>
+        <div className="flex items-start justify-between gap-4">
+          <h2 className="text-lg font-bold">{title}</h2>
+          <button type="button" aria-label="Close" className="-mt-1 -mr-2 grid h-8 w-8 shrink-0 place-items-center rounded-full text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={onClose}>
+            ✕
+          </button>
+        </div>
         {children}
       </div>
     </div>

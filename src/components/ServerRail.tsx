@@ -1,8 +1,11 @@
 /** Vertical server list with create-server and join-by-invite actions. */
+import { ask } from './ConfirmDialog';
+import { toast } from './Toaster';
+import { openContextMenu } from './ContextMenu';
 import { useMemo, useState } from 'react';
-import { useCreateServer, useJoinServer } from '../hooks/useChatData';
-import { isRowUnread, useUnreadSummary } from '../hooks/useMessageExtras';
-import { resolveNotify, useNotifyResolver } from '../hooks/useNotifications';
+import { useCreateInvite, useCreateServer, useJoinServer, useLeaveServer } from '../hooks/useChatData';
+import { isRowUnread, useMarkRead, useUnreadSummary } from '../hooks/useMessageExtras';
+import { muteUntil, resolveNotify, useNotifyResolver, useSetNotificationSetting } from '../hooks/useNotifications';
 import { useUiStore } from '../stores/uiStore';
 import type { Server } from '../types/db';
 import { Dialog, PromptForm } from './Dialog';
@@ -30,6 +33,46 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
   const openHome = useUiStore((s) => s.openHome);
   const [dialog, setDialog] = useState<null | 'create' | 'join'>(null);
   const create = useCreateServer(userId);
+  const leave = useLeaveServer(userId);
+  const invite = useCreateInvite();
+  const markRead = useMarkRead();
+  const setNotify = useSetNotificationSetting();
+  const openServerSettings = useUiStore((s) => s.openServerSettings);
+  const serverMenu = (e: React.MouseEvent, s: Server) => {
+    const muted = resolveNotify(notifyMap, { kind: 'server', id: s.id }).muted;
+    const unreadRows = unread.filter((r) => r.server_id === s.id && isRowUnread(r));
+    openContextMenu(e, [
+      {
+        label: 'Mark as read',
+        icon: '✓',
+        disabled: unreadRows.length === 0,
+        onClick: () => unreadRows.forEach((r) => markRead({ kind: 'channel', id: r.scope_id })),
+      },
+      'divider',
+      {
+        label: 'Invite people',
+        icon: '✉',
+        onClick: () =>
+          invite.mutate(s.id, {
+            onSuccess: (code) => void navigator.clipboard.writeText(code).then(() => toast.success(`Invite code ${code} copied (valid 7 days).`, '✉')),
+            onError: (err) => toast.error(err.message),
+          }),
+      },
+      muted
+        ? { label: 'Unmute server', icon: '🔔', onClick: () => setNotify.mutate({ scopeId: s.id, kind: 'server', patch: { muted_until: null } }) }
+        : { label: 'Mute server for 1 hour', icon: '🔕', onClick: () => setNotify.mutate({ scopeId: s.id, kind: 'server', patch: { muted_until: muteUntil(60) } }) },
+      !muted && { label: 'Mute until I turn it back on', icon: '🔕', onClick: () => setNotify.mutate({ scopeId: s.id, kind: 'server', patch: { muted_until: muteUntil(null) } }) },
+      { label: 'Server settings', icon: '⚙', onClick: () => openServerSettings({ serverId: s.id, tab: 'overview' }) },
+      'divider',
+      { label: 'Copy server ID', icon: '#', onClick: () => void navigator.clipboard.writeText(s.id).then(() => toast('ID copied', '#')) },
+      s.owner_id !== userId && {
+        label: 'Leave server',
+        icon: '⎋',
+        danger: true,
+        onClick: async () => (await ask(`Leave ${s.name}?`)) && leave.mutate(s.id, { onSuccess: () => openHome(), onError: (err) => toast.error(err.message) }),
+      },
+    ]);
+  };
   const join = useJoinServer(userId);
   const { data: unread = [] } = useUnreadSummary();
   const { map: notifyMap } = useNotifyResolver();
@@ -48,7 +91,9 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
     <nav className="ae-scroll flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-ae-sunken py-3" aria-label="Servers">
       <button
         type="button"
-        title="Home: friends and direct messages"
+        data-tip="Direct messages"
+        data-tip-side="right"
+        aria-label="Home"
         onClick={() => openHome()}
         className={`relative grid h-12 w-12 place-items-center transition-all ${
           activeId === null ? 'rounded-[16px] bg-ae-accent ae-glow' : 'rounded-[24px] bg-ae-surface hover:rounded-[16px] hover:bg-ae-hover'
@@ -77,8 +122,11 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
             />
             <button
               type="button"
-              title={serverMuted ? `${s.name} (muted)` : s.name}
+              data-tip={serverMuted ? `${s.name} (muted)` : s.name}
+              data-tip-side="right"
+              aria-label={s.name}
               onClick={() => selectServer(s.id)}
+              onContextMenu={(e) => serverMenu(e, s)}
               className={`relative grid h-12 w-12 place-items-center overflow-hidden text-sm font-semibold transition-all ${serverMuted && !active ? 'opacity-50 ' : ''}${
                 active ? 'rounded-[16px] bg-ae-accent text-ae-on-accent ae-glow' : 'rounded-[24px] bg-ae-surface hover:rounded-[16px] hover:bg-ae-hover'
               }`}
@@ -97,7 +145,9 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
       <div className="my-1 h-px w-8 bg-ae-border" />
       <button
         type="button"
-        title="Create a server"
+        data-tip="Create a server"
+        data-tip-side="right"
+        aria-label="Create a server"
         onClick={() => setDialog('create')}
         className="grid h-12 w-12 place-items-center rounded-[24px] bg-ae-surface text-ae-success hover:rounded-[16px] hover:bg-ae-success hover:text-black"
       >
@@ -105,7 +155,9 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
       </button>
       <button
         type="button"
-        title="Join with an invite code"
+        data-tip="Join with an invite code"
+        data-tip-side="right"
+        aria-label="Join a server"
         onClick={() => setDialog('join')}
         className="grid h-12 w-12 place-items-center rounded-[24px] bg-ae-surface text-xs font-semibold text-ae-muted hover:rounded-[16px] hover:bg-ae-hover hover:text-ae-text"
       >

@@ -1,4 +1,5 @@
 /** Server Settings → Soundboard: upload, preview, rename and remove the server's sounds. */
+import { ask } from './ConfirmDialog';
 import { useRef, useState } from 'react';
 import { useSoundboard, useSoundboardActions } from '../hooks/useSoundboard';
 import { BUILTIN_SOUNDS, builtinBuffer, decodeClip, previewBuffer } from '../lib/soundboard';
@@ -37,7 +38,7 @@ export function SoundboardTab({ server, canManage }: { server: Server; canManage
                 </button>
                 {canManage ? (
                   <input
-                    className={`${inputCls} py-1`}
+                    className={`${inputCls} !py-1`}
                     defaultValue={s.name}
                     maxLength={32}
                     onBlur={(e) => e.target.value.trim() && e.target.value !== s.name && actions.update.mutate({ id: s.id, patch: { name: e.target.value.trim() } })}
@@ -46,7 +47,7 @@ export function SoundboardTab({ server, canManage }: { server: Server; canManage
                   <span className="flex-1 truncate text-sm">{s.name}</span>
                 )}
                 {canManage && (
-                  <button type="button" title="Delete" className="text-ae-muted hover:text-ae-danger" onClick={() => window.confirm(`Delete “${s.name}”?`) && actions.remove.mutate(s)}>
+                  <button type="button" title="Delete" className="text-ae-muted hover:text-ae-danger" onClick={async () => (await ask(`Delete “${s.name}”?`)) && actions.remove.mutate(s)}>
                     <TrashIcon size={15} />
                   </button>
                 )}
@@ -81,7 +82,7 @@ export function SoundboardTab({ server, canManage }: { server: Server; canManage
               <button type="button" className="ae-press shrink-0 rounded-ae bg-ae-surface px-3 py-2 text-sm hover:bg-ae-hover" onClick={() => fileRef.current?.click()}>
                 {file ? `📎 ${file.name}` : 'Choose a file'}
               </button>
-              <input className={`${inputCls} w-16 text-center`} placeholder="😀" maxLength={8} value={emoji} onChange={(e) => setEmoji(e.target.value)} aria-label="Emoji" />
+              <input className={`${inputCls} !w-16 shrink-0 text-center`} placeholder="😀" maxLength={8} value={emoji} onChange={(e) => setEmoji(e.target.value)} aria-label="Emoji" />
               <input className={inputCls} placeholder="Name" maxLength={32} value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <label className="flex items-center gap-3 text-sm">

@@ -2,6 +2,7 @@
  * Threads UI: the side panel that shows a thread or forum post, the "Create thread" dialog, and
  * the 🧵 thread browser in a channel header (active and archived threads).
  */
+import { ask } from './ConfirmDialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useServerMembers } from '../hooks/useChatData';
 import { isArchived, useChannelById, useChannelPermissions, useMyThreadMemberships, useThreadActions, useThreads } from '../hooks/useThreads';
@@ -62,6 +63,14 @@ export function ThreadPanel({ threadId, server, userId, channels, wide = false }
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState('');
   const parent = channels.find((c) => c.id === thread?.thread_parent_id);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || document.querySelector('[role="dialog"],[role="alertdialog"],[role="menu"]')) return;
+      openThread(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openThread]);
   const memberIds = useMemo(() => members.map((m) => m.user_id).filter((id) => id !== userId), [members, userId]);
 
   if (!thread) {
@@ -102,7 +111,7 @@ export function ThreadPanel({ threadId, server, userId, channels, wide = false }
                   actions.update.mutate({ id: thread.id, name }, { onSuccess: () => setRenaming(false) });
                 }}
               >
-                <input className={`${inputCls} py-1`} autoFocus value={name} maxLength={100} onChange={(e) => setName(e.target.value)} onBlur={() => setRenaming(false)} />
+                <input className={`${inputCls} !py-1`} autoFocus value={name} maxLength={100} onChange={(e) => setName(e.target.value)} onBlur={() => setRenaming(false)} />
               </form>
             ) : (
               <h2 className="truncate font-semibold" title={thread.name}>
@@ -167,8 +176,8 @@ export function ThreadPanel({ threadId, server, userId, channels, wide = false }
                 <button
                   type="button"
                   className={`${item} text-ae-danger`}
-                  onClick={() => {
-                    if (!window.confirm(`Delete “${thread.name}” and all of its messages?`)) return;
+                  onClick={async () => {
+                    if (!(await ask(`Delete “${thread.name}” and all of its messages?`))) return;
                     actions.remove.mutate(thread.id, { onSuccess: () => openThread(null) });
                   }}
                 >

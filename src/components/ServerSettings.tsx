@@ -3,8 +3,10 @@
  * Every tab and control is gated by the caller's permissions and role rank; the database
  * enforces the same rules (RLS + RPC checks), so the UI only hides what would fail anyway.
  */
+import { ask } from './ConfirmDialog';
+import { AutomodTab, ModerationTab, TransferOwnership } from './ServerModeration';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useProfile, useServerMembers, useServerPermissions, useUploadProfileMedia } from '../hooks/useChatData';
+import { useChannels, useProfile, useServerMembers, useServerPermissions, useUploadProfileMedia } from '../hooks/useChatData';
 import {
   useAuditLog,
   useBans,
@@ -304,8 +306,8 @@ function RoleEditor({ server, role, rank, members, onDeleted }: {
           <button
             type="button"
             className="rounded-ae bg-ae-danger px-4 py-2 text-sm font-semibold text-white"
-            onClick={() => {
-              if (window.confirm(`Delete the role "${role.name}"? Members keep their other roles.`)) actions.remove.mutate(role.id, { onSuccess: onDeleted });
+            onClick={async () => {
+              if ((await ask(`Delete the role "${role.name}"? Members keep their other roles.`))) actions.remove.mutate(role.id, { onSuccess: onDeleted });
             }}
           >
             Delete role
@@ -745,6 +747,10 @@ const ACTION_LABELS: Record<string, { icon: string; text: string }> = {
   sound_create: { icon: '🎵', text: 'added the sound' },
   sound_update: { icon: '🎵', text: 'updated the sound' },
   sound_delete: { icon: '🗑️', text: 'removed the sound' },
+  server_transfer: { icon: '👑', text: 'transferred ownership to' },
+  report_resolved: { icon: '✅', text: 'resolved a report about' },
+  report_dismissed: { icon: '🗂️', text: 'dismissed a report about' },
+  report_open: { icon: '⚑', text: 'reopened a report about' },
   thread_lock: { icon: '🔒', text: 'locked the thread' },
   thread_unlock: { icon: '🔓', text: 'unlocked the thread' },
   thread_delete: { icon: '🗑️', text: 'deleted the thread' },
@@ -860,6 +866,7 @@ export function ServerSettings({ servers, userId }: { servers: Server[]; userId:
 function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: string; tab: ServerSettingsTab }) {
   const open = useUiStore((s) => s.openServerSettings);
   const rank = useRank(server, userId);
+  const { data: settingsChannels = [] } = useChannels(server.id);
   const tabs: { id: ServerSettingsTab; label: string; show: boolean }[] = [
     { id: 'overview', label: 'Overview', show: true },
     { id: 'roles', label: 'Roles', show: rank.can(Permission.MANAGE_ROLES) },
@@ -868,6 +875,8 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
       label: 'Members',
       show: [Permission.MANAGE_ROLES, Permission.KICK_MEMBERS, Permission.BAN_MEMBERS, Permission.MODERATE_MEMBERS, Permission.MANAGE_NICKNAMES].some(rank.can),
     },
+    { id: 'moderation', label: 'Moderation', show: rank.can(Permission.MANAGE_MESSAGES) },
+    { id: 'automod', label: 'AutoMod', show: rank.can(Permission.MANAGE_SERVER) },
     { id: 'soundboard', label: 'Soundboard', show: true },
     { id: 'invites', label: 'Invites', show: rank.can(Permission.CREATE_INVITE) },
     { id: 'bans', label: 'Bans', show: rank.can(Permission.BAN_MEMBERS) },
@@ -894,7 +903,16 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
       <main className="ae-scroll relative flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl p-8">
           <h2 className="mb-6 text-xl font-bold">{visible.find((t) => t.id === active)?.label}</h2>
-          {active === 'overview' && <OverviewTab server={server} userId={userId} rank={rank} />}
+          {active === 'overview' && (
+            <>
+              <OverviewTab server={server} userId={userId} rank={rank} />
+              <div className="mt-6">
+                <TransferOwnership server={server} userId={userId} />
+              </div>
+            </>
+          )}
+          {active === 'moderation' && <ModerationTab server={server} channels={settingsChannels} />}
+          {active === 'automod' && <AutomodTab server={server} />}
           {active === 'roles' && <RolesTab server={server} rank={rank} />}
           {active === 'members' && <MembersTab server={server} rank={rank} />}
           {active === 'soundboard' && <SoundboardTab server={server} canManage={rank.can(Permission.MANAGE_EXPRESSIONS)} />}

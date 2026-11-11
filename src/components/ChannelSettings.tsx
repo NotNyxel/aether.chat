@@ -2,6 +2,7 @@
  * Channel Settings: Overview (name, topic, slow mode, user limit, NSFW, delete) and
  * Permissions (per-role and per-member overrides with allow / inherit / deny).
  */
+import { ask } from './ConfirmDialog';
 import { useEffect, useMemo, useState } from 'react';
 import { useServerMembers } from '../hooks/useChatData';
 import { useChannelActions, useChannelOverwrites, useOverwriteActions, useServerRoles } from '../hooks/useServerAdmin';
@@ -103,7 +104,7 @@ function OverviewTab({ channel, server, editable, onDeleted }: { channel: Channe
               </div>
               {editable && d.tags.length < 20 && (
                 <div className="mt-2 flex gap-2">
-                  <input className={`${inputCls} w-16 text-center`} placeholder="🏷️" maxLength={8} value={tagEmoji} onChange={(e) => setTagEmoji(e.target.value)} />
+                  <input className={`${inputCls} !w-16 shrink-0 text-center`} placeholder="🏷️" maxLength={8} value={tagEmoji} onChange={(e) => setTagEmoji(e.target.value)} />
                   <input className={inputCls} placeholder="Tag name" maxLength={20} value={tagName} onChange={(e) => setTagName(e.target.value)} />
                   <button
                     type="button"
@@ -158,9 +159,9 @@ function OverviewTab({ channel, server, editable, onDeleted }: { channel: Channe
           <button
             type="button"
             className="rounded-ae bg-ae-danger px-4 py-2 text-sm font-semibold text-white"
-            onClick={() => {
+            onClick={async () => {
               const what = channel.type === 'category' ? 'category (channels inside it are kept)' : 'channel and all of its messages';
-              if (window.confirm(`Delete this ${what}? This cannot be undone.`)) actions.remove.mutate(channel.id, { onSuccess: onDeleted });
+              if ((await ask(`Delete this ${what}? This cannot be undone.`))) actions.remove.mutate(channel.id, { onSuccess: onDeleted });
             }}
           >
             Delete {channel.type === 'category' ? 'category' : 'channel'}

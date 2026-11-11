@@ -1,8 +1,10 @@
 /** Server sidebar: channels grouped by category, invites, channel creation, leave/delete server. */
+import { toast } from './Toaster';
+import { openContextMenu } from './ContextMenu';
 import { useMemo, useState } from 'react';
 import { useCreateChannel, useCreateInvite, useDeleteServer, useLeaveServer, useServerPermissions } from '../hooks/useChatData';
-import { isRowUnread, useUnreadSummary } from '../hooks/useMessageExtras';
-import { useNotifyResolver } from '../hooks/useNotifications';
+import { isRowUnread, useMarkRead, useUnreadSummary } from '../hooks/useMessageExtras';
+import { muteUntil, useNotifyResolver, useSetNotificationSetting } from '../hooks/useNotifications';
 import { NotificationOptions } from './NotificationMenu';
 import { useVoiceStates } from '../hooks/useVoiceStates';
 import { VoiceOccupantList } from './VoiceOccupants';
@@ -62,6 +64,8 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
   const [confirm, setConfirm] = useState<'leave' | 'delete' | null>(null);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const { resolve } = useNotifyResolver();
+  const markRead = useMarkRead();
+  const setNotify = useSetNotificationSetting();
   const { data: unread = [] } = useUnreadSummary();
   const unreadById = useMemo(() => new Map(unread.map((r) => [r.scope_id, r])), [unread]);
 
@@ -268,6 +272,26 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                       <button
                         type="button"
                         onClick={() => selectChannel(server.id, ch.id)}
+                        onContextMenu={(e) => {
+                          const muted = resolve({ kind: 'channel', id: ch.id, serverId: server.id }).muted;
+                          openContextMenu(e, [
+                            ch.type === 'text' && { label: 'Mark as read', icon: '✓', disabled: !hasUnread && !mentions, onClick: () => markRead({ kind: 'channel', id: ch.id }) },
+                            (ch.type === 'voice' || ch.type === 'stream') && { label: ch.type === 'stream' ? 'Join stage' : 'Join voice', icon: '🔊', onClick: () => joinChannel(ch) },
+                            ch.type === 'text' &&
+                              (muted
+                                ? { label: 'Unmute channel', icon: '🔔', onClick: () => setNotify.mutate({ scopeId: ch.id, kind: 'channel', patch: { muted_until: null } }) }
+                                : { label: 'Mute channel for 1 hour', icon: '🔕', onClick: () => setNotify.mutate({ scopeId: ch.id, kind: 'channel', patch: { muted_until: muteUntil(60) } }) }),
+                            canOpenChannelSettings && { label: 'Edit channel', icon: '⚙', onClick: () => openChannelSettings(ch.id) },
+                            'divider',
+                            {
+                              label: 'Copy channel link',
+                              icon: '🔗',
+                              onClick: () =>
+                                void navigator.clipboard.writeText(`https://aether.chat/channels/${server.id}/${ch.id}`).then(() => toast('Link copied', '🔗')),
+                            },
+                            { label: 'Copy channel ID', icon: '#', onClick: () => void navigator.clipboard.writeText(ch.id).then(() => toast('ID copied', '#')) },
+                          ]);
+                        }}
                         onDoubleClick={() => (ch.type === 'voice' || ch.type === 'stream') && joinChannel(ch)}
                         className={`flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left text-sm ${
                           isActive

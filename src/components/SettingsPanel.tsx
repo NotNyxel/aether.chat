@@ -8,17 +8,16 @@
  *   Bandwidth  : audio/video bitrate profile and screen-share resolution and frame-rate defaults
  * Audio settings live in the settings store. MainLayout pushes changes into the running voice engine.
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useProfile, useUpdateProfile, useUploadProfileMedia } from '../hooks/useChatData';
+import { AccountTab, PrivacyTab } from './SettingsAccount';
+import { ProfileEditor } from './ProfileEditor';
+import { useEffect, useState, type ReactNode } from 'react';
 import { listAudioDevices, type BandwidthProfile, type ScreenFrameRate, type ScreenResolution } from '../hooks/useVoiceEngine';
 import { comboFromEvent, formatCombo } from '../lib/keybinds';
 import { ALL_SOUNDS, playSound, SOUND_INFO } from '../lib/sounds';
 import { useSettingsStore, type Keybinds } from '../stores/settingsStore';
 import { useUiStore, type SettingsTab } from '../stores/uiStore';
-import { AVATAR_FRAMES, isHexColor, PRESET_ORDER, THEME_PRESETS } from '../theme/presets';
-import type { AvatarShape, CardStyle, EditableProfile, NameEffect, NameFont, ProfileEffect, ProfileLink, UserProfile } from '../types/db';
+import { isHexColor, PRESET_ORDER, THEME_PRESETS } from '../theme/presets';
 import { CloseIcon } from './icons';
-import { ProfileCard, StyledName } from './ProfileCard';
 import { ActivityTab, BackgroundShortcutsSection, DesktopNotificationsSection, WindowsTab } from './SettingsDesktop';
 import { useTheme } from './ThemeEngine';
 
@@ -88,6 +87,24 @@ export function Slider(props: {
   );
 }
 
+/** A row of pill buttons for picking one option. */
+export function Chips<T extends string>({ options, value, onChange }: { options: { id: T; label: string }[]; value: T; onChange: (v: T) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          onClick={() => onChange(o.id)}
+          className={`ae-press rounded-ae border px-3 py-1.5 text-xs ${value === o.id ? 'border-ae-accent bg-ae-accent/15' : 'border-ae-border hover:bg-ae-hover'}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function ColorField({ label, value, onChange }: { label: string; value: string | null; onChange: (v: string | null) => void }) {
   return (
     <Field label={label}>
@@ -112,344 +129,6 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
         )}
       </div>
     </Field>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────────────────────
-// Profile tab
-// ─────────────────────────────────────────────────────────────────────────────────────────────
-
-const EDITABLE_KEYS: (keyof EditableProfile)[] = [
-  'username',
-  'display_name',
-  'custom_status',
-  'status_emoji',
-  'bio',
-  'avatar_url',
-  'avatar_frame',
-  'banner_url',
-  'primary_color',
-  'accent_color',
-  'custom_css',
-  'audio_status_url',
-  'theme_preset',
-  'pronouns',
-  'name_font',
-  'name_effect',
-  'name_color_a',
-  'name_color_b',
-  'profile_effect',
-  'card_style',
-  'avatar_shape',
-  'profile_links',
-];
-
-const NAME_FONTS: { id: NameFont; label: string }[] = [
-  { id: 'default', label: 'Default' },
-  { id: 'rounded', label: 'Rounded' },
-  { id: 'serif', label: 'Serif' },
-  { id: 'display', label: 'Display' },
-  { id: 'handwritten', label: 'Handwritten' },
-  { id: 'mono', label: 'Mono' },
-  { id: 'pixel', label: 'Pixel' },
-];
-const NAME_EFFECTS: { id: NameEffect; label: string }[] = [
-  { id: 'none', label: 'None' },
-  { id: 'gradient', label: 'Gradient' },
-  { id: 'rainbow', label: 'Rainbow' },
-  { id: 'shimmer', label: 'Shimmer' },
-  { id: 'glow', label: 'Glow' },
-  { id: 'neon', label: 'Neon' },
-];
-const PROFILE_EFFECTS: { id: ProfileEffect; label: string }[] = [
-  { id: 'none', label: 'None' },
-  { id: 'sparkles', label: '✦ Sparkles' },
-  { id: 'stars', label: '★ Stars' },
-  { id: 'snow', label: '❄ Snow' },
-  { id: 'hearts', label: '💗 Hearts' },
-  { id: 'petals', label: '🌸 Petals' },
-  { id: 'confetti', label: '🎉 Confetti' },
-  { id: 'fireflies', label: '✨ Fireflies' },
-  { id: 'bubbles', label: '○ Bubbles' },
-  { id: 'rain', label: '🌧 Rain' },
-];
-const CARD_STYLES: { id: CardStyle; label: string }[] = [
-  { id: 'solid', label: 'Solid' },
-  { id: 'gradient', label: 'Gradient' },
-  { id: 'glass', label: 'Glass' },
-  { id: 'aurora', label: 'Aurora (animated)' },
-];
-const AVATAR_SHAPES: { id: AvatarShape; label: string }[] = [
-  { id: 'circle', label: '● Circle' },
-  { id: 'squircle', label: '▢ Squircle' },
-  { id: 'hexagon', label: '⬢ Hexagon' },
-];
-
-function Chips<T extends string>({ options, value, onChange }: { options: { id: T; label: string }[]; value: T; onChange: (v: T) => void }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          onClick={() => onChange(o.id)}
-          className={`ae-press rounded-ae border px-3 py-1.5 text-xs ${value === o.id ? 'border-ae-accent bg-ae-accent/15' : 'border-ae-border hover:bg-ae-hover'}`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function LinksEditor({ links, onChange }: { links: ProfileLink[]; onChange: (l: ProfileLink[]) => void }) {
-  const [label, setLabel] = useState('');
-  const [url, setUrl] = useState('');
-  const valid = label.trim() && /^https:\/\/\S+$/.test(url.trim());
-  return (
-    <div className="space-y-2">
-      {links.map((l, i) => (
-        <div key={`${l.url}-${i}`} className="flex items-center gap-2 rounded-ae bg-ae-surface px-3 py-1.5 text-sm">
-          <span className="font-semibold">{l.label}</span>
-          <span className="flex-1 truncate text-xs text-ae-muted">{l.url}</span>
-          <button type="button" className="text-ae-muted hover:text-ae-danger" onClick={() => onChange(links.filter((_, j) => j !== i))}>
-            <CloseIcon size={14} />
-          </button>
-        </div>
-      ))}
-      {links.length < 5 && (
-        <div className="flex gap-2">
-          <input className={`${inputCls} w-36`} placeholder="GitHub" maxLength={32} value={label} onChange={(e) => setLabel(e.target.value)} />
-          <input className={inputCls} placeholder="https://…" maxLength={256} value={url} onChange={(e) => setUrl(e.target.value)} />
-          <button
-            type="button"
-            disabled={!valid}
-            className="shrink-0 rounded-ae bg-ae-surface px-3 text-sm hover:bg-ae-hover disabled:opacity-40"
-            onClick={() => {
-              onChange([...links, { label: label.trim(), url: url.trim() }]);
-              setLabel('');
-              setUrl('');
-            }}
-          >
-            Add
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function toDraft(p: UserProfile): EditableProfile {
-  return Object.fromEntries(EDITABLE_KEYS.map((k) => [k, p[k]])) as EditableProfile;
-}
-
-function UploadButton({ label, accept, userId, kind, onUploaded }: {
-  label: string;
-  accept: string;
-  userId: string;
-  kind: 'avatar' | 'banner' | 'audio';
-  onUploaded: (url: string) => void;
-}) {
-  const upload = useUploadProfileMedia(userId);
-  const inputRef = useRef<HTMLInputElement>(null);
-  return (
-    <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = '';
-          if (file) upload.mutate({ file, kind }, { onSuccess: onUploaded });
-        }}
-      />
-      <button
-        type="button"
-        className="shrink-0 rounded-ae bg-ae-surface px-3 py-2 text-xs hover:bg-ae-hover disabled:opacity-50"
-        disabled={upload.isPending}
-        onClick={() => inputRef.current?.click()}
-        title={upload.error?.message}
-      >
-        {upload.isPending ? 'Uploading…' : upload.isError ? 'Retry upload' : label}
-      </button>
-    </>
-  );
-}
-
-function ProfileTab({ userId }: { userId: string }) {
-  const { data: profile } = useProfile(userId);
-  const update = useUpdateProfile(userId);
-  const [draft, setDraft] = useState<EditableProfile | null>(null);
-
-  useEffect(() => {
-    if (profile && !draft) setDraft(toDraft(profile));
-  }, [profile, draft]);
-
-  const dirty = useMemo(
-    () => !!profile && !!draft && EDITABLE_KEYS.some((k) => (draft[k] ?? null) !== (profile[k] ?? null)),
-    [profile, draft],
-  );
-
-  if (!profile || !draft) return <p className="text-sm text-ae-muted">Loading profile…</p>;
-
-  const set = <K extends keyof EditableProfile>(key: K, value: EditableProfile[K]) =>
-    setDraft((d) => (d ? { ...d, [key]: value } : d));
-  const text = (key: keyof EditableProfile) => (draft[key] as string | null) ?? '';
-  const setText = (key: keyof EditableProfile, value: string) => set(key, (value === '' ? null : value) as never);
-
-  const save = () => {
-    const patch: Partial<EditableProfile> = {};
-    for (const k of EDITABLE_KEYS) if ((draft[k] ?? null) !== (profile[k] ?? null)) (patch as Record<string, unknown>)[k] = draft[k];
-    // A status typed here doesn't expire (use the status menu for a timed one).
-    if ('custom_status' in patch || 'status_emoji' in patch) patch.custom_status_expires_at = null;
-    update.mutate(patch);
-  };
-
-  return (
-    <div className="grid gap-8 xl:grid-cols-[1fr_auto]">
-      <div className="space-y-6">
-        <Section title="Identity">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Display name">
-              <input className={inputCls} maxLength={64} value={text('display_name')} onChange={(e) => setText('display_name', e.target.value)} />
-            </Field>
-            <Field label="Username" hint="2–32 letters, numbers, _ or .">
-              <input className={inputCls} maxLength={32} value={draft.username} onChange={(e) => set('username', e.target.value)} />
-            </Field>
-            <Field label="Status emoji">
-              <input className={inputCls} maxLength={8} value={text('status_emoji')} onChange={(e) => setText('status_emoji', e.target.value)} />
-            </Field>
-            <Field label="Custom status">
-              <input className={inputCls} maxLength={128} value={text('custom_status')} onChange={(e) => setText('custom_status', e.target.value)} />
-            </Field>
-            <Field label="Pronouns">
-              <input className={inputCls} maxLength={40} placeholder="they/them" value={text('pronouns')} onChange={(e) => setText('pronouns', e.target.value)} />
-            </Field>
-          </div>
-          <Field label="Bio (Markdown)" hint="Supports **bold**, *italic*, `code`, ||spoilers||, > quotes, lists and links.">
-            <textarea className={`${inputCls} min-h-28 font-mono`} maxLength={4000} value={text('bio')} onChange={(e) => setText('bio', e.target.value)} />
-          </Field>
-        </Section>
-
-        <Section title="Look" description="Images must be https URLs. Uploads go to your profile-media folder.">
-          <Field label="Avatar URL">
-            <div className="flex gap-2">
-              <input className={inputCls} value={text('avatar_url')} placeholder="https://…" onChange={(e) => setText('avatar_url', e.target.value)} />
-              <UploadButton label="Upload" accept="image/*" userId={userId} kind="avatar" onUploaded={(u) => set('avatar_url', u)} />
-            </div>
-          </Field>
-          <Field label="Banner URL">
-            <div className="flex gap-2">
-              <input className={inputCls} value={text('banner_url')} placeholder="https://…" onChange={(e) => setText('banner_url', e.target.value)} />
-              <UploadButton label="Upload" accept="image/*" userId={userId} kind="banner" onUploaded={(u) => set('banner_url', u)} />
-            </div>
-          </Field>
-          <Field label="Animated avatar frame">
-            <div className="flex flex-wrap gap-2">
-              {AVATAR_FRAMES.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => set('avatar_frame', f.id === 'none' ? null : f.id)}
-                  className={`rounded-ae border px-3 py-1.5 text-xs ${
-                    (draft.avatar_frame ?? 'none') === f.id ? 'border-ae-accent bg-ae-accent/15' : 'border-ae-border hover:bg-ae-hover'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </Field>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ColorField label="Primary color" value={draft.primary_color} onChange={(v) => set('primary_color', v)} />
-            <ColorField label="Accent color" value={draft.accent_color} onChange={(v) => set('accent_color', v)} />
-          </div>
-        </Section>
-
-        <Section title="Name style" description="How your name looks in chat, the member list and your profile.">
-          <Field label="Font">
-            <Chips options={NAME_FONTS} value={draft.name_font ?? 'default'} onChange={(v) => set('name_font', v)} />
-          </Field>
-          <Field label="Effect">
-            <Chips options={NAME_EFFECTS} value={draft.name_effect ?? 'none'} onChange={(v) => set('name_effect', v)} />
-          </Field>
-          {['gradient', 'shimmer', 'glow', 'neon'].includes(draft.name_effect ?? 'none') && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <ColorField label="Name colour 1" value={draft.name_color_a} onChange={(v) => set('name_color_a', v)} />
-              {['gradient', 'neon'].includes(draft.name_effect ?? 'none') && (
-                <ColorField label="Name colour 2" value={draft.name_color_b} onChange={(v) => set('name_color_b', v)} />
-              )}
-            </div>
-          )}
-          <p className="rounded-ae bg-ae-sunken px-3 py-2 text-lg font-semibold">
-            <StyledName profile={{ ...profile, ...draft }} />
-          </p>
-        </Section>
-
-        <Section title="Profile card" description="Decorate your card. Effects respect everyone's motion settings.">
-          <Field label="Card style">
-            <Chips options={CARD_STYLES} value={draft.card_style ?? 'solid'} onChange={(v) => set('card_style', v)} />
-          </Field>
-          <Field label="Profile effect">
-            <Chips options={PROFILE_EFFECTS} value={draft.profile_effect ?? 'none'} onChange={(v) => set('profile_effect', v)} />
-          </Field>
-          <Field label="Avatar shape">
-            <Chips options={AVATAR_SHAPES} value={draft.avatar_shape ?? 'circle'} onChange={(v) => set('avatar_shape', v)} />
-          </Field>
-          <Field label="Links" hint="Up to 5 https links, shown as buttons on your card.">
-            <LinksEditor links={draft.profile_links ?? []} onChange={(l) => set('profile_links', l)} />
-          </Field>
-        </Section>
-
-        <Section title="Audio status" description="A short clip people can play from your profile card.">
-          <div className="flex gap-2">
-            <input className={inputCls} value={text('audio_status_url')} placeholder="https://…/clip.mp3" onChange={(e) => setText('audio_status_url', e.target.value)} />
-            <UploadButton label="Upload" accept="audio/*" userId={userId} kind="audio" onUploaded={(u) => set('audio_status_url', u)} />
-          </div>
-        </Section>
-
-        <Section
-          title="Profile CSS"
-          description="Styles only your profile card, as others see it. External URLs are blocked; use data:image URIs. Target the card with :scope."
-        >
-          <textarea
-            className={`${inputCls} min-h-32 font-mono text-xs`}
-            spellCheck={false}
-            value={text('custom_css')}
-            placeholder={':scope { border-color: #ff2fd6; }\n.ae-profile-banner { filter: hue-rotate(40deg); }'}
-            onChange={(e) => setText('custom_css', e.target.value)}
-          />
-        </Section>
-
-        <div className="sticky bottom-0 flex items-center gap-3 bg-ae-elevated py-3">
-          <button
-            type="button"
-            disabled={!dirty || update.isPending}
-            onClick={save}
-            className="rounded-ae bg-ae-accent px-4 py-2 text-sm font-semibold text-ae-on-accent disabled:opacity-40"
-          >
-            {update.isPending ? 'Saving…' : 'Save profile'}
-          </button>
-          <button
-            type="button"
-            disabled={!dirty}
-            onClick={() => setDraft(toDraft(profile))}
-            className="rounded-ae px-3 py-2 text-sm text-ae-muted hover:text-ae-text disabled:opacity-40"
-          >
-            Discard
-          </button>
-          {update.isError && <span className="text-sm text-ae-danger">{update.error.message}</span>}
-          {update.isSuccess && !dirty && <span className="text-sm text-ae-success">Saved</span>}
-        </div>
-      </div>
-
-      <aside className="space-y-2">
-        <p className="text-[11px] font-bold tracking-wide text-ae-muted uppercase">Live preview</p>
-        <ProfileCard profile={{ ...profile, ...draft }} />
-      </aside>
-    </div>
   );
 }
 
@@ -1009,16 +688,29 @@ function BandwidthTab() {
 // Shell
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-const TABS: { id: SettingsTab; label: string }[] = [
-  { id: 'profile', label: 'My Profile' },
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'voice', label: 'Voice & Audio' },
-  { id: 'notifications', label: 'Notifications & Sounds' },
-  { id: 'keybinds', label: 'Keybinds' },
-  { id: 'bandwidth', label: 'Streaming & Bandwidth' },
-  { id: 'activity', label: 'Activity Privacy' },
-  { id: 'windows', label: 'Windows Settings' },
+const TAB_GROUPS: { title: string; tabs: { id: SettingsTab; label: string; icon: string }[] }[] = [
+  {
+    title: 'User settings',
+    tabs: [
+      { id: 'account', label: 'My Account', icon: '👤' },
+      { id: 'profile', label: 'Profiles', icon: '🪪' },
+      { id: 'privacy', label: 'Privacy & Safety', icon: '🛡️' },
+    ],
+  },
+  {
+    title: 'App settings',
+    tabs: [
+      { id: 'appearance', label: 'Appearance', icon: '🎨' },
+      { id: 'voice', label: 'Voice & Audio', icon: '🎙️' },
+      { id: 'notifications', label: 'Notifications & Sounds', icon: '🔔' },
+      { id: 'keybinds', label: 'Keybinds', icon: '⌨️' },
+      { id: 'bandwidth', label: 'Streaming & Bandwidth', icon: '📡' },
+      { id: 'activity', label: 'Activity Privacy', icon: '🎮' },
+      { id: 'windows', label: 'Windows Settings', icon: '🪟' },
+    ],
+  },
 ];
+const TABS = TAB_GROUPS.flatMap((g) => g.tabs);
 
 export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
   const open = useUiStore((s) => s.settingsOpen);
@@ -1037,29 +729,39 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
 
   return (
     <div className="ae-zoom-in fixed inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Settings">
-      <nav className="ae-panel flex w-60 shrink-0 flex-col gap-1 border-r border-ae-border p-4">
-        <p className="mb-2 px-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Settings</p>
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => openSettings(t.id)}
-            className={`rounded-ae px-3 py-2 text-left text-sm ${tab === t.id ? 'bg-ae-surface text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'}`}
-          >
-            {t.label}
-          </button>
+      <nav className="ae-panel ae-scroll flex w-64 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-ae-border p-4">
+        {TAB_GROUPS.map((g) => (
+          <div key={g.title} className="mb-3">
+            <p className="mb-1 px-3 text-[11px] font-bold tracking-wide text-ae-muted uppercase">{g.title}</p>
+            {g.tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => openSettings(t.id)}
+                className={`flex w-full items-center gap-2.5 rounded-ae px-3 py-2 text-left text-sm transition-colors ${
+                  tab === t.id ? 'bg-ae-surface font-semibold text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'
+                }`}
+              >
+                <span className="w-5 text-center">{t.icon}</span>
+                {t.label}
+              </button>
+            ))}
+          </div>
         ))}
-        <div className="mt-auto">
-          <button type="button" onClick={onSignOut} className="w-full rounded-ae px-3 py-2 text-left text-sm text-ae-danger hover:bg-ae-hover">
-            Sign out
+        <div className="mt-auto border-t border-ae-border pt-3">
+          <button type="button" onClick={onSignOut} className="flex w-full items-center gap-2.5 rounded-ae px-3 py-2 text-left text-sm text-ae-danger hover:bg-ae-hover">
+            <span className="w-5 text-center">⎋</span> Sign out
           </button>
+          <p className="mt-2 px-3 text-[11px] text-ae-muted">aether.chat v{__APP_VERSION__}</p>
         </div>
       </nav>
 
       <main className="ae-scroll relative flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl p-8">
-          <h2 className="mb-6 text-xl font-bold">{TABS.find((t) => t.id === tab)?.label}</h2>
-          {tab === 'profile' && <ProfileTab userId={userId} />}
+        <div key={tab} className="ae-enter mx-auto max-w-5xl p-8">
+          <h2 className="mb-6 text-2xl font-bold tracking-tight">{TABS.find((t) => t.id === tab)?.label}</h2>
+          {tab === 'account' && <AccountTab userId={userId} onSignOut={onSignOut} />}
+          {tab === 'privacy' && <PrivacyTab userId={userId} />}
+          {tab === 'profile' && <ProfileEditor userId={userId} />}
           {tab === 'appearance' && <AppearanceTab />}
           {tab === 'voice' && <VoiceTab />}
           {tab === 'notifications' && <NotificationsTab />}

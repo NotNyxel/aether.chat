@@ -89,6 +89,10 @@ export interface ServerMember {
   nickname: string | null;
   joined_at: string;
   timed_out_until: string | null;
+  /** Per-server profile overrides. */
+  avatar_url: string | null;
+  banner_url: string | null;
+  bio: string | null;
 }
 
 export interface ServerRole {
@@ -277,6 +281,8 @@ export interface ConversationMember {
   joined_at: string;
   last_read_at: string;
   hidden: boolean;
+  /** A DM from someone who isn't your friend, waiting in Message requests. */
+  request_pending: boolean;
 }
 
 export interface Conversation {
@@ -374,5 +380,72 @@ export interface ServerEvent {
 export interface EventRsvp {
   event_id: string;
   user_id: string;
+  created_at: string;
+}
+
+export interface PrivacySettings {
+  user_id: string;
+  dm_policy: 'servers' | 'friends';
+  friend_request_policy: 'everyone' | 'mutuals' | 'nobody';
+  message_requests: boolean;
+  updated_at: string;
+}
+
+export interface UserNote {
+  owner_id: string;
+  target_id: string;
+  note: string | null;
+  nickname: string | null;
+  updated_at: string;
+}
+
+export type AutomodTrigger = 'keyword' | 'link' | 'mention' | 'spam';
+export type AutomodAction = 'block' | 'block_and_timeout' | 'alert';
+
+export interface AutomodRule {
+  id: string;
+  server_id: string;
+  name: string;
+  enabled: boolean;
+  trigger: AutomodTrigger;
+  keywords: string[];
+  allow_list: string[];
+  mention_limit: number;
+  action: AutomodAction;
+  timeout_minutes: number;
+  block_message: string | null;
+  exempt_roles: string[];
+  exempt_channels: string[];
+  created_at: string;
+}
+
+export interface AutomodEvent {
+  id: number;
+  server_id: string;
+  rule_id: string | null;
+  rule_name: string;
+  user_id: string | null;
+  channel_id: string | null;
+  content: string | null;
+  matched: string | null;
+  action: AutomodAction;
+  created_at: string;
+}
+
+export type ReportReason = 'spam' | 'harassment' | 'hate' | 'violence' | 'nsfw' | 'self_harm' | 'scam' | 'other';
+
+export interface Report {
+  id: string;
+  reporter_id: string | null;
+  server_id: string | null;
+  message_id: string | null;
+  target_user_id: string | null;
+  reason: ReportReason;
+  details: string | null;
+  snapshot: { content: string; attachments: Attachment[]; channel_id: string | null; conversation_id: string | null; created_at: string } | null;
+  status: 'open' | 'resolved' | 'dismissed';
+  resolved_by: string | null;
+  resolved_at: string | null;
+  resolution: string | null;
   created_at: string;
 }

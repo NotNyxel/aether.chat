@@ -272,8 +272,8 @@ export function useSendMessage(scope: MessageScope) {
   const sb = useSupabase();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: SendMessageInput) =>
-      unwrap(
+    mutationFn: async (input: SendMessageInput) => {
+      const rows = unwrap(
         await sb
           .from('messages')
           .insert({
@@ -283,9 +283,23 @@ export function useSendMessage(scope: MessageScope) {
             attachments: input.attachments ?? [],
             ...(input.poll ? { poll: input.poll } : {}),
           })
-          .select('*')
-          .single(),
-      ) as Message,
+          .select('*'),
+      ) as Message[];
+      if (rows[0]) return rows[0];
+      // No row back means the server's AutoMod dropped it. Explain which rule, if we can.
+      const { data: { user } } = await sb.auth.getUser();
+      const { data: ev } = await sb
+        .from('automod_events')
+        .select('rule_name, matched, action')
+        .eq('user_id', user?.id ?? '')
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const why = ev ? `“${(ev as { rule_name: string }).rule_name}”${(ev as { matched: string | null }).matched ? ` (${(ev as { matched: string }).matched})` : ''}` : 'a server rule';
+      throw new Error(
+        `🛡️ Your message was blocked by AutoMod: ${why}.${(ev as { action?: string } | null)?.action === 'block_and_timeout' ? ' You were also timed out.' : ''}`,
+      );
+    },
     onSuccess: (msg) => qc.setQueryData<MessagePages>(['messages', scope.id], (d) => upsertMessage(d, msg)),
   });
 }

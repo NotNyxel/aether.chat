@@ -3,6 +3,7 @@
  * automatic :shortcode: conversion, emoji picker, polls, file uploads (button, paste,
  * drag-and-drop) with spoiler and alt text, replies, typing indicator, Enter to send.
  */
+import { toast } from './Toaster';
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { useSendMessage, useUploadAttachment } from '../hooks/useChatData';
 import { searchEmoji, useEmojiData } from '../lib/emoji';
@@ -208,6 +209,7 @@ export function Composer(props: ComposerProps) {
           playSound('messageSent');
           if (props.slowmodeSeconds) setCooldownUntil(Date.now() + props.slowmodeSeconds * 1000);
         },
+        onError: (e) => toast.error(e.message),
       },
     );
   };

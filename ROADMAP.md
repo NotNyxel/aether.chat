@@ -14,6 +14,7 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 | **0.1.0** | Servers, channels, live chat, P2P mesh voice, screen share, theme engine, rich profiles, settings |
 | **0.2.0** | Friends, blocks, DMs, group DMs, 1:1 and group calls, camera, replies, edits, reactions, uploads, typing, presence |
 | **0.3.0** | Renamed to aether.chat, built-in backend (no setup), signed auto-updates via GitHub Releases |
+| **0.9.0** | Batch 6: account security (2FA, password reset), privacy and message requests, per-server profiles, notes, AutoMod, reports, data export, account deletion; profile editor redesign; polish |
 | **0.8.0** | Batch 5: threads, forum and media channels, announcement follows, scheduled events |
 | **0.7.0** | Batch 4: voice occupancy, moderator voice tools, stages, soundboard, RNNoise, video layouts, Go Live, connection stats, TURN; 24 themes, profile styling, animations |
 | **0.6.0** | Batch 3: desktop notifications, per-chat mute and levels, inbox, taskbar badge, auto-idle, status expiry, activity status, tray, start on boot, background shortcuts |
@@ -81,15 +82,16 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ✅ Scheduled events (voice, stage or elsewhere) with RSVP and reminders
 - ✅ **Fix:** creating channels (INSERT … RETURNING vs. the channel visibility policy)
 
-## Batch 6: Accounts, privacy & safety → 0.9.0
-- ⬜ Password reset, change email, change password
-- ⬜ Two-factor authentication (Supabase MFA, TOTP)
-- ⬜ Privacy settings: who can DM you, who can send friend requests, message requests inbox
-- ⬜ Per-server profiles (nickname, avatar, bio per server)
-- ⬜ Friend notes and nicknames, mutual servers and friends on profiles
-- ⬜ AutoMod: keyword and link filters, spam detection, mention-spam limits
-- ⬜ Report a message or user and a moderator queue
-- ⬜ Data export and account deletion
+## Batch 6: Accounts, privacy & safety → 0.9.0 ✅
+- ✅ Password reset, change email, change password (email links open the desktop app)
+- ✅ Two-factor authentication (Supabase MFA, TOTP)
+- ✅ Privacy settings: who can DM you, who can send friend requests, message requests inbox
+- ✅ Per-server profiles (nickname, avatar, banner, bio per server)
+- ✅ Friend notes and nicknames, mutual servers and friends on profiles
+- ✅ AutoMod: keyword and link filters, spam detection, mention-spam limits
+- ✅ Report a message or user and a moderator queue
+- ✅ Data export and account deletion (plus server ownership transfer)
+- ✅ **Bonus:** profile editor redesign with live-preview pickers; app-wide polish (context menus, tooltips, toasts, confirm dialogs)
 
 ## Batch 7: Community & integrations → 0.10.0
 - ⬜ Server discovery (opt-in public directory, categories, search)

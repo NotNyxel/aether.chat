@@ -1,4 +1,7 @@
 /** One chat message: header, reply/forward context, Markdown, attachments, poll, embeds, reactions, hover toolbar. */
+import { openContextMenu } from './ContextMenu';
+import { openReport } from './ReportDialog';
+import { toast } from './Toaster';
 import { isArchived, useAnnouncementActions, useThreads } from '../hooks/useThreads';
 import { memo, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
@@ -103,6 +106,9 @@ export interface MessageItemProps {
   canThread?: boolean;
   /** Announcement message the viewer may publish to following servers. */
   canPublish?: boolean;
+  /** Server nickname and server avatar of the author, if they set them. */
+  authorNickname?: string | null;
+  authorAvatar?: string | null;
   /** Color of the author's highest colored role (servers only). */
   authorColor?: string | null;
   /** Role ids the viewer holds (for @role mention highlighting). */
@@ -153,7 +159,8 @@ function MessageItemImpl(props: MessageItemProps) {
   const [picker, setPicker] = useState(false);
   const [draft, setDraft] = useState(message.content);
   const [copied, setCopied] = useState(false);
-  const name = author?.display_name || author?.username || 'Deleted user';
+  const name = props.authorNickname || author?.display_name || author?.username || 'Deleted user';
+  const avatarProfile = author && props.authorAvatar ? { ...author, avatar_url: props.authorAvatar } : author;
   const mine = message.author_id === me;
   const mentioned =
     message.mentions?.includes(me) || message.mention_everyone || !!message.mention_roles?.some((id) => props.myRoleIds?.has(id));
@@ -166,11 +173,55 @@ function MessageItemImpl(props: MessageItemProps) {
       id={`msg-${message.id}`}
       className={`ae-msg group relative flex gap-3 px-4 hover:bg-ae-hover/40 ${showHeader ? 'mt-3 pt-1 pb-0.5' : 'py-0.5'} ${mentioned && !mine ? 'ae-mentioned' : ''}`}
       onMouseLeave={() => setPicker(false)}
+      onContextMenu={(e) => {
+        if (editing) return;
+        openContextMenu(e, [
+          { label: 'Add reaction', icon: '🙂', onClick: () => setPicker(true) },
+          { label: 'Reply', icon: '↩', onClick: () => props.onReply(message) },
+          { label: 'Forward', icon: '➦', onClick: () => openForward(message.id) },
+          props.canThread && message.channel_id
+            ? {
+                label: message.thread_id ? 'Open thread' : 'Create thread',
+                icon: '🧵',
+                onClick: () => (message.thread_id ? openThread(message.thread_id) : openThreadDraft({ parentId: message.channel_id!, messageId: message.id })),
+              }
+            : null,
+          mine && !message.poll && {
+            label: 'Edit message',
+            icon: '✎',
+            onClick: () => {
+              setDraft(message.content);
+              props.onStartEdit(message.id);
+            },
+          },
+          props.canPin && { label: message.pinned ? 'Unpin message' : 'Pin message', icon: '📌', onClick: () => props.onTogglePin(message.id, !message.pinned) },
+          props.canPublish && { label: 'Publish', icon: '📢', onClick: () => announcements.publish.mutate(message.id) },
+          'divider',
+          message.content && {
+            label: 'Copy text',
+            icon: '⧉',
+            onClick: () => void navigator.clipboard.writeText(message.content).then(() => toast('Copied text', '⧉')),
+          },
+          {
+            label: 'Copy message link',
+            icon: '🔗',
+            onClick: () => void navigator.clipboard.writeText(buildMessageLink(message, props.serverId)).then(() => toast('Link copied', '🔗')),
+          },
+          'divider',
+          !mine && message.author_id && {
+            label: 'Report message',
+            icon: '⚑',
+            danger: true,
+            onClick: () => openReport({ messageId: message.id, userId: message.author_id, preview: message.content.slice(0, 280) }),
+          },
+          mine && { label: 'Delete message', icon: '🗑', danger: true, onClick: () => props.onDelete(message.id) },
+        ]);
+      }}
     >
       <div className="w-10 shrink-0">
         {showHeader ? (
           <button type="button" onClick={() => message.author_id && showProfile(message.author_id)} className={message.reply_to_id ? 'mt-5' : ''}>
-            <Avatar profile={author} size={40} showFrame={false} />
+            <Avatar profile={avatarProfile} size={40} showFrame={false} />
           </button>
         ) : (
           <time className="hidden pt-1 text-[10px] text-ae-muted group-hover:block" dateTime={message.created_at}>

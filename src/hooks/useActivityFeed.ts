@@ -112,7 +112,11 @@ export function useActivityFeed(userId: string, viewingScopeId: string | null, s
           refreshTimer = setTimeout(() => void qc.invalidateQueries({ queryKey: ['unread'] }), 800);
         }
 
-        if (mine || viewing || statusRef.current === 'dnd' || rule.muted || rule.level === 'none') return;
+        // Message requests (DMs from non-friends waiting for you to accept) stay quiet.
+        const pendingRequest =
+          isDm &&
+          !!qc.getQueryData<Conversation[]>(['conversations'])?.find((c) => c.id === scopeId)?.conversation_members.find((x) => x.user_id === userId)?.request_pending;
+        if (mine || viewing || statusRef.current === 'dnd' || rule.muted || rule.level === 'none' || pendingRequest) return;
         const wanted = isDm || rule.level === 'all' || mentioned;
         if (!wanted) return;
 

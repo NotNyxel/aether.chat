@@ -3,6 +3,61 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [0.9.0] - 2026-11-12
+
+**Batch 6: accounts, privacy and safety, plus a redesigned profile editor and a polish pass**
+
+- **Account** (Settings → My Account):
+  - change your email or password;
+  - **two-factor authentication** with an authenticator app (scan a QR code and confirm a code; sign-in then
+    asks for it);
+  - sign out everywhere;
+  - **download your data** (JSON);
+  - **delete your account**.
+- **Forgot password** on the sign-in screen. Email links (reset, sign-up confirmation, email change) now open
+  aether.chat directly via `aetherchat://` links and finish there.
+- **Privacy & Safety:**
+  - choose who can DM you (friends and server members, or friends only);
+  - choose who can send friend requests (everyone, mutuals only, or no one);
+  - **message requests**: DMs from non-friends wait in their own list with Accept, Ignore and Block, and don't
+    notify or badge;
+  - manage blocked users.
+- **Per-server profiles:** a different nickname, avatar, banner and bio in each server. Chat and the member list
+  use them.
+- **Notes and friend nicknames:** private to you, on every profile card. Friend nicknames show in your friends list
+  and DMs.
+- **Mutual servers and friends** on profile cards.
+- **AutoMod** (Server Settings → AutoMod):
+  - rule types: blocked words (with wildcards and allowed words), links outside an allow list, mention spam,
+    message floods and repeats;
+  - each rule can block, block and time out, or just flag;
+  - roles can be exempt;
+  - blocked senders are told which rule stopped them.
+- **Reports:** right-click any message or person → Report. Server moderators get a **Moderation queue** with jump
+  to message, delete, timeout, kick, ban, resolve and dismiss, plus an AutoMod activity log.
+- **Transfer server ownership** (Server Settings → Overview).
+- **Redesigned profile editor:**
+  - a compact page with identity, pictures, and one row per decoration;
+  - each decoration (avatar decoration, shape, profile effect, card style, name style, colours) opens a picker
+    with a live preview of every option;
+  - hover an option to try it on your card, then Apply;
+  - an unsaved-changes bar.
+- **Polish:**
+  - right-click menus on messages, people, servers, channels and DMs;
+  - consistent instant tooltips everywhere;
+  - toasts for confirmations and errors;
+  - in-app confirmation dialogs instead of browser pop-ups;
+  - a grouped settings sidebar;
+  - skeleton loading for messages;
+  - bouncing typing dots;
+  - colourful default avatars;
+  - close buttons on every dialog;
+  - a new sign-in screen;
+  - a splash screen;
+  - Esc closes the thread panel;
+  - the app version in Settings.
+- Database: `supabase/migrations/008_privacy_safety.sql`.
+
 ## [0.8.0] - 2026-11-12
 
 **Batch 5: threads, forums, channel types and events**

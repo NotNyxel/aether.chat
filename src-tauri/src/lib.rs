@@ -87,11 +87,32 @@ fn running_processes() -> Vec<String> {
     }
 }
 
+/// Saves a data export. The save dialog runs here (not in the web page), so the page can only
+/// write a file to the place the user picks.
+#[tauri::command]
+async fn save_export(app: AppHandle, file_name: String, contents: String) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let Some(path) = app
+        .dialog()
+        .file()
+        .set_file_name(&file_name)
+        .add_filter("JSON", &["json"])
+        .blocking_save_file()
+    else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    std::fs::write(&path, contents).map_err(|e| e.to_string())?;
+    Ok(Some(path.display().to_string()))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         // Must be first: a second launch focuses the running copy instead of opening another.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -119,7 +140,7 @@ pub fn run() {
                 _ => PermissionResponse::Default,
             }
         })
-        .invoke_handler(tauri::generate_handler![set_close_to_tray, idle_seconds, running_processes])
+        .invoke_handler(tauri::generate_handler![set_close_to_tray, idle_seconds, running_processes, save_export])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open aether.chat", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Toggle mute", true, None::<&str>)?;
@@ -152,6 +173,14 @@ pub fn run() {
                 tray = tray.icon(icon.clone());
             }
             tray.build(app)?;
+
+            // aetherchat:// links (password reset, email confirmation). The installer registers the
+            // scheme too; registering at runtime keeps it pointing at this copy.
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                let _ = app.deep_link().register_all();
+            }
 
             // Launched at sign-in by autostart: start quietly in the tray.
             if std::env::args().any(|a| a == "--autostart") {

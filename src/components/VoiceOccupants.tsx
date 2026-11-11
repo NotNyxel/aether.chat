@@ -3,6 +3,7 @@
  * have joined. Moderators get a menu per member: server mute / deafen, move, disconnect, and for
  * stages invite to speak / move to audience.
  */
+import { useUserMenu } from '../hooks/useUserMenu';
 import { useEffect, useRef, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { useVoiceModeration } from '../hooks/useVoiceStates';
@@ -88,6 +89,7 @@ function Occupant({ state, speaking, canModerate, channels, perms, isOwner, me }
   const { data: profile } = useProfile(state.user_id);
   const showProfile = useUiStore((s) => s.showProfile);
   const [menu, setMenu] = useState(false);
+  const userMenu = useUserMenu(me);
   const muted = state.self_mute || state.server_mute;
   const deaf = state.self_deaf || state.server_deaf;
   return (
@@ -95,11 +97,9 @@ function Occupant({ state, speaking, canModerate, channels, perms, isOwner, me }
       <button
         type="button"
         onClick={() => showProfile(state.user_id)}
-        onContextMenu={(e) => {
-          if (!canModerate || state.user_id === me) return;
-          e.preventDefault();
-          setMenu(true);
-        }}
+        onContextMenu={(e) =>
+          userMenu(e, state.user_id, canModerate && state.user_id !== me ? [{ label: 'Voice moderation…', icon: '🎚', onClick: () => setMenu(true) }] : [], state.server_id)
+        }
         className={`group flex w-full items-center gap-2 rounded py-0.5 pr-1 pl-8 text-left text-sm hover:bg-ae-hover ${state.suppressed ? 'text-ae-muted/70' : 'text-ae-muted'}`}
       >
         <Avatar profile={profile} size={20} speaking={speaking} showFrame={false} />

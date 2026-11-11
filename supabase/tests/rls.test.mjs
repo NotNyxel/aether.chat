@@ -641,6 +641,144 @@ await expectOk('starting the event is audited', async () => {
   if (log !== 1) throw new Error(String(log));
 });
 
+// ── Batch 6: privacy, safety, accounts ──────────────────────────────────────────────────
+console.log('\n# Batch 6: privacy, safety, accounts');
+await expectOk('erin limits DMs to friends', () => as(E, `insert into public.privacy_settings (dm_policy) values ('friends')`));
+await expectError('carol (a server-mate, not a friend) cannot open a DM with erin', () => as(C, `select public.open_dm('${E}')`), 'only accepts direct messages from friends');
+const reqConv = (await expectOk('with server-mates allowed again, carol\'s DM lands in erin\'s message requests', async () => {
+  await as(E, `update public.privacy_settings set dm_policy = 'servers' where user_id = '${E}'`);
+  const conv = (await as(C, `select public.open_dm('${E}') id`)).rows[0].id;
+  const row = (await as(E, `select request_pending from public.conversation_members where conversation_id = $1 and user_id = '${E}'`, [conv])).rows[0];
+  if (!row?.request_pending) throw new Error('not pending');
+  return { rows: [{ id: conv }] };
+}))?.rows[0].id;
+await expectOk('pending requests do not create unread badges', async () => {
+  await as(C, `insert into public.messages (conversation_id, content) values ($1, 'hey erin, got a sec?')`, [reqConv]);
+  const n = (await as(E, `select count(*)::int n from public.unread_summary() where scope_id = $1`, [reqConv])).rows[0].n;
+  if (n !== 0) throw new Error('badged');
+});
+await expectOk('erin accepts the request', async () => {
+  await as(E, `select public.respond_message_request($1, true)`, [reqConv]);
+  const n = (await as(E, `select count(*)::int n from public.unread_summary() where scope_id = $1`, [reqConv])).rows[0].n;
+  if (n !== 1) throw new Error(String(n));
+});
+await expectOk('switching to friends-only also stops carol sending in the existing DM', async () => {
+  await as(E, `update public.privacy_settings set dm_policy = 'friends' where user_id = '${E}'`);
+  let blocked = false;
+  try { await as(C, `insert into public.messages (conversation_id, content) values ($1, 'still there?')`, [reqConv]); } catch { blocked = true; }
+  await as(E, `update public.privacy_settings set dm_policy = 'servers' where user_id = '${E}'`);
+  if (!blocked) throw new Error('not blocked');
+});
+await expectOk('erin turns friend requests off', () => as(E, `update public.privacy_settings set friend_request_policy = 'nobody' where user_id = '${E}'`));
+await expectError('nobody can send erin a friend request', () => as(C, `select public.send_friend_request('erin')`), 'accepting friend requests');
+await expectOk('with "mutuals", a server-mate can', async () => {
+  await as(E, `update public.privacy_settings set friend_request_policy = 'mutuals' where user_id = '${E}'`);
+  const r = (await as(C, `select public.send_friend_request('erin') r`)).rows[0].r;
+  if (r !== 'sent') throw new Error(r);
+});
+await expectError('but a stranger cannot', () => as(B, `select public.send_friend_request('erin')`), 'share a server or a friend');
+await expectOk('privacy settings are private', async () => {
+  const n = (await as(A, `select count(*)::int n from public.privacy_settings`)).rows[0].n;
+  if (n !== 0) throw new Error('leak');
+});
+
+await expectOk('erin sets a server profile', async () => {
+  await as(E, `select public.set_server_profile($1, 'https://x.test/a.png', null, 'Here for the memes')`, [srv2]);
+  const r = (await as(A, `select avatar_url, bio from public.server_members where server_id = $1 and user_id = '${E}'`, [srv2])).rows[0];
+  if (r.bio !== 'Here for the memes' || !r.avatar_url) throw new Error(JSON.stringify(r));
+});
+await expectError('server avatars must be https', () => as(E, `select public.set_server_profile($1, 'http://x.test/a.png', null, null)`, [srv2]), 'check');
+await expectOk('notes are private to their author', async () => {
+  await as(E, `insert into public.user_notes (target_id, note, nickname) values ('${A}', 'runs the Test server', 'Boss')`);
+  const mine = (await as(E, `select count(*)::int n from public.user_notes`)).rows[0].n;
+  const theirs = (await as(A, `select count(*)::int n from public.user_notes`)).rows[0].n;
+  if (mine !== 1 || theirs !== 0) throw new Error(`${mine} ${theirs}`);
+});
+await expectOk('mutual servers only lists servers you share', async () => {
+  const r = await as(A, `select name from public.mutual_servers('${E}')`);
+  const b = await as(B, `select count(*)::int n from public.mutual_servers('${E}')`);
+  if (!r.rows.some((x) => x.name === 'Test') || b.rows[0].n !== 0) throw new Error(JSON.stringify(r.rows));
+});
+
+await expectOk('owner sets up AutoMod rules', async () => {
+  await as(A, `insert into public.automod_rules (server_id, name, trigger, keywords, allow_list) values ($1, 'No bad words', 'keyword', '{badword,"scam*"}', '{}')`, [srv2]);
+  await as(A, `insert into public.automod_rules (server_id, name, trigger, allow_list) values ($1, 'Links', 'link', '{youtube.com}')`, [srv2]);
+  await as(A, `insert into public.automod_rules (server_id, name, trigger, keywords, action, timeout_minutes) values ($1, 'Zero tolerance', 'keyword', '{timeoutme}', 'block_and_timeout', 5)`, [srv2]);
+});
+await expectError('members cannot read or edit AutoMod rules', async () => {
+  const n = (await as(E, `select count(*)::int n from public.automod_rules`)).rows[0].n;
+  if (n === 0) throw new Error('hidden as expected');
+}, 'hidden as expected');
+await expectOk('a blocked keyword drops the message and tells the sender why', async () => {
+  const r = await as(E, `insert into public.messages (channel_id, content) values ($1, 'this is a BADWORD lol') returning id`, [gen2]);
+  const ev = (await as(E, `select rule_name, matched from public.automod_events where user_id = '${E}' order by id desc limit 1`)).rows[0];
+  if (r.rows.length !== 0 || ev?.rule_name !== 'No bad words' || ev.matched !== 'badword') throw new Error(JSON.stringify({ r: r.rows, ev }));
+});
+await expectOk('wildcards match and allowed words pass', async () => {
+  const blocked = await as(E, `insert into public.messages (channel_id, content) values ($1, 'free scammers here') returning id`, [gen2]);
+  const fine = await as(E, `insert into public.messages (channel_id, content) values ($1, 'a perfectly good word') returning id`, [gen2]);
+  if (blocked.rows.length !== 0 || fine.rows.length !== 1) throw new Error(`${blocked.rows.length} ${fine.rows.length}`);
+});
+await expectOk('links outside the allow list are blocked; allowed domains pass', async () => {
+  const bad = await as(E, `insert into public.messages (channel_id, content) values ($1, 'go to https://evil.example.com/x') returning id`, [gen2]);
+  const ok = await as(E, `insert into public.messages (channel_id, content) values ($1, 'watch https://www.youtube.com/watch?v=1') returning id`, [gen2]);
+  if (bad.rows.length !== 0 || ok.rows.length !== 1) throw new Error(`${bad.rows.length} ${ok.rows.length}`);
+});
+await expectOk('server managers are exempt from AutoMod', async () => {
+  const r = await as(A, `insert into public.messages (channel_id, content) values ($1, 'badword (testing the filter)') returning id`, [gen2]);
+  if (r.rows.length !== 1) throw new Error('blocked');
+});
+await expectOk('"block and timeout" times the member out', async () => {
+  await as(E, `insert into public.messages (channel_id, content) values ($1, 'timeoutme please')`, [gen2]);
+  const t = (await as(A, `select timed_out_until from public.server_members where server_id = $1 and user_id = '${E}'`, [srv2])).rows[0].timed_out_until;
+  if (!t || new Date(t) <= new Date()) throw new Error('not timed out');
+  await as(A, `select public.timeout_member($1, '${E}', 0, 'test over')`, [srv2]);
+});
+await expectOk('moderators see AutoMod events; carol (no Manage Messages) does not', async () => {
+  const a = (await as(A, `select count(*)::int n from public.automod_events where server_id = $1`, [srv2])).rows[0].n;
+  const c = (await as(C, `select count(*)::int n from public.automod_events where server_id = $1`, [srv2])).rows[0].n;
+  if (a < 4 || c !== 0) throw new Error(`${a} ${c}`);
+});
+await as(A, `delete from public.automod_rules where server_id = $1`, [srv2]);
+
+const reported = (await as(A, `insert into public.messages (channel_id, content) values ($1, 'report me') returning id`, [gen2])).rows[0].id;
+const report = (await expectOk('erin reports a message; the server and a snapshot are filled in', async () => {
+  const r = await as(E, `insert into public.reports (message_id, reason, details) values ($1, 'spam', 'testing') returning id`, [reported]);
+  const row = (await as(A, `select server_id, target_user_id, snapshot from public.reports where id = $1`, [r.rows[0].id])).rows[0];
+  if (row.server_id !== srv2 || row.target_user_id !== A || row.snapshot.content !== 'report me') throw new Error(JSON.stringify(row));
+  return r;
+}))?.rows[0].id;
+await expectError('outsiders cannot report messages they cannot see', () =>
+  as(B, `insert into public.reports (message_id, reason) values ($1, 'spam')`, [reported]), "can't report");
+await expectOk('carol (no Manage Messages) cannot see the report; the owner can resolve it', async () => {
+  const c = (await as(C, `select count(*)::int n from public.reports`)).rows[0].n;
+  await as(A, `select public.resolve_report($1, 'resolved', 'warned them')`, [report]);
+  const mine = (await as(E, `select status from public.reports where id = $1`, [report])).rows[0].status;
+  if (c !== 0 || mine !== 'resolved') throw new Error(`${c} ${mine}`);
+});
+await expectError('members cannot resolve reports', () => as(E, `select public.resolve_report($1, 'dismissed')`, [report]), "can't review");
+
+await expectError('erin cannot delete her account while she owns a server', () => as(E, `select public.delete_my_account()`), 'Transfer or delete');
+await expectError('only the owner can transfer a server', () => as(E, `select public.transfer_server($1, '${A}')`, [srv2]), 'Only the owner');
+await expectOk('erin transfers Erin Fans to carol', async () => {
+  const code = (await as(E, `insert into public.server_invites (server_id) values ($1) returning code`, [erinServer])).rows[0].code;
+  await as(C, `select public.join_server($1)`, [code]);
+  await as(E, `select public.transfer_server($1, '${C}')`, [erinServer]);
+  const owner = (await as(C, `select owner_id from public.servers where id = $1`, [erinServer])).rows[0].owner_id;
+  if (owner !== C) throw new Error(owner);
+});
+await expectOk('data export includes profile, servers and messages', async () => {
+  const d = (await as(E, `select public.export_my_data() d`)).rows[0].d;
+  if (d.profile.username !== 'erin' || !d.servers.length || !d.messages.length || !Array.isArray(d.notes)) throw new Error(Object.keys(d).join(','));
+});
+const F = '66666666-6666-6666-6666-666666666666';
+await db.exec(`insert into auth.users (id, raw_user_meta_data) values ('${F}', '{"username":"frank"}')`);
+await expectOk('a user can delete their account', async () => {
+  await as(F, `select public.delete_my_account()`);
+  const n = (await as(A, `select count(*)::int n from public.users where id = '${F}'`)).rows[0].n;
+  if (n !== 0) throw new Error('still there');
+});
+
 await expectOk('presence status column is writable', () => as(C, `update public.users set presence_status = 'dnd' where id = '${C}'`));
 await expectError('badge_ids still not writable', () => as(C, `update public.users set badge_ids = '["staff"]' where id = '${C}'`));
 

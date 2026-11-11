@@ -1,4 +1,8 @@
 /** Friends page: Online / All / Pending / Blocked tabs and Add Friend by username. */
+import { ask } from './ConfirmDialog';
+import { useFriendNickname } from '../hooks/useAccount';
+import { useMeId } from '../hooks/useMe';
+import { useUserMenu } from '../hooks/useUserMenu';
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { activeCustomStatus } from '../hooks/useDesktop';
@@ -29,6 +33,9 @@ function ActionButton({ title, onClick, danger, children }: { title: string; onC
 }
 
 function PersonRow({ userId, subtitle, actions }: { userId: string; subtitle?: string; actions: ReactNode }) {
+  const me = useMeId();
+  const userMenu = useUserMenu(me);
+  const nickname = useFriendNickname(userId);
   const { data: p } = useProfile(userId);
   const status = usePresenceOf(userId);
   const playing = useActivityOf(userId);
@@ -37,6 +44,7 @@ function PersonRow({ userId, subtitle, actions }: { userId: string; subtitle?: s
     <li
       className="group flex cursor-pointer items-center gap-3 border-t border-ae-border px-2 py-2.5 hover:rounded-ae hover:bg-ae-hover"
       onClick={() => showProfile(userId)}
+      onContextMenu={(e) => userMenu(e, userId)}
     >
       <span className="relative">
         <Avatar profile={p} size={36} showFrame={false} />
@@ -44,7 +52,7 @@ function PersonRow({ userId, subtitle, actions }: { userId: string; subtitle?: s
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold">
-          {p?.display_name || p?.username || '…'} <span className="font-normal text-ae-muted">@{p?.username}</span>
+          {nickname || p?.display_name || p?.username || '…'} <span className="font-normal text-ae-muted">@{p?.username}</span>
         </span>
         <span className="block truncate text-xs text-ae-muted">{subtitle ?? (playing ? `Playing ${playing}` : activeCustomStatus(p) || STATUS_LABELS[status])}</span>
       </span>
@@ -143,8 +151,8 @@ export function FriendsView({ userId }: { userId: string }) {
       <ActionButton
         title="Remove friend"
         danger
-        onClick={() => {
-          if (window.confirm('Remove this friend?')) actions.remove.mutate(id);
+        onClick={async () => {
+          if ((await ask('Remove this friend?'))) actions.remove.mutate(id);
         }}
       >
         <CloseIcon size={16} />

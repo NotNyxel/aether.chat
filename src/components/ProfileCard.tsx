@@ -67,6 +67,14 @@ interface AvatarProps {
   showFrame?: boolean;
 }
 
+/** A stable, pleasant two-tone gradient for people without an avatar. */
+function fallbackGradient(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return `linear-gradient(135deg, hsl(${hue} 70% 55%), hsl(${(hue + 40) % 360} 65% 42%))`;
+}
+
 export function Avatar({ profile, size = 40, speaking = false, showFrame = true }: AvatarProps) {
   const [broken, setBroken] = useState(false);
   const name = profile?.display_name || profile?.username || '?';
@@ -80,7 +88,13 @@ export function Avatar({ profile, size = 40, speaking = false, showFrame = true 
 
   return (
     <div className="ae-avatar" data-frame={frame} data-shape={profile?.avatar_shape ?? 'circle'} data-speaking={speaking} style={style}>
-      <div className="ae-avatar-inner" style={{ fontSize: size * 0.4 }}>
+      <div
+        className="ae-avatar-inner"
+        style={{
+          fontSize: size * 0.4,
+          ...(!profile?.avatar_url || broken ? { background: fallbackGradient(profile?.username ?? name), color: '#fff' } : {}),
+        }}
+      >
         {profile?.avatar_url && !broken ? (
           <img src={profile.avatar_url} alt="" draggable={false} onError={() => setBroken(true)} />
         ) : (
@@ -358,7 +372,7 @@ export function ProfilePopover({ profile, onClose, footer }: { profile: UserProf
 
   return (
     <div className="ae-backdrop fixed inset-0 z-40 grid place-items-center bg-black/50" onMouseDown={onClose}>
-      <div onMouseDown={(e) => e.stopPropagation()} className="ae-dialog space-y-2">
+      <div onMouseDown={(e) => e.stopPropagation()} className="ae-dialog ae-scroll max-h-[calc(100vh-32px)] space-y-2 overflow-y-auto p-1">
         <ProfileCard profile={profile} />
         {footer}
       </div>

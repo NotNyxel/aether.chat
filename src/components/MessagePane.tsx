@@ -4,6 +4,8 @@
  * pins and search), jump to present, auto mark-as-read, pins and search panels, drag-and-drop
  * uploads, typing indicator and the composer.
  */
+import { ask } from './ConfirmDialog';
+import { useServerMembers } from '../hooks/useChatData';
 import { NotificationBell } from './NotificationMenu';
 import { useQueryClient } from '@tanstack/react-query';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
@@ -41,7 +43,11 @@ function TypingLine({ typers }: { typers: string[] }) {
   ));
   return (
     <div className="flex h-5 items-center gap-1 px-5 text-xs text-ae-muted">
-      <span className="animate-pulse">●●●</span>
+      <span className="ae-typing" aria-hidden>
+        <i />
+        <i />
+        <i />
+      </span>
       {typers.length > 3 ? 'Several people are typing…' : <span>{names} {typers.length === 1 ? 'is' : 'are'} typing…</span>}
     </div>
   );
@@ -98,6 +104,8 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const styles = useMemberStyles(serverId);
+  const { data: serverMembers = [] } = useServerMembers(serverId);
+  const memberById = useMemo(() => new Map(serverMembers.map((m) => [m.user_id, m])), [serverMembers]);
   const { data: roles = [] } = useServerRoles(serverId);
   const { data: membership } = useMyMembership(serverId, userId);
   const myRoleIds = useMemo(() => new Set(styles.get(userId)?.roleIds ?? []), [styles, userId]);
@@ -207,8 +215,8 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
   const onSaveEdit = useCallback((id: string, content: string) => editMutate({ id, content }, { onSuccess: () => setEditingId(null) }), [editMutate]);
   const delMutate = del.mutate;
   const onDelete = useCallback(
-    (id: string) => {
-      if (window.confirm('Delete this message? This cannot be undone.')) delMutate(id);
+    async (id: string) => {
+      if ((await ask('Delete this message? This cannot be undone.'))) delMutate(id);
     },
     [delMutate],
   );
@@ -311,6 +319,8 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
                       editing={editingId === m.id}
                       canPin={canPin}
                       canThread={canThread}
+                      authorNickname={m.author_id ? memberById.get(m.author_id)?.nickname : null}
+                      authorAvatar={m.author_id ? memberById.get(m.author_id)?.avatar_url : null}
                       canPublish={isAnnouncement && !m.published_at && (m.author_id === userId || canManageMessages)}
                       authorColor={m.author_id ? styles.get(m.author_id)?.color : null}
                       myRoleIds={myRoleIds}
@@ -351,7 +361,17 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
                   {messages.isFetchingNextPage ? 'Loading…' : 'Load older messages'}
                 </button>
               ) : messages.isLoading ? (
-                <p className="text-sm text-ae-muted">Loading messages…</p>
+                <div className="space-y-5 py-2" aria-label="Loading messages">
+                  {[0.9, 0.6, 0.75, 0.4, 0.8].map((w, i) => (
+                    <div key={i} className="flex gap-3" style={{ opacity: 1 - i * 0.15 }}>
+                      <div className="ae-skeleton h-10 w-10 shrink-0 rounded-full" />
+                      <div className="flex-1 space-y-2 pt-1">
+                        <div className="ae-skeleton h-3 w-32" />
+                        <div className="ae-skeleton h-3" style={{ width: `${w * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : messages.isError ? (
                 <p className="text-sm text-ae-danger">{messages.error.message}</p>
               ) : (

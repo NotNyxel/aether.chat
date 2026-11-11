@@ -1,4 +1,5 @@
 /** Main pane for a server: text channels (with member list) or voice/stream channels. */
+import { useUserMenu } from '../hooks/useUserMenu';
 import { useMemo, useState } from 'react';
 import { useProfile, useServerMembers } from '../hooks/useChatData';
 import { activeCustomStatus } from '../hooks/useDesktop';
@@ -17,7 +18,10 @@ import { MessagePane } from './MessagePane';
 import { Avatar, StyledName } from './ProfileCard';
 import { VoiceRoom } from './VoiceRoom';
 
-function MemberRow({ userId, nickname, owner, offline, color, timedOut }: {
+function MemberRow({ userId, nickname, owner, offline, color, timedOut, me, serverId, avatarOverride }: {
+  me: string;
+  serverId: string;
+  avatarOverride: string | null;
   userId: string;
   nickname: string | null;
   owner: boolean;
@@ -27,6 +31,7 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut }: {
 }) {
   const { data: p } = useProfile(userId);
   const showProfile = useUiStore((s) => s.showProfile);
+  const userMenu = useUserMenu(me);
   const status = usePresenceMap().get(userId) ?? 'offline';
   const playing = useActivityOf(userId);
   const customStatus = activeCustomStatus(p);
@@ -35,10 +40,11 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut }: {
       <button
         type="button"
         onClick={() => showProfile(userId)}
+        onContextMenu={(e) => userMenu(e, userId, [], serverId)}
         className={`flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left hover:bg-ae-hover ${offline ? 'opacity-45' : ''}`}
       >
         <span className="relative">
-          <Avatar profile={p} size={32} showFrame={!offline} />
+          <Avatar profile={p && avatarOverride ? { ...p, avatar_url: avatarOverride } : p} size={32} showFrame={!offline} />
           <PresenceDot status={status} size={11} className="absolute -right-0.5 -bottom-0.5 z-10" />
         </span>
         <span className="min-w-0 flex-1">
@@ -57,7 +63,7 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut }: {
 }
 
 /** Members grouped like Discord: hoisted roles (highest first), then Online, then Offline. */
-function MemberList({ server }: { server: Server }) {
+function MemberList({ server, me }: { server: Server; me: string }) {
   const { data: members = [] } = useServerMembers(server.id);
   const styles = useMemberStyles(server.id);
   const presence = usePresenceMap();
@@ -96,6 +102,9 @@ function MemberList({ server }: { server: Server }) {
           <ul className="space-y-0.5">
             {g.list.map((m) => (
               <MemberRow
+                me={me}
+                serverId={server.id}
+                avatarOverride={m.avatar_url}
                 key={m.user_id}
                 userId={m.user_id}
                 nickname={m.nickname}
@@ -261,7 +270,7 @@ export function ServerView({ server, channel, channels, userId }: { server: Serv
           threadId ? (
             <ThreadPanel threadId={threadId} server={server} userId={userId} channels={channels} />
           ) : memberListOpen ? (
-            <MemberList server={server} />
+            <MemberList server={server} me={userId} />
           ) : undefined
         }
         emptyState={

@@ -468,3 +468,109 @@ nav[aria-label='Servers'] > button:hover {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Toasts slide in from the right */
+@keyframes ae-toast-in {
+  from {
+    opacity: 0;
+    translate: 24px 0;
+    scale: 0.96;
+  }
+}
+.ae-toast {
+  animation: ae-toast-in 260ms var(--ae-ease-spring) both;
+}
+
+/* Skeleton shimmer for loading placeholders */
+@keyframes ae-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.ae-skeleton {
+  background: linear-gradient(90deg, var(--ae-surface) 25%, var(--ae-surface-hover) 50%, var(--ae-surface) 75%);
+  background-size: 200% 100%;
+  animation: ae-shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+
+/* Floating tooltip (TooltipLayer) */
+@keyframes ae-tip-in {
+  from {
+    opacity: 0;
+    scale: 0.92;
+  }
+}
+.ae-tooltip {
+  animation: ae-tip-in 140ms var(--ae-ease-out) both;
+}
+
+/* Sign-in backdrop orbs and the splash logo */
+@keyframes ae-orb {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, 30px) scale(1.12);
+  }
+}
+.ae-auth-orb {
+  animation: ae-orb 14s ease-in-out infinite;
+}
+@keyframes ae-splash {
+  0%,
+  100% {
+    scale: 1;
+    filter: drop-shadow(0 0 0 var(--ae-accent));
+  }
+  50% {
+    scale: 1.08;
+    filter: drop-shadow(0 0 22px var(--ae-accent));
+  }
+}
+.ae-splash {
+  animation: ae-splash 1.6s ease-in-out infinite;
+}
+
+/* Typing indicator */
+.ae-typing {
+  display: inline-flex;
+  gap: 3px;
+  margin-right: 2px;
+}
+.ae-typing i {
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: ae-typing 1.1s ease-in-out infinite;
+}
+.ae-typing i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.ae-typing i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes ae-typing {
+  0%,
+  60%,
+  100% {
+    translate: 0 0;
+    opacity: 0.4;
+  }
+  30% {
+    translate: 0 -4px;
+    opacity: 1;
+  }
+}
+
+/* Text selection and composer focus in the accent colour */
+::selection {
+  background: color-mix(in srgb, var(--ae-accent) 35%, transparent);
+}
+textarea:focus,
+input:not([type='range']):not([type='checkbox']):not([type='radio']):focus,
+select:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ae-accent) 16%, transparent);
+}

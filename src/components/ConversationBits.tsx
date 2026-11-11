@@ -1,4 +1,5 @@
 /** Shared display helpers for DMs and group DMs. */
+import { useNotes } from '../hooks/useAccount';
 import { useQueries } from '@tanstack/react-query';
 import { useProfile } from '../hooks/useChatData';
 import { PresenceDot, usePresenceOf } from '../hooks/usePresence';
@@ -35,8 +36,10 @@ export function useProfiles(ids: string[]): (UserProfile | null | undefined)[] {
 export function useConversationTitle(conv: Conversation, me: string): string {
   const others = otherMemberIds(conv, me);
   const profiles = useProfiles(others);
+  const { data: notes = [] } = useNotes();
   if (conv.type === 'group' && conv.name) return conv.name;
-  const names = profiles.map((p) => p?.display_name || p?.username || '…');
+  // Your private friend nicknames win over display names.
+  const names = profiles.map((p, i) => notes.find((n) => n.target_id === others[i])?.nickname || p?.display_name || p?.username || '…');
   if (names.length === 0) return conv.type === 'group' ? 'Empty group' : 'Unknown user';
   return names.join(', ');
 }

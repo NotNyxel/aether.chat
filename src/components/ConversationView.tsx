@@ -1,8 +1,9 @@
 /** A DM or group DM: header with call buttons, the in-call panel, chat history and (for groups) members. */
+import { ask } from './ConfirmDialog';
 import { useMemo, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { PresenceDot, usePresenceOf } from '../hooks/usePresence';
-import { useActiveCalls, useConversationActions } from '../hooks/useSocialData';
+import { useActiveCalls, useConversationActions, useFriendActions, useRespondRequest } from '../hooks/useSocialData';
 import { useUiStore } from '../stores/uiStore';
 import type { Conversation } from '../types/db';
 import { useCall } from './CallContext';
@@ -32,6 +33,43 @@ function MemberRow({ userId, owner }: { userId: string; owner: boolean }) {
         {owner && <span title="Group owner">👑</span>}
       </button>
     </li>
+  );
+}
+
+/** Shown at the top of a DM that's still a message request. */
+function RequestBanner({ conv, me, title }: { conv: Conversation; me: string; title: string }) {
+  const respond = useRespondRequest();
+  const friend = useFriendActions();
+  const openHome = useUiStore((s) => s.openHome);
+  const other = otherMemberIds(conv, me)[0];
+  return (
+    <div className="ae-enter flex flex-wrap items-center gap-3 border-b border-ae-border bg-ae-accent/10 px-4 py-3 text-sm">
+      <span className="min-w-0 flex-1">
+        <b>{title}</b> isn&apos;t your friend yet and wants to message you. Accept to move this into your DMs.
+      </span>
+      <button type="button" className="ae-press rounded-ae bg-ae-accent px-3 py-1.5 font-semibold text-ae-on-accent" onClick={() => respond.mutate({ id: conv.id, accept: true })}>
+        Accept
+      </button>
+      <button
+        type="button"
+        className="ae-press rounded-ae bg-ae-surface px-3 py-1.5 hover:bg-ae-hover"
+        onClick={() => respond.mutate({ id: conv.id, accept: false }, { onSuccess: () => openHome('friends') })}
+      >
+        Ignore
+      </button>
+      {other && (
+        <button
+          type="button"
+          className="ae-press rounded-ae px-3 py-1.5 text-ae-danger hover:bg-ae-hover"
+          onClick={async () => {
+            if (!(await ask(`Block ${title}? They won't be able to message you.`))) return;
+            friend.block.mutate(other, { onSuccess: () => respond.mutate({ id: conv.id, accept: false }, { onSuccess: () => openHome('friends') }) });
+          }}
+        >
+          Block
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -92,7 +130,12 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
     </>
   );
 
-  const top = inThisCall ? (
+  const myRow = conv.conversation_members.find((m) => m.user_id === userId);
+  const requestBanner = myRow?.request_pending ? (
+    <RequestBanner conv={conv} me={userId} title={title} />
+  ) : null;
+
+  const top = requestBanner ?? (inThisCall ? (
     <VoiceRoom userId={userId} voice={voice} compact onShareScreen={toggleScreenShare} onToggleCamera={toggleCamera} onLeave={leave} />
   ) : callActive ? (
     <div className="flex items-center justify-between border-b border-ae-border bg-ae-success/10 px-4 py-2 text-sm">
@@ -103,7 +146,7 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
         Join call
       </button>
     </div>
-  ) : null;
+  ) : null);
 
   const aside =
     conv.type === 'group' && showMembers ? (

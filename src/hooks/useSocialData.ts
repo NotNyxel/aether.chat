@@ -158,3 +158,17 @@ export function useSocialRealtime(userId: string, onIncomingCall: (call: Call) =
     };
   }, [qc, sb, userId]);
 }
+
+/** Accept (move into DMs) or ignore (hide) a message request. */
+export function useRespondRequest() {
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, accept }: { id: string; accept: boolean }) =>
+      unwrap(await sb.rpc('respond_message_request', { p_conversation_id: id, p_accept: accept })),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['conversations'] });
+      void qc.invalidateQueries({ queryKey: ['unread'] });
+    },
+  });
+}

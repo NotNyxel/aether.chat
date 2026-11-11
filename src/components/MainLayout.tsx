@@ -1,4 +1,9 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { ask } from './ConfirmDialog';
+import { ProfileExtras } from './ProfileExtras';
+import { ReportDialog } from './ReportDialog';
+import { ContextMenuLayer } from './ContextMenu';
+import { MeContext } from '../hooks/useMe';
 import { useEffect, useMemo } from 'react';
 import { useChannels, useProfile, useServerMembers, useServers } from '../hooks/useChatData';
 import { useActivityFeed } from '../hooks/useActivityFeed';
@@ -78,7 +83,7 @@ function ProfileActions({ me, userId, onDone }: { me: string; userId: string; on
         <button
           type="button"
           className={`${btn} flex-none bg-ae-surface ${blocked ? 'text-ae-text' : 'text-ae-danger'}`}
-          onClick={() => (blocked ? friend.unblock.mutate(userId) : window.confirm('Block this user?') && friend.block.mutate(userId))}
+          onClick={async () => (blocked ? friend.unblock.mutate(userId) : (await ask('Block this user?')) && friend.block.mutate(userId))}
         >
           {blocked ? 'Unblock' : 'Block'}
         </button>
@@ -105,18 +110,32 @@ function ServerMemberTools({ server, me, userId }: { server: Server; me: string;
 
 function PopoverForUser({ me, userId, server, onClose }: { me: string; userId: string; server: Server | null; onClose: () => void }) {
   const { data } = useProfile(userId);
-  return data ? (
+  const { data: members = [] } = useServerMembers(server?.id ?? null);
+  const member = server ? members.find((m) => m.user_id === userId) : undefined;
+  if (!data) return null;
+  // Inside a server, show their server profile (nickname, avatar, banner, bio) where they set one.
+  const profile = member
+    ? {
+        ...data,
+        display_name: member.nickname || data.display_name,
+        avatar_url: member.avatar_url ?? data.avatar_url,
+        banner_url: member.banner_url ?? data.banner_url,
+        bio: member.bio ?? data.bio,
+      }
+    : data;
+  return (
     <ProfilePopover
-      profile={data}
+      profile={profile}
       onClose={onClose}
       footer={
         <>
-          {server && <ServerMemberTools server={server} me={me} userId={userId} />}
           <ProfileActions me={me} userId={userId} onDone={onClose} />
+          {server && <ServerMemberTools server={server} me={me} userId={userId} />}
+          <ProfileExtras me={me} userId={userId} serverId={server?.id ?? null} />
         </>
       }
     />
-  ) : null;
+  );
 }
 
 function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
@@ -162,7 +181,12 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
   const conversation = homeTarget === 'friends' ? null : (conversations.find((c) => c.id === homeTarget) ?? null);
   const { data: unread = [] } = useUnreadSummary();
   const { resolve } = useNotifyResolver();
-  const loudDms = conversations.filter((c) => c.id !== conversation?.id && !resolve({ kind: 'conversation', id: c.id }).muted);
+  const loudDms = conversations.filter(
+    (c) =>
+      c.id !== conversation?.id &&
+      !resolve({ kind: 'conversation', id: c.id }).muted &&
+      !c.conversation_members.find((m) => m.user_id === userId)?.request_pending,
+  );
   const loudDmIds = new Set(loudDms.map((c) => c.id));
   const homeBadge =
     unread.filter((r) => loudDmIds.has(r.scope_id)).reduce((n, r) => n + r.mention_count, 0) +
@@ -210,6 +234,8 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       {popoverUserId && <PopoverForUser me={userId} userId={popoverUserId} server={server} onClose={() => showProfile(null)} />}
       <ServerSettings servers={servers.data ?? []} userId={userId} />
       <CreateThreadDialog />
+      <ReportDialog me={userId} />
+      <ContextMenuLayer />
       <EventsDialog servers={servers.data ?? []} channels={channels.data ?? []} userId={userId} />
       <ChannelSettings servers={servers.data ?? []} channels={channels.data ?? []} userId={userId} />
     </div>
@@ -227,10 +253,12 @@ export function MainLayout({ userId, onSignOut }: { userId: string; onSignOut: (
   const activity = useGameActivity();
 
   return (
+    <MeContext.Provider value={userId}>
     <PresenceProvider userId={userId} status={status} activity={activity}>
       <CallProvider userId={userId}>
         <Shell userId={userId} onSignOut={onSignOut} />
       </CallProvider>
     </PresenceProvider>
+    </MeContext.Provider>
   );
 }

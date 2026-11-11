@@ -2,6 +2,7 @@
  * Scheduled events: the 📅 bar in the channel list, the events dialog (list, RSVP, start/end,
  * cancel) and the create/edit form.
  */
+import { ask } from './ConfirmDialog';
 import { useMemo, useState } from 'react';
 import { useProfile, useServerPermissions } from '../hooks/useChatData';
 import { useEventActions, useEventRsvps, useServerEvents, type EventInput } from '../hooks/useEvents';
@@ -133,7 +134,7 @@ function EventCard({ e, server, channels, userId, canManage, interested, going, 
             <button
               type="button"
               className={`${btn} text-ae-danger hover:bg-ae-hover`}
-              onClick={() => window.confirm(`Cancel “${e.name}”?`) && actions.update.mutate({ id: e.id, patch: { status: 'canceled' } })}
+              onClick={async () => (await ask(`Cancel “${e.name}”?`)) && actions.update.mutate({ id: e.id, patch: { status: 'canceled' } })}
             >
               Cancel event
             </button>

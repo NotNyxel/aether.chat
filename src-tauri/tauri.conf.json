@@ -51,7 +51,7 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDA3NjM2RkRERjMyMUI4MzcKUldRM3VDSHozVzlqQjc0NE9YcDF5dU54QlNncGVqZzErZFFwRm5LK240Vmk3Zmkyb3FWY2tJb2sK",
-      "endpoints": ["https://github.com/__GITHUB_OWNER__/aether.chat-releases/releases/latest/download/latest.json"],
+      "endpoints": ["https://github.com/NotNyxel/aether.chat-releases/releases/latest/download/latest.json"],
       "windows": { "installMode": "passive" }
     }
   }

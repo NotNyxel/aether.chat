@@ -14,6 +14,7 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 | **0.1.0** | Servers, channels, live chat, P2P mesh voice, screen share, theme engine, rich profiles, settings |
 | **0.2.0** | Friends, blocks, DMs, group DMs, 1:1 and group calls, camera, replies, edits, reactions, uploads, typing, presence |
 | **0.3.0** | Renamed to aether.chat, built-in backend (no setup), signed auto-updates via GitHub Releases |
+| **0.8.0** | Batch 5: threads, forum and media channels, announcement follows, scheduled events |
 | **0.7.0** | Batch 4: voice occupancy, moderator voice tools, stages, soundboard, RNNoise, video layouts, Go Live, connection stats, TURN; 24 themes, profile styling, animations |
 | **0.6.0** | Batch 3: desktop notifications, per-chat mute and levels, inbox, taskbar badge, auto-idle, status expiry, activity status, tray, start on boot, background shortcuts |
 | **0.5.0** | Batch 2: server settings, roles editor, channel permission overrides, timeouts, kick/ban, invites, audit log, drag-reorder, `@role` mentions |
@@ -72,12 +73,13 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ✅ **Bonus:** no mic/camera permission prompts; 20 new themes; name fonts and effects, card styles, profile
   effects, avatar shapes, pronouns and links; app-wide motion system
 
-## Batch 5: Threads, forums & channel types → 0.8.0
-- ⬜ Threads from any message (public and private), auto-archive
-- ⬜ Forum channels: posts, tags, sort and filter, guidelines
-- ⬜ Announcement channels with "follow into my server"
-- ⬜ Media channels (gallery layout)
-- ⬜ Scheduled events (voice and stage) with RSVP and reminders
+## Batch 5: Threads, forums & channel types → 0.8.0 ✅
+- ✅ Threads from any message (public and private), auto-archive, lock, follow
+- ✅ Forum channels: posts, tags, sort and filter, guidelines, list and gallery
+- ✅ Announcement channels with "follow into my server" and publishing
+- ✅ Media channels (gallery layout)
+- ✅ Scheduled events (voice, stage or elsewhere) with RSVP and reminders
+- ✅ **Fix:** creating channels (INSERT … RETURNING vs. the channel visibility policy)
 
 ## Batch 6: Accounts, privacy & safety → 0.9.0
 - ⬜ Password reset, change email, change password

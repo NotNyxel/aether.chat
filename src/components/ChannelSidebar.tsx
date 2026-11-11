@@ -6,19 +6,39 @@ import { useNotifyResolver } from '../hooks/useNotifications';
 import { NotificationOptions } from './NotificationMenu';
 import { useVoiceStates } from '../hooks/useVoiceStates';
 import { VoiceOccupantList } from './VoiceOccupants';
+import { EventsBar } from './Events';
 import { useChannelActions } from '../hooks/useServerAdmin';
 import { hasPermission, Permission } from '../lib/permissions';
 import { useUiStore } from '../stores/uiStore';
-import type { Channel, ChannelType, Server } from '../types/db';
+import type { Channel, ChannelSubtype, ChannelType, Server } from '../types/db';
 import { useCall } from './CallContext';
 import { Dialog, PromptForm } from './Dialog';
-import { HashIcon, LinkIcon, LogOutIcon, PlusIcon, StageIcon, TrashIcon, VolumeIcon } from './icons';
+import { ForumIcon, HashIcon, ImageIcon, LinkIcon, LogOutIcon, MegaphoneIcon, PlusIcon, StageIcon, TrashIcon, VolumeIcon } from './icons';
 import { UserPanel } from './UserPanel';
+
+type NewChannelKind = 'text' | 'announcement' | 'forum' | 'media' | 'voice' | 'stream' | 'category';
+const NEW_CHANNEL_KINDS: { kind: NewChannelKind; label: string; hint: string; type: ChannelType; subtype: ChannelSubtype | null }[] = [
+  { kind: 'text', label: 'Text', hint: 'Messages, images, threads', type: 'text', subtype: null },
+  { kind: 'announcement', label: 'Announcement', hint: 'Mods post; other servers can follow', type: 'text', subtype: 'announcement' },
+  { kind: 'forum', label: 'Forum', hint: 'Posts with tags and replies', type: 'text', subtype: 'forum' },
+  { kind: 'media', label: 'Media', hint: 'A gallery of images and videos', type: 'text', subtype: 'media' },
+  { kind: 'voice', label: 'Voice', hint: 'Talk, video and screen share', type: 'voice', subtype: null },
+  { kind: 'stream', label: 'Stage', hint: 'Speakers and an audience', type: 'stream', subtype: null },
+  { kind: 'category', label: 'Category', hint: 'Groups channels', type: 'category', subtype: null },
+];
 
 export function ChannelGlyph({ type, size = 16 }: { type: ChannelType; size?: number }) {
   if (type === 'voice') return <VolumeIcon size={size} />;
   if (type === 'stream') return <StageIcon size={size} />;
   return <HashIcon size={size} />;
+}
+
+/** Like ChannelGlyph, but also distinguishes announcement, forum and media channels. */
+export function ChannelIcon({ channel, size = 16 }: { channel: Pick<Channel, 'type' | 'subtype'>; size?: number }) {
+  if (channel.subtype === 'announcement') return <MegaphoneIcon size={size} />;
+  if (channel.subtype === 'forum') return <ForumIcon size={size} />;
+  if (channel.subtype === 'media') return <ImageIcon size={size} />;
+  return <ChannelGlyph type={channel.type} size={size} />;
 }
 
 export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
@@ -38,7 +58,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
   const deleteServer = useDeleteServer(userId);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [newChannel, setNewChannel] = useState<{ parentId: string | null } | null>(null);
-  const [newType, setNewType] = useState<ChannelType>('text');
+  const [newType, setNewType] = useState<NewChannelKind>('text');
   const [confirm, setConfirm] = useState<'leave' | 'delete' | null>(null);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const { resolve } = useNotifyResolver();
@@ -200,6 +220,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
         )}
       </div>
 
+      <EventsBar server={server} />
       <div className="ae-scroll flex-1 space-y-3 overflow-y-auto px-2 py-3">
         {channelActions.reorder.error && <p className="px-2 text-xs text-ae-danger">{channelActions.reorder.error.message}</p>}
         {groups.map(({ category, items }) =>
@@ -258,7 +279,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                                 : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'
                         }`}
                       >
-                        <ChannelGlyph type={ch.type} />
+                        <ChannelIcon channel={ch} />
                         <span className="truncate">{ch.name}</span>
                         {ch.nsfw && <span className="rounded bg-ae-danger/20 px-1 text-[9px] font-bold text-ae-danger">18+</span>}
                         {(byChannel.get(ch.id) ?? []).some((v) => v.streaming) && (
@@ -327,17 +348,21 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
             pending={createChannel.isPending}
             error={createChannel.error?.message}
             extra={
-              <div className="flex gap-2">
-                {(['text', 'voice', 'stream', 'category'] as const).map((t) => (
+              <div className="grid grid-cols-2 gap-2">
+                {NEW_CHANNEL_KINDS.filter((k) => k.kind === 'category' ? newType === 'category' : newType !== 'category').map((k) => (
                   <button
-                    key={t}
+                    key={k.kind}
                     type="button"
-                    onClick={() => setNewType(t)}
-                    className={`flex flex-1 items-center justify-center gap-1 rounded-ae border py-2 text-xs capitalize ${
-                      newType === t ? 'border-ae-accent bg-ae-accent/15' : 'border-ae-border'
+                    onClick={() => setNewType(k.kind)}
+                    className={`ae-press flex items-start gap-2 rounded-ae border p-2 text-left ${
+                      newType === k.kind ? 'border-ae-accent bg-ae-accent/15' : 'border-ae-border hover:bg-ae-hover'
                     }`}
                   >
-                    {t !== 'category' && <ChannelGlyph type={t} size={14} />} {t}
+                    <span className="mt-0.5 text-ae-muted">{k.kind !== 'category' && <ChannelIcon channel={{ type: k.type, subtype: k.subtype }} size={16} />}</span>
+                    <span>
+                      <span className="block text-sm font-semibold">{k.label}</span>
+                      <span className="block text-[11px] text-ae-muted">{k.hint}</span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -345,8 +370,9 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
             onSubmit={(name) =>
               createChannel.mutate(
                 {
-                  name: newType === 'text' ? name.toLowerCase().replace(/\s+/g, '-') : name,
-                  type: newType,
+                  name: ['text', 'announcement', 'forum', 'media'].includes(newType) ? name.toLowerCase().replace(/\s+/g, '-') : name,
+                  type: NEW_CHANNEL_KINDS.find((k) => k.kind === newType)!.type,
+                  subtype: NEW_CHANNEL_KINDS.find((k) => k.kind === newType)!.subtype,
                   parentId: newType === 'category' ? null : newChannel.parentId,
                 },
                 {

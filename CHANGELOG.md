@@ -3,6 +3,43 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [0.8.0] - 2026-11-12
+
+**Batch 5: threads, forums, channel types and events**
+
+- **Threads:**
+  - start one from any message (🧵 in the hover toolbar) or from the 🧵 button in the channel header;
+  - public or **private** (invite-only), and they open in a side panel next to the channel;
+  - rename, archive or reopen, and **lock** (Manage Threads);
+  - auto-archive after 1 hour, 24 hours, 3 days or 1 week without activity, and posting in an archived thread
+    reopens it;
+  - *Follow* a thread to get unread badges for it. You follow automatically when you post or create one;
+  - the starting message shows "🧵 name · N messages".
+- **Forum channels:**
+  - every post is its own conversation, with a title, up to 5 tags, a first message and attachments;
+  - filter by tag, search titles, sort by recent activity or newest, and switch between list and gallery
+    layouts;
+  - post guidelines (📜), required tags, and archived posts on demand.
+- **Media channels:** forums in gallery layout, where every post needs an image or video.
+- **Announcement channels:**
+  - only moderators (Manage Messages) post;
+  - other servers can **📢 Follow** a channel into one of their own text channels;
+  - **publish** a message (📢 in the toolbar) to copy it to every follower, marked "From <server> · #channel",
+    without pinging anyone there.
+- **Scheduled events** (📅 at the top of the channel list):
+  - schedule an event in a voice or stage channel, or anywhere else with a location, with start and end times
+    and a description;
+  - mark yourself **Interested** to get a desktop reminder 15 minutes before it starts and when it goes live;
+  - moderators can start, end, edit and cancel events, and a LIVE event shows in the channel list with a
+    *Join* button.
+- **Five new permissions:** Create Public Threads, Create Private Threads, Send Messages in Threads, Manage
+  Threads, Manage Events.
+- **The message box now follows channel permissions.** Read-only channels, locked threads and announcement
+  channels say why you can't post, instead of failing when you send.
+- **Fixed:** *Create channel* failed with a security-policy error. The database couldn't see the new channel
+  while checking whether you're allowed to see it.
+- Database: `supabase/migrations/007_threads_forums_events.sql`.
+
 ## [0.7.0] - 2026-11-11
 
 **Batch 4: voice & video upgrades, themes, profiles and motion**

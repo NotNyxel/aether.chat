@@ -10,6 +10,7 @@ import { toMask } from '../lib/permissions';
 import type {
   Attachment,
   Channel,
+  ChannelSubtype,
   ChannelType,
   EditableProfile,
   Message,
@@ -167,7 +168,8 @@ export function useChannels(serverId: string | null) {
     queryKey: ['channels', serverId],
     enabled: !!serverId,
     queryFn: async () =>
-      unwrap(await sb.from('channels').select('*').eq('server_id', serverId!).order('position').order('created_at')) as Channel[],
+      // Threads and forum posts are channels too, but live under their parent, not in the list.
+      unwrap(await sb.from('channels').select('*').eq('server_id', serverId!).is('thread_parent_id', null).order('position').order('created_at')) as Channel[],
   });
 }
 
@@ -175,11 +177,18 @@ export function useCreateChannel(serverId: string) {
   const sb = useSupabase();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; type: ChannelType; parentId: string | null }) =>
+    mutationFn: async (input: { name: string; type: ChannelType; parentId: string | null; subtype?: ChannelSubtype | null }) =>
       unwrap(
         await sb
           .from('channels')
-          .insert({ server_id: serverId, name: input.name, type: input.type, parent_id: input.parentId, position: 99 })
+          .insert({
+            server_id: serverId,
+            name: input.name,
+            type: input.type,
+            parent_id: input.parentId,
+            position: 99,
+            ...(input.subtype ? { subtype: input.subtype, default_layout: input.subtype === 'media' ? 'gallery' : 'list' } : {}),
+          })
           .select('*')
           .single(),
       ) as Channel,
@@ -308,39 +317,42 @@ export function useDeleteMessage(scope: MessageScope) {
  * Uploads a file to attachments/<scope id>/<uuid>/<name>. The bucket is private, so the stored URL
  * is a long-lived signed URL (anyone holding the link can open the file, as with most chat CDNs).
  */
+/** Uploads a file into a channel/conversation/thread's attachment folder and returns its metadata. */
+export async function uploadAttachmentTo(sb: ReturnType<typeof useSupabase>, scopeId: string, file: File): Promise<Attachment> {
+  if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name} is larger than 25 MB.`);
+  const safeName = file.name.replace(/[^A-Za-z0-9._-]+/g, '_').slice(-120) || 'file';
+  const path = `${scopeId}/${crypto.randomUUID()}/${safeName}`;
+  const { error } = await sb.storage.from('attachments').upload(path, file, {
+    contentType: file.type || 'application/octet-stream',
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  const signed = await sb.storage.from('attachments').createSignedUrl(path, TEN_YEARS_S);
+  if (signed.error || !signed.data) throw new Error(signed.error?.message ?? 'Could not sign the upload URL.');
+
+  let dims: { width?: number; height?: number } = {};
+  if (file.type.startsWith('image/')) {
+    try {
+      const bmp = await createImageBitmap(file);
+      dims = { width: bmp.width, height: bmp.height };
+      bmp.close();
+    } catch {
+      // Unsupported image format for decoding. Dimensions are optional.
+    }
+  }
+  return {
+    url: signed.data.signedUrl,
+    name: file.name.slice(0, 255),
+    size: file.size,
+    content_type: /^[a-z]+\/[a-zA-Z0-9.+-]+$/.test(file.type) ? file.type : 'application/octet-stream',
+    ...dims,
+  };
+}
+
 export function useUploadAttachment(scope: MessageScope) {
   const sb = useSupabase();
   return useMutation({
-    mutationFn: async (file: File): Promise<Attachment> => {
-      if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name} is larger than 25 MB.`);
-      const safeName = file.name.replace(/[^A-Za-z0-9._-]+/g, '_').slice(-120) || 'file';
-      const path = `${scope.id}/${crypto.randomUUID()}/${safeName}`;
-      const { error } = await sb.storage.from('attachments').upload(path, file, {
-        contentType: file.type || 'application/octet-stream',
-        upsert: false,
-      });
-      if (error) throw new Error(error.message);
-      const signed = await sb.storage.from('attachments').createSignedUrl(path, TEN_YEARS_S);
-      if (signed.error || !signed.data) throw new Error(signed.error?.message ?? 'Could not sign the upload URL.');
-
-      let dims: { width?: number; height?: number } = {};
-      if (file.type.startsWith('image/')) {
-        try {
-          const bmp = await createImageBitmap(file);
-          dims = { width: bmp.width, height: bmp.height };
-          bmp.close();
-        } catch {
-          // Unsupported image format for decoding. Dimensions are optional.
-        }
-      }
-      return {
-        url: signed.data.signedUrl,
-        name: file.name.slice(0, 255),
-        size: file.size,
-        content_type: /^[a-z]+\/[a-zA-Z0-9.+-]+$/.test(file.type) ? file.type : 'application/octet-stream',
-        ...dims,
-      };
-    },
+    mutationFn: (file: File): Promise<Attachment> => uploadAttachmentTo(sb, scope.id, file),
   });
 }
 

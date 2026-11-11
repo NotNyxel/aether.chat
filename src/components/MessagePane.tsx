@@ -19,6 +19,7 @@ import {
 import { useMarkRead, usePollVotes, useTogglePin, useUnreadSummary, useVotePoll } from '../hooks/useMessageExtras';
 import { useMemberStyles, useMyMembership, useServerRoles } from '../hooks/useServerAdmin';
 import { useTyping } from '../hooks/useTyping';
+import { useChannelById, useChannelPermissions } from '../hooks/useThreads';
 import { hasPermission, Permission } from '../lib/permissions';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, Message, MessageScope, PollVote } from '../types/db';
@@ -102,7 +103,17 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
   const myRoleIds = useMemo(() => new Set(styles.get(userId)?.roleIds ?? []), [styles, userId]);
   const timedOutUntil = membership?.timed_out_until && new Date(membership.timed_out_until) > new Date() ? membership.timed_out_until : null;
   const slowmode = channels.find((c) => c.id === scope.id)?.rate_limit_seconds ?? 0;
-  const canPin = serverId ? hasPermission(perms, Permission.MANAGE_MESSAGES) : true;
+  // Channel-level permissions (overwrites, thread and announcement rules), for server channels.
+  const { data: channel } = useChannelById(scope.kind === 'channel' ? scope.id : null);
+  const { data: chPerms } = useChannelPermissions(scope.kind === 'channel' ? scope.id : null);
+  const isThread = !!channel?.thread_parent_id;
+  const canManageMessages = serverId ? hasPermission(chPerms ?? perms, Permission.MANAGE_MESSAGES) : false;
+  const canThread =
+    !!channel && !isThread && channel.type === 'text' && channel.subtype !== 'forum' && channel.subtype !== 'media' &&
+    hasPermission(chPerms ?? 0n, Permission.CREATE_PUBLIC_THREADS);
+  const isAnnouncement = channel?.subtype === 'announcement';
+  const canSend = scope.kind !== 'channel' || chPerms === undefined || hasPermission(chPerms, Permission.SEND_MESSAGES);
+  const canPin = serverId ? canManageMessages : true;
   const canMentionEveryone = !!serverId && hasPermission(perms, Permission.MENTION_EVERYONE);
 
   // Newest-first list, rendered inside flex-col-reverse so the view stays pinned to the bottom.
@@ -299,6 +310,8 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
                       votes={votesByMessage.get(m.id)}
                       editing={editingId === m.id}
                       canPin={canPin}
+                      canThread={canThread}
+                      canPublish={isAnnouncement && !m.published_at && (m.author_id === userId || canManageMessages)}
                       authorColor={m.author_id ? styles.get(m.author_id)?.color : null}
                       myRoleIds={myRoleIds}
                       onReply={onReply}
@@ -357,6 +370,15 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             </button>
           )}
 
+          {!canSend ? (
+            <p className="ae-enter mx-4 mb-4 rounded-ae border border-ae-border bg-ae-sunken px-4 py-3 text-sm text-ae-muted">
+              {channel?.thread_locked
+                ? '🔒 This thread is locked. Only moderators can reply.'
+                : isAnnouncement
+                  ? '📢 This is an announcement channel. Only moderators post here, and other servers can follow it.'
+                  : "You don't have permission to send messages here."}
+            </p>
+          ) : (
           <Composer
             scope={scope}
             placeholder={placeholder}
@@ -378,6 +400,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             droppedFiles={dropped}
             onDroppedHandled={() => setDropped(null)}
           />
+          )}
           <TypingLine typers={typers} />
         </div>
         {rightPanel}

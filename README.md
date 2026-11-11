@@ -44,7 +44,11 @@ That's it. There's nothing to configure. The app keeps itself up to date: when a
 ### 💬 Chat
 | | |
 |---|---|
-| **Servers & channels** | Text, voice and stream channels grouped into categories. Invite codes that expire after 7 days. |
+| **Servers & channels** | Text, announcement, forum, media, voice and stage channels grouped into categories. Invite codes that expire after 7 days. |
+| **Threads** | Public or private threads from any message, in a side panel. Archive, auto-archive, lock, follow. |
+| **Forums & media** | Posts with titles, tags, guidelines, search, sort, and list or gallery layouts. Media channels need an image or video. |
+| **Announcements** | Moderator-only channels other servers can follow. Published posts are copied to followers. |
+| **Events** | Schedule voice, stage or in-person events. RSVP, reminders, start/end, LIVE badge. |
 | **Live messaging** | Messages, edits, deletes and reactions appear instantly for everyone (Supabase Realtime). |
 | **Markdown** | `**bold**`, `*italic*`, `__underline__`, `~~strike~~`, `` `code` ``, code blocks, quotes, lists, headings, `||spoilers||` and links. |
 | **Replies & edits** | Reply to any message. Edit your own inline, or press **↑** to edit your last message. |
@@ -199,6 +203,7 @@ Migrations live in `supabase/`. Run them in order in the Supabase SQL editor:
 |---|---|
 | `schema.sql` | Users, servers, channels, roles and permission bitmasks, messages, invites, bans, storage buckets |
 | `migrations/002_social.sql` | Friends, blocks, DMs, group DMs, calls, reactions, presence status, Realtime topic authorization |
+| `migrations/007_threads_forums_events.sql` | Threads (channels with a parent), thread members, forum/media/announcement subtypes, channel follows and publishing, scheduled events and RSVPs, 5 new permissions, channel-creation policy fix |
 | `migrations/006_voice_and_profiles.sql` | Voice states (occupancy), voice moderation and stage RPCs, soundboard table and bucket, 3 new permissions, profile customization columns, any theme id |
 | `migrations/005_notifications.sql` | Notification settings (levels, mute, @everyone suppression) honoured by unread counts, custom status expiry, `recent_mentions` for the inbox |
 | `migrations/004_server_management.sql` | New permissions, timeouts, `@role` mentions, NSFW channels, channel and role reordering, kick and nickname RPCs, custom invite codes, audit log |

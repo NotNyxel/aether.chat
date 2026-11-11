@@ -1,4 +1,5 @@
 /** One chat message: header, reply/forward context, Markdown, attachments, poll, embeds, reactions, hover toolbar. */
+import { isArchived, useAnnouncementActions, useThreads } from '../hooks/useThreads';
 import { memo, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { buildMessageLink, extractEmbedUrls } from '../lib/messageLinks';
@@ -98,6 +99,10 @@ export interface MessageItemProps {
   votes: PollVote[] | undefined;
   editing: boolean;
   canPin: boolean;
+  /** Can start a thread from this message (text channels with Create Public Threads). */
+  canThread?: boolean;
+  /** Announcement message the viewer may publish to following servers. */
+  canPublish?: boolean;
   /** Color of the author's highest colored role (servers only). */
   authorColor?: string | null;
   /** Role ids the viewer holds (for @role mention highlighting). */
@@ -114,12 +119,37 @@ export interface MessageItemProps {
 
 const QUICK = ['👍', '❤️', '😂', '🔥'];
 
+/** "🧵 Thread name · 12 messages · 3h ago" under a message that started a thread. */
+function ThreadChip({ parentId, threadId, onOpen }: { parentId: string; threadId: string; onOpen: () => void }) {
+  const { data: threads = [] } = useThreads(parentId);
+  const t = threads.find((x) => x.id === threadId);
+  if (!t) return null;
+  const archived = isArchived(t);
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="ae-enter ae-lift mt-1.5 flex max-w-md items-center gap-2 rounded-ae border border-ae-border bg-ae-surface/60 px-3 py-1.5 text-left text-sm hover:border-ae-accent"
+    >
+      <span>{t.thread_locked ? '🔒' : '🧵'}</span>
+      <span className="truncate font-semibold">{t.name}</span>
+      <span className="shrink-0 text-xs text-ae-accent">
+        {t.thread_message_count} {t.thread_message_count === 1 ? 'message' : 'messages'}
+      </span>
+      {archived && <span className="shrink-0 text-[10px] text-ae-muted uppercase">archived</span>}
+    </button>
+  );
+}
+
 function MessageItemImpl(props: MessageItemProps) {
   const { message, grouped, me, editing } = props;
   const { data: author } = useProfile(message.author_id);
   const showProfile = useUiStore((s) => s.showProfile);
   const goTo = useUiStore((s) => s.goTo);
   const openForward = useUiStore((s) => s.openForward);
+  const openThread = useUiStore((s) => s.openThread);
+  const openThreadDraft = useUiStore((s) => s.openThreadDraft);
+  const announcements = useAnnouncementActions();
   const [picker, setPicker] = useState(false);
   const [draft, setDraft] = useState(message.content);
   const [copied, setCopied] = useState(false);
@@ -185,6 +215,11 @@ function MessageItemImpl(props: MessageItemProps) {
           </div>
         )}
 
+        {message.crossposted_from && (
+          <p className="mt-0.5 text-xs text-ae-muted">
+            📢 From <strong className="text-ae-text">{message.crossposted_from.server_name}</strong> · #{message.crossposted_from.channel_name}
+          </p>
+        )}
         {message.forwarded_from && (
           <p className="mt-0.5 text-xs text-ae-muted italic">
             ↪ Forwarded from <DisplayName userId={message.forwarded_from.author_id} /> · {formatTime(message.forwarded_from.created_at)}
@@ -250,6 +285,9 @@ function MessageItemImpl(props: MessageItemProps) {
             })}
           </div>
         )}
+        {message.thread_id && message.channel_id && <ThreadChip parentId={message.channel_id} threadId={message.thread_id} onOpen={() => openThread(message.thread_id)} />}
+        {message.published_at && <p className="mt-0.5 text-[11px] text-ae-muted">📢 Published to following servers</p>}
+        {announcements.publish.error && <p className="mt-0.5 text-xs text-ae-danger">{announcements.publish.error.message}</p>}
       </div>
 
       {!editing && (
@@ -269,6 +307,21 @@ function MessageItemImpl(props: MessageItemProps) {
           <ToolbarButton title="Forward" onClick={() => openForward(message.id)}>
             ➦
           </ToolbarButton>
+          {props.canThread && message.channel_id && (
+            <ToolbarButton
+              title={message.thread_id ? 'Open thread' : 'Create thread'}
+              onClick={() =>
+                message.thread_id ? openThread(message.thread_id) : openThreadDraft({ parentId: message.channel_id!, messageId: message.id })
+              }
+            >
+              🧵
+            </ToolbarButton>
+          )}
+          {props.canPublish && (
+            <ToolbarButton title="Publish to following servers" onClick={() => announcements.publish.mutate(message.id)}>
+              📢
+            </ToolbarButton>
+          )}
           {mine && !message.poll && (
             <ToolbarButton
               title="Edit"

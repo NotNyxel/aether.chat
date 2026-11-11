@@ -534,6 +534,113 @@ await expectError('profile links must be https', () =>
 await expectError('unknown profile effects are rejected', () =>
   as(E, `update public.users set profile_effect = 'explode' where id = '${E}'`), 'check');
 
+// ── Batch 5: threads, forums, announcements, events ─────────────────────────────────────
+console.log('\n# Batch 5: threads, forums, announcements, events');
+const starter = (await as(A, `insert into public.messages (channel_id, content) values ($1, 'Thread starter: what should we build next?') returning id`, [gen2])).rows[0].id;
+const thread1 = (await expectOk('erin starts a public thread from a message', async () => {
+  const r = await as(E, `select * from public.create_thread($1, '', $2)`, [gen2, starter]);
+  const t = r.rows[0];
+  const m = (await as(E, `select thread_id from public.messages where id = $1`, [starter])).rows[0];
+  if (t.thread_parent_id !== gen2 || m.thread_id !== t.id || !t.name.startsWith('Thread starter')) throw new Error(JSON.stringify(t));
+  return r;
+}))?.rows[0].id;
+await expectError('a message can only have one thread', () => as(C, `select public.create_thread($1, 'again', $2)`, [gen2, starter]), 'already has a thread');
+await expectOk('posting in a thread counts and auto-joins', async () => {
+  await as(C, `insert into public.messages (channel_id, content) values ($1, 'a game!')`, [thread1]);
+  const t = (await as(C, `select thread_message_count from public.channels where id = $1`, [thread1])).rows[0];
+  const mem = (await as(C, `select count(*)::int n from public.thread_members where thread_id = $1`, [thread1])).rows[0].n;
+  if (t.thread_message_count !== 1 || mem !== 2) throw new Error(`${t.thread_message_count} ${mem}`);
+});
+await expectOk('outsiders cannot see threads or their messages', async () => {
+  const a = (await as(B, `select count(*)::int n from public.channels where id = $1`, [thread1])).rows[0].n;
+  const b = (await as(B, `select count(*)::int n from public.messages where channel_id = $1`, [thread1])).rows[0].n;
+  if (a + b !== 0) throw new Error('leak');
+});
+const priv = (await expectOk('erin starts a private thread', () => as(E, `select * from public.create_thread($1, 'secret plans', null, true)`, [gen2])))?.rows[0].id;
+await expectOk('carol cannot see the private thread until added', async () => {
+  const before = (await as(C, `select count(*)::int n from public.channels where id = $1`, [priv])).rows[0].n;
+  await as(E, `select public.add_thread_member($1, '${C}')`, [priv]);
+  const after = (await as(C, `select count(*)::int n from public.channels where id = $1`, [priv])).rows[0].n;
+  if (before !== 0 || after !== 1) throw new Error(`${before} ${after}`);
+});
+await expectError('private threads cannot start from a message', () => as(E, `select public.create_thread($1, 'x', $2, true)`, [gen2, starter]), 'Private threads');
+await expectError('only Manage Threads can lock', () => as(E, `select public.update_thread($1, p_locked => true)`, [thread1]), 'Manage Threads');
+await expectOk('owner locks the thread; erin can no longer post, the owner can', async () => {
+  await as(A, `select public.update_thread($1, p_locked => true)`, [thread1]);
+  let blocked = false;
+  try { await as(E, `insert into public.messages (channel_id, content) values ($1, 'hey')`, [thread1]); } catch { blocked = true; }
+  await as(A, `insert into public.messages (channel_id, content) values ($1, 'locked, sorry')`, [thread1]);
+  if (!blocked) throw new Error('not blocked');
+});
+await expectOk('archiving, then posting, reopens a thread', async () => {
+  await as(E, `select public.update_thread($1, p_archived => true)`, [priv]);
+  const a = (await as(E, `select thread_archived_at from public.channels where id = $1`, [priv])).rows[0].thread_archived_at;
+  await as(E, `insert into public.messages (channel_id, content) values ($1, 'back')`, [priv]);
+  const b = (await as(E, `select thread_archived_at from public.channels where id = $1`, [priv])).rows[0].thread_archived_at;
+  if (!a || b) throw new Error(`${a} ${b}`);
+});
+await expectOk('threads only count as unread once joined', async () => {
+  const t2 = (await as(E, `select id from public.create_thread($1, 'unread test')`, [gen2])).rows[0].id;
+  await as(E, `insert into public.messages (channel_id, content) values ($1, 'ping')`, [t2]);
+  const before = (await as(C, `select count(*)::int n from public.unread_summary() where scope_id = $1`, [t2])).rows[0].n;
+  await as(C, `select public.join_thread($1)`, [t2]);
+  const after = (await as(C, `select count(*)::int n from public.unread_summary() where scope_id = $1`, [t2])).rows[0].n;
+  if (before !== 0 || after !== 1) throw new Error(`${before} ${after}`);
+});
+
+const forum = (await expectOk('owner creates a forum with tags and required tags', () =>
+  as(A, `insert into public.channels (server_id, name, subtype, forum_tags, require_tag) values ($1, 'ideas', 'forum', $2::jsonb, true) returning id`,
+    [srv2, JSON.stringify([{ id: 'bug', name: 'Bug', emoji: '🐛' }, { id: 'feat', name: 'Feature', emoji: '✨' }])])))?.rows[0].id;
+await expectError('no messages directly in a forum', () => as(E, `insert into public.messages (channel_id, content) values ($1, 'hi')`, [forum]), 'creating a post');
+await expectError('forum posts need a tag here', () => as(E, `select public.create_thread($1, 'My idea')`, [forum]), 'requires at least one tag');
+await expectError('unknown tags are rejected', () => as(E, `select public.create_thread($1, 'My idea', null, false, array['nope'])`, [forum]), 'tags');
+await expectOk('erin creates a forum post and its first message bumps the forum', async () => {
+  const post = (await as(E, `select id from public.create_thread($1, 'Dark mode for the dark mode', null, false, array['feat'])`, [forum])).rows[0].id;
+  await as(E, `insert into public.messages (channel_id, content) values ($1, 'even darker please')`, [post]);
+  const f = (await as(E, `select last_message_at from public.channels where id = $1`, [forum])).rows[0].last_message_at;
+  if (!f) throw new Error('forum not bumped');
+});
+await expectError('forum channels cannot be converted', () => as(A, `update public.channels set subtype = null where id = $1`, [forum]), 'converted');
+
+const ann = (await expectOk('owner creates an announcement channel', () =>
+  as(A, `insert into public.channels (server_id, name, subtype) values ($1, 'news', 'announcement') returning id`, [srv2])))?.rows[0].id;
+await expectError('members cannot post in announcement channels', () => as(E, `insert into public.messages (channel_id, content) values ($1, 'hi')`, [ann]), 'row-level security');
+const erinServer = (await as(E, `insert into public.servers (name) values ('Erin Fans') returning id`)).rows[0].id;
+const erinGeneral = (await as(E, `select id from public.channels where server_id = $1 and type = 'text' order by position limit 1`, [erinServer])).rows[0].id;
+await expectError('cannot follow into a channel you do not manage', () => as(E, `select public.follow_channel($1, $2)`, [ann, gen2]), 'Manage Channels');
+await expectOk('erin follows the announcements into her own server', () => as(E, `select public.follow_channel($1, $2)`, [ann, erinGeneral]));
+await expectOk('publishing crossposts to followers without pinging anyone', async () => {
+  const msg = (await as(A, `insert into public.messages (channel_id, content) values ($1, 'v1.0 is out @everyone') returning id`, [ann])).rows[0].id;
+  const n = (await as(A, `select public.publish_message($1) n`, [msg])).rows[0].n;
+  const copy = (await as(E, `select author_id, crossposted_from, mention_everyone from public.messages where channel_id = $1 and crossposted_from is not null`, [erinGeneral])).rows[0];
+  if (n !== 1 || copy?.author_id !== A || copy.crossposted_from.server_name !== 'Test' || copy.mention_everyone) throw new Error(JSON.stringify({ n, copy }));
+  let again = false;
+  try { await as(A, `select public.publish_message($1)`, [msg]); } catch (e) { again = e.message.includes('Already'); }
+  if (!again) throw new Error('published twice');
+});
+await expectError('erin cannot publish the owner\'s announcement', async () => {
+  const msg = (await as(A, `insert into public.messages (channel_id, content) values ($1, 'second') returning id`, [ann])).rows[0].id;
+  await as(E, `select public.publish_message($1)`, [msg]);
+}, 'author or a moderator');
+
+await expectError('members without Manage Events cannot schedule', () =>
+  as(E, `insert into public.server_events (server_id, channel_id, name, starts_at) values ($1, $2, 'Movie night', now() + interval '1 day')`, [srv2, voice2]), 'row-level security');
+const event = (await expectOk('owner schedules an event in a voice channel', () =>
+  as(A, `insert into public.server_events (server_id, channel_id, name, starts_at) values ($1, $2, 'Movie night', now() + interval '1 day') returning id`, [srv2, voice2])))?.rows[0].id;
+await expectError('events cannot start in the past', () =>
+  as(A, `insert into public.server_events (server_id, location, name, starts_at) values ($1, 'The park', 'Picnic', now() - interval '1 day')`, [srv2]), 'future');
+await expectOk('erin RSVPs; outsiders see neither the event nor RSVPs', async () => {
+  await as(E, `insert into public.event_rsvps (event_id) values ($1)`, [event]);
+  const n = (await as(A, `select count(*)::int n from public.event_rsvps where event_id = $1`, [event])).rows[0].n;
+  const leak = (await as(B, `select count(*)::int n from public.server_events`)).rows[0].n;
+  if (n !== 1 || leak !== 0) throw new Error(`${n} ${leak}`);
+});
+await expectOk('starting the event is audited', async () => {
+  await as(A, `update public.server_events set status = 'active' where id = $1`, [event]);
+  const log = (await as(A, `select count(*)::int n from public.audit_log where action = 'event_active'`)).rows[0].n;
+  if (log !== 1) throw new Error(String(log));
+});
+
 await expectOk('presence status column is writable', () => as(C, `update public.users set presence_status = 'dnd' where id = '${C}'`));
 await expectError('badge_ids still not writable', () => as(C, `update public.users set badge_ids = '["staff"]' where id = '${C}'`));
 

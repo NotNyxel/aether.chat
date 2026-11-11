@@ -171,10 +171,14 @@ export function useRoleActions(serverId: string) {
 export function useChannelActions(serverId: string) {
   const sb = useSupabase();
   const qc = useQueryClient();
-  const refresh = () => void qc.invalidateQueries({ queryKey: ['channels', serverId] });
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ['channels', serverId] });
+    void qc.invalidateQueries({ queryKey: ['channel'] });
+    void qc.invalidateQueries({ queryKey: ['channel-permissions'] });
+  };
   return {
     update: useMutation({
-      mutationFn: async ({ id, patch }: { id: string; patch: Partial<Pick<Channel, 'name' | 'topic' | 'rate_limit_seconds' | 'user_limit' | 'nsfw' | 'parent_id'>> }) =>
+      mutationFn: async ({ id, patch }: { id: string; patch: Partial<Pick<Channel, 'name' | 'topic' | 'rate_limit_seconds' | 'user_limit' | 'nsfw' | 'parent_id' | 'subtype' | 'forum_tags' | 'require_tag' | 'default_sort' | 'default_layout'>> }) =>
         unwrap(await sb.from('channels').update(patch).eq('id', id).select('*').single()) as Channel,
       onSuccess: refresh,
     }),

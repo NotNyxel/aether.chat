@@ -1,5 +1,5 @@
 /**
- * Permission bitmask, mirrored 1:1 from `public.permission_bit()` (supabase/migrations/006).
+ * Permission bitmask, mirrored 1:1 from `public.permission_bit()` (supabase/migrations/007).
  * The database is the source of truth: these helpers only drive UI affordances
  * (hiding buttons, disabling inputs). RLS and RPC checks enforce the real rules.
  */
@@ -29,11 +29,16 @@ export const Permission = {
   USE_SOUNDBOARD: 1n << 22n,
   MANAGE_EXPRESSIONS: 1n << 23n,
   REQUEST_TO_SPEAK: 1n << 24n,
+  CREATE_PUBLIC_THREADS: 1n << 25n,
+  CREATE_PRIVATE_THREADS: 1n << 26n,
+  SEND_MESSAGES_IN_THREADS: 1n << 27n,
+  MANAGE_THREADS: 1n << 28n,
+  MANAGE_EVENTS: 1n << 29n,
 } as const;
 
 export type PermissionName = keyof typeof Permission;
 
-export const ALL_PERMISSIONS = (1n << 25n) - 1n;
+export const ALL_PERMISSIONS = (1n << 30n) - 1n;
 
 /** Labels, descriptions and grouping for the role editor and channel overrides. */
 export const PERMISSION_GROUPS: { title: string; items: { key: PermissionName; label: string; hint: string; channel?: boolean }[] }[] = [
@@ -64,7 +69,11 @@ export const PERMISSION_GROUPS: { title: string; items: { key: PermissionName; l
       { key: 'SEND_MESSAGES', label: 'Send Messages', hint: 'Post messages in text channels.', channel: true },
       { key: 'ATTACH_FILES', label: 'Attach Files', hint: 'Upload images and files.', channel: true },
       { key: 'MENTION_EVERYONE', label: 'Mention @everyone, @here and all roles', hint: 'Ping everyone, or roles that are not mentionable.', channel: true },
-      { key: 'MANAGE_MESSAGES', label: 'Manage Messages', hint: "Pin messages and bypass slow mode.", channel: true },
+      { key: 'MANAGE_MESSAGES', label: 'Manage Messages', hint: 'Pin messages, bypass slow mode, and post and publish in announcement channels.', channel: true },
+      { key: 'CREATE_PUBLIC_THREADS', label: 'Create Public Threads', hint: 'Start threads anyone in the channel can see.', channel: true },
+      { key: 'CREATE_PRIVATE_THREADS', label: 'Create Private Threads', hint: 'Start invite-only threads.', channel: true },
+      { key: 'SEND_MESSAGES_IN_THREADS', label: 'Send Messages in Threads', hint: 'Reply in threads and forum posts.', channel: true },
+      { key: 'MANAGE_THREADS', label: 'Manage Threads', hint: 'Rename, archive, lock and delete any thread, and see all private threads.', channel: true },
     ],
   },
   {
@@ -81,8 +90,11 @@ export const PERMISSION_GROUPS: { title: string; items: { key: PermissionName; l
     ],
   },
   {
-    title: 'Expressions',
-    items: [{ key: 'MANAGE_EXPRESSIONS', label: 'Manage Expressions', hint: "Add, edit and remove the server's soundboard sounds." }],
+    title: 'Expressions & events',
+    items: [
+      { key: 'MANAGE_EXPRESSIONS', label: 'Manage Expressions', hint: "Add, edit and remove the server's soundboard sounds." },
+      { key: 'MANAGE_EVENTS', label: 'Manage Events', hint: 'Schedule, edit, start, end and cancel events.' },
+    ],
   },
   {
     title: 'Advanced',

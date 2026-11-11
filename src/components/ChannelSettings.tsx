@@ -20,13 +20,27 @@ const fmtSlow = (s: number) => (s === 0 ? 'Off' : s < 60 ? `${s}s` : s < 3600 ? 
 function OverviewTab({ channel, server, editable, onDeleted }: { channel: Channel; server: Server; editable: boolean; onDeleted: () => void }) {
   const actions = useChannelActions(server.id);
   const initial = useMemo(
-    () => ({ name: channel.name, topic: channel.topic ?? '', rate: channel.rate_limit_seconds, limit: channel.user_limit, nsfw: channel.nsfw }),
+    () => ({
+      name: channel.name,
+      topic: channel.topic ?? '',
+      rate: channel.rate_limit_seconds,
+      limit: channel.user_limit,
+      nsfw: channel.nsfw,
+      announcement: channel.subtype === 'announcement',
+      tags: channel.forum_tags ?? [],
+      requireTag: channel.require_tag,
+      sort: channel.default_sort,
+      layout: channel.default_layout,
+    }),
     [channel],
   );
   const [d, setD] = useState(initial);
   useEffect(() => setD(initial), [initial]);
   const dirty = JSON.stringify(d) !== JSON.stringify(initial);
   const isVoice = channel.type === 'voice' || channel.type === 'stream';
+  const isForum = channel.subtype === 'forum' || channel.subtype === 'media';
+  const [tagName, setTagName] = useState('');
+  const [tagEmoji, setTagEmoji] = useState('');
 
   return (
     <div className="space-y-6">
@@ -42,7 +56,7 @@ function OverviewTab({ channel, server, editable, onDeleted }: { channel: Channe
         </Field>
         {channel.type === 'text' && (
           <>
-            <Field label="Topic" hint="Shown in the channel header.">
+            <Field label={isForum ? 'Post guidelines' : 'Topic'} hint={isForum ? 'Markdown. Shown to everyone from the 📜 button.' : 'Shown in the channel header.'}>
               <textarea className={`${inputCls} min-h-16`} disabled={!editable} maxLength={1024} value={d.topic} onChange={(e) => setD({ ...d, topic: e.target.value })} />
             </Field>
             <Field label={`Slow mode: ${fmtSlow(d.rate)}`} hint="Members must wait this long between messages. People with Manage Messages are exempt.">
@@ -56,12 +70,72 @@ function OverviewTab({ channel, server, editable, onDeleted }: { channel: Channe
                 onChange={(e) => setD({ ...d, rate: SLOWMODES[Number(e.target.value)] })}
               />
             </Field>
+            {!isForum && (
+              <Toggle
+                label="Announcement channel"
+                hint="Only people with Manage Messages can post. Other servers can follow it, and published posts are copied to them."
+                checked={d.announcement}
+                onChange={(v) => editable && setD({ ...d, announcement: v })}
+              />
+            )}
             <Toggle
               label="Age-restricted channel"
               hint="Members must confirm they are 18+ before viewing."
               checked={d.nsfw}
               onChange={(v) => editable && setD({ ...d, nsfw: v })}
             />
+          </>
+        )}
+        {isForum && (
+          <>
+            <Field label={`Tags (${d.tags.length}/20)`} hint="Members pick up to 5 when posting, and everyone can filter by them.">
+              <div className="flex flex-wrap gap-1.5">
+                {d.tags.map((t) => (
+                  <span key={t.id} className="inline-flex items-center gap-1 rounded-full border border-ae-border bg-ae-surface px-2 py-0.5 text-xs">
+                    {t.emoji} {t.name}
+                    {editable && (
+                      <button type="button" className="text-ae-muted hover:text-ae-danger" onClick={() => setD({ ...d, tags: d.tags.filter((x) => x.id !== t.id) })}>
+                        ×
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+              {editable && d.tags.length < 20 && (
+                <div className="mt-2 flex gap-2">
+                  <input className={`${inputCls} w-16 text-center`} placeholder="🏷️" maxLength={8} value={tagEmoji} onChange={(e) => setTagEmoji(e.target.value)} />
+                  <input className={inputCls} placeholder="Tag name" maxLength={20} value={tagName} onChange={(e) => setTagName(e.target.value)} />
+                  <button
+                    type="button"
+                    disabled={!tagName.trim()}
+                    className="shrink-0 rounded-ae bg-ae-surface px-3 text-sm hover:bg-ae-hover disabled:opacity-40"
+                    onClick={() => {
+                      const id = Math.random().toString(36).slice(2, 10);
+                      setD({ ...d, tags: [...d.tags, { id, name: tagName.trim(), emoji: tagEmoji.trim() || null }] });
+                      setTagName('');
+                      setTagEmoji('');
+                    }}
+                  >
+                    Add tag
+                  </button>
+                </div>
+              )}
+            </Field>
+            <Toggle label="Require a tag on new posts" checked={d.requireTag} onChange={(v) => editable && setD({ ...d, requireTag: v })} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Default sort">
+                <select className={inputCls} disabled={!editable} value={d.sort} onChange={(e) => setD({ ...d, sort: e.target.value as typeof d.sort })}>
+                  <option value="activity">Recently active</option>
+                  <option value="created">Newest</option>
+                </select>
+              </Field>
+              <Field label="Default layout">
+                <select className={inputCls} disabled={!editable} value={d.layout} onChange={(e) => setD({ ...d, layout: e.target.value as typeof d.layout })}>
+                  <option value="list">List</option>
+                  <option value="gallery">Gallery</option>
+                </select>
+              </Field>
+            </div>
           </>
         )}
         {isVoice && (
@@ -110,6 +184,8 @@ function OverviewTab({ channel, server, editable, onDeleted }: { channel: Channe
                 patch: {
                   name: d.name.trim() || channel.name,
                   ...(channel.type === 'text' ? { topic: d.topic.trim() || null, rate_limit_seconds: d.rate, nsfw: d.nsfw } : {}),
+                  ...(channel.type === 'text' && !isForum ? { subtype: d.announcement ? ('announcement' as const) : null } : {}),
+                  ...(isForum ? { forum_tags: d.tags, require_tag: d.requireTag, default_sort: d.sort, default_layout: d.layout } : {}),
                   ...(isVoice ? { user_limit: d.limit } : {}),
                 },
               })

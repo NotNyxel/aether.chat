@@ -2,6 +2,8 @@
 import { useEffect, useMemo } from 'react';
 import { useChannels, useProfile, useServerMembers, useServers } from '../hooks/useChatData';
 import { useActivityFeed } from '../hooks/useActivityFeed';
+import { useEventReminders } from '../hooks/useEvents';
+import { useChannelById } from '../hooks/useThreads';
 import { useAutoIdle, useCustomStatusExpiry, useGameActivity, useTaskbarBadge, useTraySync } from '../hooks/useDesktop';
 import { useNotifyResolver } from '../hooks/useNotifications';
 import { useKeybinds } from '../hooks/useKeybinds';
@@ -26,6 +28,8 @@ import { ChannelSettings } from './ChannelSettings';
 import { MemberModeration, ServerSettings, useRank } from './ServerSettings';
 import { ServerView } from './ServerView';
 import { SettingsPanel } from './SettingsPanel';
+import { EventsDialog } from './Events';
+import { CreateThreadDialog } from './Threads';
 
 function ProfileActions({ me, userId, onDone }: { me: string; userId: string; onDone: () => void }) {
   const { data: friendships = [] } = useFriendships();
@@ -143,6 +147,18 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
     return list.find((c) => c.id === remembered && c.type !== 'category') ?? list.find((c) => c.type === 'text') ?? null;
   }, [channels.data, channelByServer, server]);
 
+  // A link or inbox entry may point at a thread: open its parent channel with the thread beside it.
+  const rememberedId = server ? channelByServer[server.id] : undefined;
+  const missing = !!server && !!rememberedId && !!channels.data && !channels.data.some((c) => c.id === rememberedId);
+  const { data: linked } = useChannelById(missing ? rememberedId! : null);
+  const selectChannel = useUiStore((s) => s.selectChannel);
+  const openThread = useUiStore((s) => s.openThread);
+  useEffect(() => {
+    if (!server || !linked?.thread_parent_id || linked.server_id !== server.id) return;
+    selectChannel(server.id, linked.thread_parent_id);
+    openThread(linked.id);
+  }, [linked, openThread, selectChannel, server]);
+
   const conversation = homeTarget === 'friends' ? null : (conversations.find((c) => c.id === homeTarget) ?? null);
   const { data: unread = [] } = useUnreadSummary();
   const { resolve } = useNotifyResolver();
@@ -159,6 +175,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
   // What the user is looking at right now (drives mark-as-read and notification sounds).
   const viewingScopeId = server ? (channel?.type === 'text' ? channel.id : null) : (conversation?.id ?? null);
   useActivityFeed(userId, viewingScopeId, me?.presence_status);
+  useEventReminders(userId, me?.presence_status === 'dnd');
 
   return (
     <div className="flex h-full text-ae-text">
@@ -192,6 +209,8 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <Lightbox />
       {popoverUserId && <PopoverForUser me={userId} userId={popoverUserId} server={server} onClose={() => showProfile(null)} />}
       <ServerSettings servers={servers.data ?? []} userId={userId} />
+      <CreateThreadDialog />
+      <EventsDialog servers={servers.data ?? []} channels={channels.data ?? []} userId={userId} />
       <ChannelSettings servers={servers.data ?? []} channels={channels.data ?? []} userId={userId} />
     </div>
   );

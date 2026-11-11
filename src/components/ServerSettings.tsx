@@ -745,6 +745,16 @@ const ACTION_LABELS: Record<string, { icon: string; text: string }> = {
   sound_create: { icon: '🎵', text: 'added the sound' },
   sound_update: { icon: '🎵', text: 'updated the sound' },
   sound_delete: { icon: '🗑️', text: 'removed the sound' },
+  thread_lock: { icon: '🔒', text: 'locked the thread' },
+  thread_unlock: { icon: '🔓', text: 'unlocked the thread' },
+  thread_delete: { icon: '🗑️', text: 'deleted the thread' },
+  channel_follow: { icon: '📢', text: 'followed an announcement channel into' },
+  event_create: { icon: '📅', text: 'scheduled the event' },
+  event_update: { icon: '📅', text: 'edited the event' },
+  event_delete: { icon: '🗑️', text: 'deleted the event' },
+  event_active: { icon: '▶️', text: 'started the event' },
+  event_completed: { icon: '⏹️', text: 'ended the event' },
+  event_canceled: { icon: '🚫', text: 'canceled the event' },
 };
 
 function AuditRow({ e }: { e: AuditEntry }) {

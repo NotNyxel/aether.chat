@@ -1,7 +1,7 @@
 /** Small modal primitives shared by server and channel creation flows. */
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 
-export function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Dialog({ title, onClose, children, wide = false }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -14,7 +14,7 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="ae-panel ae-dialog w-full max-w-md space-y-4 rounded-ae border border-ae-border p-6 shadow-2xl"
+        className={`ae-panel ae-dialog w-full ${wide ? "max-w-xl" : "max-w-md"} space-y-4 rounded-ae border border-ae-border p-6 shadow-2xl`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-bold">{title}</h2>

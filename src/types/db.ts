@@ -162,6 +162,31 @@ export interface Channel {
   user_limit: number | null;
   nsfw: boolean;
   created_at: string;
+  last_message_at: string | null;
+  /** null = plain text (or voice/stage/category). */
+  subtype: ChannelSubtype | null;
+  forum_tags: ForumTag[];
+  require_tag: boolean;
+  default_sort: 'activity' | 'created';
+  default_layout: 'list' | 'gallery';
+  /** Set on threads and forum posts: the channel they live in. */
+  thread_parent_id: string | null;
+  thread_owner_id: string | null;
+  thread_private: boolean;
+  thread_locked: boolean;
+  thread_archived_at: string | null;
+  thread_auto_archive: 60 | 1440 | 4320 | 10080;
+  thread_tags: string[];
+  thread_message_count: number;
+  thread_starter_id: string | null;
+}
+
+export type ChannelSubtype = 'announcement' | 'forum' | 'media';
+
+export interface ForumTag {
+  id: string;
+  name: string;
+  emoji?: string | null;
 }
 
 export interface Attachment {
@@ -208,6 +233,11 @@ export interface Message {
   mention_roles: string[];
   edited_at: string | null;
   created_at: string;
+  /** Thread started from this message. */
+  thread_id: string | null;
+  /** Set on copies delivered from a followed announcement channel. */
+  crossposted_from: { message_id: string; channel_id: string; channel_name: string; server_id: string; server_name: string } | null;
+  published_at: string | null;
 }
 
 export interface PollVote {
@@ -322,5 +352,27 @@ export interface SoundboardSound {
   url: string;
   volume: number;
   created_by: string | null;
+  created_at: string;
+}
+
+export type EventStatus = 'scheduled' | 'active' | 'completed' | 'canceled';
+
+export interface ServerEvent {
+  id: string;
+  server_id: string;
+  channel_id: string | null;
+  location: string | null;
+  name: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string | null;
+  status: EventStatus;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface EventRsvp {
+  event_id: string;
+  user_id: string;
   created_at: string;
 }

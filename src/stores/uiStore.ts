@@ -34,6 +34,14 @@ interface UiState {
   forwardMessageId: string | null;
   serverSettings: { serverId: string; tab: ServerSettingsTab } | null;
   channelSettingsId: string | null;
+  /** Thread or forum post open in the side panel. */
+  threadId: string | null;
+  /** "Create thread" dialog: from a message, or a new standalone thread. */
+  threadDraft: { parentId: string; messageId: string | null } | null;
+  eventsServerId: string | null;
+  openThread: (threadId: string | null) => void;
+  openThreadDraft: (draft: { parentId: string; messageId: string | null } | null) => void;
+  openEvents: (serverId: string | null) => void;
   openHome: (target?: 'friends' | string) => void;
   selectServer: (serverId: string | null) => void;
   selectChannel: (serverId: string, channelId: string) => void;
@@ -64,10 +72,16 @@ export const useUiStore = create<UiState>()((set) => ({
   forwardMessageId: null,
   serverSettings: null,
   channelSettingsId: null,
-  openHome: (target) => set((s) => ({ view: 'home', homeTarget: target ?? s.homeTarget })),
-  selectServer: (serverId) => set({ serverId, view: serverId ? 'server' : 'home' }),
+  threadId: null,
+  threadDraft: null,
+  eventsServerId: null,
+  openThread: (threadId) => set({ threadId }),
+  openThreadDraft: (threadDraft) => set({ threadDraft }),
+  openEvents: (eventsServerId) => set({ eventsServerId }),
+  openHome: (target) => set((s) => ({ view: 'home', homeTarget: target ?? s.homeTarget, threadId: null })),
+  selectServer: (serverId) => set((s) => ({ serverId, view: serverId ? 'server' : 'home', threadId: serverId === s.serverId ? s.threadId : null })),
   selectChannel: (serverId, channelId) =>
-    set((s) => ({ channelByServer: { ...s.channelByServer, [serverId]: channelId } })),
+    set((s) => ({ channelByServer: { ...s.channelByServer, [serverId]: channelId }, threadId: null })),
   goTo: ({ serverId, scopeId, messageId }) =>
     set((s) => ({
       ...(serverId

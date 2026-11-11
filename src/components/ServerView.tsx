@@ -8,7 +8,10 @@ import { useVoiceStates } from '../hooks/useVoiceStates';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, Server, ServerMember, VoiceState } from '../types/db';
 import { useCall } from './CallContext';
-import { ChannelGlyph } from './ChannelSidebar';
+import { ChannelGlyph, ChannelIcon } from './ChannelSidebar';
+import { FollowButton } from './Announcements';
+import { ForumView } from './Forum';
+import { ThreadPanel, ThreadsButton } from './Threads';
 import { UsersIcon } from './icons';
 import { MessagePane } from './MessagePane';
 import { Avatar, StyledName } from './ProfileCard';
@@ -203,6 +206,7 @@ function hasNsfwAck(channelId: string): boolean {
 
 export function ServerView({ server, channel, channels, userId }: { server: Server; channel: Channel | null; channels: Channel[]; userId: string }) {
   const memberListOpen = useUiStore((s) => s.memberListOpen);
+  const threadId = useUiStore((s) => s.threadId);
   const toggleMemberList = useUiStore((s) => s.toggleMemberList);
   const { voice, room, joinChannel, leave, toggleScreenShare, toggleCamera } = useCall();
   const scope = useMemo(() => (channel ? { kind: 'channel' as const, id: channel.id } : null), [channel]);
@@ -219,6 +223,10 @@ export function ServerView({ server, channel, channels, userId }: { server: Serv
     return <NsfwGate channel={channel} onAccept={() => setNsfwAcked((a) => [...a, channel.id])} />;
   }
 
+  if (channel.subtype === 'forum' || channel.subtype === 'media') {
+    return <ForumView key={channel.id} forum={channel} server={server} userId={userId} channels={channels} />;
+  }
+
   if (channel.type === 'text') {
     return (
       <MessagePane
@@ -232,20 +240,30 @@ export function ServerView({ server, channel, channels, userId }: { server: Serv
         top={streams.length > 0 ? <LiveBanner streams={streams} channels={channels} userId={userId} /> : undefined}
         header={
           <>
-            <ChannelGlyph type="text" size={18} />
+            <ChannelIcon channel={channel} size={18} />
             <h1 className="font-semibold">{channel.name}</h1>
             {channel.topic && <p className="truncate border-l border-ae-border pl-3 text-sm text-ae-muted">{channel.topic}</p>}
+            <span className="ml-auto flex shrink-0 items-center gap-1">
+              {channel.subtype === 'announcement' && <FollowButton channel={channel} server={server} userId={userId} />}
+              <ThreadsButton channel={channel} userId={userId} />
+            </span>
             <button
               type="button"
               title={memberListOpen ? 'Hide member list' : 'Show member list'}
-              className={`ml-auto shrink-0 ${memberListOpen ? 'text-ae-text' : 'text-ae-muted hover:text-ae-text'}`}
+              className={`shrink-0 ${memberListOpen ? 'text-ae-text' : 'text-ae-muted hover:text-ae-text'}`}
               onClick={toggleMemberList}
             >
               <UsersIcon size={18} />
             </button>
           </>
         }
-        aside={memberListOpen ? <MemberList server={server} /> : undefined}
+        aside={
+          threadId ? (
+            <ThreadPanel threadId={threadId} server={server} userId={userId} channels={channels} />
+          ) : memberListOpen ? (
+            <MemberList server={server} />
+          ) : undefined
+        }
         emptyState={
           <div>
             <h2 className="text-2xl font-bold">Welcome to #{channel.name}!</h2>

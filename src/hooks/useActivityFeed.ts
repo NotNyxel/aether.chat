@@ -4,15 +4,29 @@
  *   - keeps the unread summary (server dots, channel badges, DM counts) live, and
  *   - plays the DM / mention sound when the message lands somewhere the user isn't looking.
  */
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { playSound } from '../lib/sounds';
 import { useSupabase } from '../lib/supabase';
-import type { Message, PresenceStatus, UnreadRow } from '../types/db';
+import type { MemberRole, Message, PresenceStatus, UnreadRow } from '../types/db';
 
 export function useActivityFeed(userId: string, viewingScopeId: string | null, status: PresenceStatus | undefined) {
   const sb = useSupabase();
   const qc = useQueryClient();
+  // Every role I hold in any server, so @role mentions can count as mentions of me.
+  const { data: myRoles = [] } = useQuery({
+    queryKey: ['my-roles', userId],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await sb.from('member_roles').select('*').eq('user_id', userId);
+      if (error) throw new Error(error.message);
+      return data as MemberRole[];
+    },
+  });
+  const myRolesRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    myRolesRef.current = new Set(myRoles.map((r) => r.role_id));
+  }, [myRoles]);
   const viewingRef = useRef(viewingScopeId);
   const statusRef = useRef(status);
   useEffect(() => {
@@ -31,7 +45,8 @@ export function useActivityFeed(userId: string, viewingScopeId: string | null, s
         const mine = m.author_id === userId;
         const viewing = viewingRef.current === scopeId && document.hasFocus();
         const isDm = !!m.conversation_id;
-        const mentioned = !mine && (m.mentions?.includes(userId) || m.mention_everyone);
+        const mentioned =
+          !mine && (m.mentions?.includes(userId) || m.mention_everyone || !!m.mention_roles?.some((id) => myRolesRef.current.has(id)));
 
         let known = false;
         qc.setQueryData<UnreadRow[]>(['unread'], (rows) =>

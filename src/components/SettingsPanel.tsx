@@ -24,7 +24,7 @@ import { useTheme } from './ThemeEngine';
 // Shared form primitives
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+export function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
     <section className="space-y-3 border-b border-ae-border pb-6 last:border-0">
       <header>
@@ -36,7 +36,7 @@ function Section({ title, description, children }: { title: string; description?
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block space-y-1">
       <span className="text-[11px] font-bold tracking-wide text-ae-muted uppercase">{label}</span>
@@ -46,10 +46,10 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-const inputCls =
+export const inputCls =
   'w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm text-ae-text outline-none focus:border-ae-accent';
 
-function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+export function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
   return (
     <label className="flex cursor-pointer items-start justify-between gap-4">
       <span>
@@ -61,7 +61,7 @@ function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange
   );
 }
 
-function Slider(props: {
+export function Slider(props: {
   label: string;
   value: number;
   min: number;
@@ -86,7 +86,7 @@ function Slider(props: {
   );
 }
 
-function ColorField({ label, value, onChange }: { label: string; value: string | null; onChange: (v: string | null) => void }) {
+export function ColorField({ label, value, onChange }: { label: string; value: string | null; onChange: (v: string | null) => void }) {
   return (
     <Field label={label}>
       <div className="flex items-center gap-2">

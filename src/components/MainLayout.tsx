@@ -1,6 +1,6 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
 import { useEffect, useMemo } from 'react';
-import { useChannels, useProfile, useServers } from '../hooks/useChatData';
+import { useChannels, useProfile, useServerMembers, useServers } from '../hooks/useChatData';
 import { useActivityFeed } from '../hooks/useActivityFeed';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { useUnreadSummary } from '../hooks/useMessageExtras';
@@ -8,7 +8,7 @@ import { PresenceProvider } from '../hooks/usePresence';
 import { useBlocks, useConversationActions, useConversations, useFriendActions, useFriendships } from '../hooks/useSocialData';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
-import type { Channel } from '../types/db';
+import type { Channel, Server } from '../types/db';
 import { CallProvider, useCall } from './CallContext';
 import { ChannelSidebar } from './ChannelSidebar';
 import { isUnread } from './ConversationBits';
@@ -20,6 +20,8 @@ import { IncomingCall } from './IncomingCall';
 import { Lightbox } from './Lightbox';
 import { ProfilePopover } from './ProfileCard';
 import { ServerRail } from './ServerRail';
+import { ChannelSettings } from './ChannelSettings';
+import { MemberModeration, ServerSettings, useRank } from './ServerSettings';
 import { ServerView } from './ServerView';
 import { SettingsPanel } from './SettingsPanel';
 
@@ -80,9 +82,35 @@ function ProfileActions({ me, userId, onDone }: { me: string; userId: string; on
   );
 }
 
-function PopoverForUser({ me, userId, onClose }: { me: string; userId: string; onClose: () => void }) {
+/** Moderation tools for a member, shown in their profile card while you're viewing the server. */
+function ServerMemberTools({ server, me, userId }: { server: Server; me: string; userId: string }) {
+  const { data: members = [] } = useServerMembers(server.id);
+  const rank = useRank(server, me);
+  const member = members.find((m) => m.user_id === userId);
+  if (!member) return null;
+  return (
+    <div className="w-[340px] rounded-ae border border-ae-border bg-ae-elevated p-3">
+      <p className="mb-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">In {server.name}</p>
+      {member.nickname && <p className="mb-1 text-sm">Nickname: {member.nickname}</p>}
+      <MemberModeration server={server} member={member} rank={rank} compact />
+    </div>
+  );
+}
+
+function PopoverForUser({ me, userId, server, onClose }: { me: string; userId: string; server: Server | null; onClose: () => void }) {
   const { data } = useProfile(userId);
-  return data ? <ProfilePopover profile={data} onClose={onClose} footer={<ProfileActions me={me} userId={userId} onDone={onClose} />} /> : null;
+  return data ? (
+    <ProfilePopover
+      profile={data}
+      onClose={onClose}
+      footer={
+        <>
+          {server && <ServerMemberTools server={server} me={me} userId={userId} />}
+          <ProfileActions me={me} userId={userId} onDone={onClose} />
+        </>
+      }
+    />
+  ) : null;
 }
 
 function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
@@ -155,7 +183,9 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <IncomingCall userId={userId} silent={me?.presence_status === 'dnd'} />
       <ForwardDialog me={userId} />
       <Lightbox />
-      {popoverUserId && <PopoverForUser me={userId} userId={popoverUserId} onClose={() => showProfile(null)} />}
+      {popoverUserId && <PopoverForUser me={userId} userId={popoverUserId} server={server} onClose={() => showProfile(null)} />}
+      <ServerSettings servers={servers.data ?? []} userId={userId} />
+      <ChannelSettings servers={servers.data ?? []} channels={channels.data ?? []} userId={userId} />
     </div>
   );
 }

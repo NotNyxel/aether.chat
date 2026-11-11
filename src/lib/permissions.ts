@@ -1,7 +1,7 @@
 /**
- * Permission bitmask, mirrored 1:1 from `public.permission_bit()` in supabase/schema.sql.
+ * Permission bitmask, mirrored 1:1 from `public.permission_bit()` (supabase/migrations/004).
  * The database is the source of truth: these helpers only drive UI affordances
- * (hiding buttons, disabling inputs). RLS enforces the real checks.
+ * (hiding buttons, disabling inputs). RLS and RPC checks enforce the real rules.
  */
 export const Permission = {
   VIEW_CHANNEL: 1n << 0n,
@@ -23,11 +23,63 @@ export const Permission = {
   BAN_MEMBERS: 1n << 16n,
   CHANGE_NICKNAME: 1n << 17n,
   ADMINISTRATOR: 1n << 18n,
+  MANAGE_NICKNAMES: 1n << 19n,
+  MODERATE_MEMBERS: 1n << 20n,
+  VIEW_AUDIT_LOG: 1n << 21n,
 } as const;
 
 export type PermissionName = keyof typeof Permission;
 
-export const ALL_PERMISSIONS = (1n << 19n) - 1n;
+export const ALL_PERMISSIONS = (1n << 22n) - 1n;
+
+/** Labels, descriptions and grouping for the role editor and channel overrides. */
+export const PERMISSION_GROUPS: { title: string; items: { key: PermissionName; label: string; hint: string; channel?: boolean }[] }[] = [
+  {
+    title: 'General',
+    items: [
+      { key: 'VIEW_CHANNEL', label: 'View Channels', hint: 'See channels and read their history.', channel: true },
+      { key: 'MANAGE_CHANNELS', label: 'Manage Channels', hint: 'Create, edit, reorder and delete channels.', channel: true },
+      { key: 'MANAGE_ROLES', label: 'Manage Roles', hint: 'Create and edit roles below their own, assign them, and edit channel permissions.', channel: true },
+      { key: 'MANAGE_SERVER', label: 'Manage Server', hint: 'Change the server name, icon, banner and custom invite codes.' },
+      { key: 'VIEW_AUDIT_LOG', label: 'View Audit Log', hint: 'See the record of changes made to this server.' },
+    ],
+  },
+  {
+    title: 'Membership',
+    items: [
+      { key: 'CREATE_INVITE', label: 'Create Invite', hint: 'Invite new people to the server.', channel: true },
+      { key: 'CHANGE_NICKNAME', label: 'Change Nickname', hint: 'Change their own nickname in this server.' },
+      { key: 'MANAGE_NICKNAMES', label: 'Manage Nicknames', hint: "Change other members' nicknames." },
+      { key: 'KICK_MEMBERS', label: 'Kick Members', hint: 'Remove members (they can rejoin with a new invite).' },
+      { key: 'BAN_MEMBERS', label: 'Ban Members', hint: 'Remove members permanently.' },
+      { key: 'MODERATE_MEMBERS', label: 'Timeout Members', hint: 'Stop members from chatting, reacting or joining voice for a while.' },
+    ],
+  },
+  {
+    title: 'Text',
+    items: [
+      { key: 'SEND_MESSAGES', label: 'Send Messages', hint: 'Post messages in text channels.', channel: true },
+      { key: 'ATTACH_FILES', label: 'Attach Files', hint: 'Upload images and files.', channel: true },
+      { key: 'MENTION_EVERYONE', label: 'Mention @everyone, @here and all roles', hint: 'Ping everyone, or roles that are not mentionable.', channel: true },
+      { key: 'MANAGE_MESSAGES', label: 'Manage Messages', hint: "Pin messages and bypass slow mode.", channel: true },
+    ],
+  },
+  {
+    title: 'Voice',
+    items: [
+      { key: 'CONNECT', label: 'Connect', hint: 'Join voice and stream channels.', channel: true },
+      { key: 'SPEAK', label: 'Speak', hint: 'Talk in voice channels.', channel: true },
+      { key: 'STREAM', label: 'Video & Screen Share', hint: 'Turn on the camera and share the screen.', channel: true },
+      { key: 'MUTE_MEMBERS', label: 'Mute Members', hint: 'Server-mute others in voice (coming in Batch 4).', channel: true },
+      { key: 'DEAFEN_MEMBERS', label: 'Deafen Members', hint: 'Server-deafen others in voice (coming in Batch 4).', channel: true },
+      { key: 'MOVE_MEMBERS', label: 'Move Members', hint: 'Move members between voice channels (coming in Batch 4).', channel: true },
+    ],
+  },
+  {
+    title: 'Advanced',
+    items: [{ key: 'ADMINISTRATOR', label: 'Administrator', hint: 'Every permission, and bypasses channel overrides. Grant with care.' }],
+  },
+];
 
 /** PostgREST returns bigint columns as numbers or strings depending on size; normalize both. */
 export function toMask(value: number | string | bigint | null | undefined): bigint {

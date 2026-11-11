@@ -98,6 +98,10 @@ export interface MessageItemProps {
   votes: PollVote[] | undefined;
   editing: boolean;
   canPin: boolean;
+  /** Color of the author's highest colored role (servers only). */
+  authorColor?: string | null;
+  /** Role ids the viewer holds (for @role mention highlighting). */
+  myRoleIds?: ReadonlySet<string>;
   onReply: (m: Message) => void;
   onStartEdit: (id: string) => void;
   onSaveEdit: (id: string, content: string) => void;
@@ -121,7 +125,8 @@ function MessageItemImpl(props: MessageItemProps) {
   const [copied, setCopied] = useState(false);
   const name = author?.display_name || author?.username || 'Deleted user';
   const mine = message.author_id === me;
-  const mentioned = message.mentions?.includes(me) || message.mention_everyone;
+  const mentioned =
+    message.mentions?.includes(me) || message.mention_everyone || !!message.mention_roles?.some((id) => props.myRoleIds?.has(id));
   const showHeader = !grouped || !!message.reply_to_id || !!message.forwarded_from;
   const scopeId = message.channel_id ?? message.conversation_id!;
   const embeds = editing ? [] : extractEmbedUrls(message.content);
@@ -169,7 +174,7 @@ function MessageItemImpl(props: MessageItemProps) {
             <button
               type="button"
               className="text-sm font-semibold hover:underline"
-              style={{ color: author?.accent_color ?? undefined }}
+              style={{ color: props.authorColor ?? author?.accent_color ?? undefined }}
               onClick={() => message.author_id && showProfile(message.author_id)}
             >
               {name}

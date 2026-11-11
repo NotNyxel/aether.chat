@@ -14,6 +14,7 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 | **0.1.0** | Servers, channels, live chat, P2P mesh voice, screen share, theme engine, rich profiles, settings |
 | **0.2.0** | Friends, blocks, DMs, group DMs, 1:1 and group calls, camera, replies, edits, reactions, uploads, typing, presence |
 | **0.3.0** | Renamed to aether.chat, built-in backend (no setup), signed auto-updates via GitHub Releases |
+| **0.5.0** | Batch 2: server settings, roles editor, channel permission overrides, timeouts, kick/ban, invites, audit log, drag-reorder, `@role` mentions |
 | **0.4.0** | Batch 1: emoji picker, autocomplete, unreads and mentions, pins, search, link previews, polls, forwarding, message links, lightbox, sound effects |
 
 ---
@@ -33,16 +34,18 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ✅ Markdown additions: subtext (`-#`), timestamps (`<t:…>`), syntax-highlighted code blocks
 - ✅ **Bonus:** sound effects for messages, mentions, voice and calls, with per-sound settings
 
-## Batch 2: Server management → 0.5.0
-- ⬜ Server settings: name, icon, banner, description, default notifications
-- ⬜ Roles editor: create, reorder (drag), colors, hoist, mentionable, every permission toggle
-- ⬜ Per-channel permission overrides UI (roles and members, allow/deny/inherit)
-- ⬜ Channel settings: rename, topic, slow mode, NSFW flag, user limit, sync with category
-- ⬜ Drag-and-drop channel and category reordering
-- ⬜ Member management: assign roles, nicknames, kick, ban (with reason), timeout
-- ⬜ Invite management: list, revoke, max uses, expiry, vanity code
-- ⬜ Audit log (who changed what, when)
-- ⬜ Server templates, welcome screen and rules screening
+## Batch 2: Server management → 0.5.0 ✅
+- ✅ Server settings: name, icon, banner, description
+- ✅ Roles editor: create, reorder (drag), colors, hoist, mentionable, every permission toggle
+- ✅ Per-channel permission overrides UI (roles and members, allow/deny/inherit)
+- ✅ Channel settings: rename, topic, slow mode, NSFW flag, user limit, delete
+- ⬜ "Sync permissions with category" (moved to Batch 8 polish)
+- ✅ Drag-and-drop channel and category reordering
+- ✅ Member management: assign roles, nicknames, kick, ban (with reason), timeout
+- ✅ Invite management: list, revoke, max uses, expiry, vanity code
+- ✅ Audit log (who changed what, when)
+- ✅ **Bonus:** `@role` mentions, role-colored names, hoisted member-list groups, moderation from profile cards
+- ⬜ Server templates, welcome screen and rules screening (moved to Batch 7: Community)
 
 ## Batch 3: Notifications & presence → 0.6.0
 - ⬜ Native desktop notifications (Tauri notification plugin) for DMs, mentions and calls
@@ -83,6 +86,7 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 
 ## Batch 7: Community & integrations → 0.10.0
 - ⬜ Server discovery (opt-in public directory, categories, search)
+- ⬜ Server templates, welcome screen, rules screening
 - ⬜ Incoming webhooks (Edge Function endpoint per channel)
 - ⬜ Bot accounts and a slash-command framework
 - ⬜ Custom server emoji and stickers (upload, manage, use anywhere you're a member), emoji skin tones

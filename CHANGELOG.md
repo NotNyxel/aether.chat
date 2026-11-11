@@ -3,6 +3,41 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [0.5.0] - 2026-11-11
+
+**Batch 2: server management**
+
+- **Server Settings** (click the server name → Server settings):
+  - **Overview:** change the name, description, icon and banner. The banner shows above the channel list.
+  - **Roles:** create roles and drag to reorder them. Set colour, *display separately* and *mentionable*, and
+    toggle each of 22 permissions. Members holding a role are listed and can be added or removed. You can only edit
+    roles below your own, and you can't grant permissions you don't have.
+  - **Members:** search, add and remove roles, nickname, **timeout** (60 seconds to 1 week), **kick** and **ban**,
+    each with an optional reason.
+  - **Invites:** set expiry (30 minutes to never) and max uses, choose **custom codes** (Manage Server
+    permission), see who invited whom, and revoke invites.
+  - **Bans:** see the reason and date, and unban.
+  - **Audit Log:** every change to the server, role, channel, permissions, members, bans, timeouts and invites
+    is recorded by the database, with who did it and why. Filter by user or action. It can't be edited.
+- **Channel Settings** (⚙ next to a channel or category):
+  - rename, topic, **slow mode** (5 seconds to 6 hours), voice **user limit**, and **age-restricted (18+)**
+    channels with a confirmation screen;
+  - **permission overrides** per role and per member, set to Allow, Inherit or Deny;
+  - delete the channel.
+- **Drag-and-drop** to reorder channels (including between categories) and categories.
+- **New permissions:** Manage Nicknames, Timeout Members, View Audit Log.
+- **Timeouts** are enforced everywhere: timed-out members can read, but can't send, edit, react or join voice. The
+  message box tells them when the timeout ends.
+- **Role colours** on names in chat and the member list. Roles set to *display separately* get their own group in
+  the member list. ⏳ marks timed-out members and 👑 the owner.
+- **`@role` mentions:** autocomplete, coloured pills, mention badges and mention sounds for everyone holding the
+  role.
+- **Slow-mode countdown** in the message box.
+- **Moderation from the profile card:** click a member while you're in a server to manage their roles, nickname,
+  timeout, kick or ban.
+- Server dropdown menu: invite people, server settings, create channel or category, leave or delete.
+- Database: `supabase/migrations/004_server_management.sql`.
+
 ## [0.4.0] - 2026-11-11
 
 **Batch 1: messaging power-ups and sound effects**

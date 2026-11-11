@@ -58,6 +58,66 @@ export interface ServerMember {
   user_id: string;
   nickname: string | null;
   joined_at: string;
+  timed_out_until: string | null;
+}
+
+export interface ServerRole {
+  id: string;
+  server_id: string;
+  name: string;
+  color: string | null;
+  position: number;
+  /** Bitmask (see src/lib/permissions.ts). Comes back from PostgREST as a number. */
+  permissions: number | string;
+  is_default: boolean;
+  hoist: boolean;
+  mentionable: boolean;
+  created_at: string;
+}
+
+export interface MemberRole {
+  server_id: string;
+  user_id: string;
+  role_id: string;
+}
+
+export interface ChannelOverwrite {
+  channel_id: string;
+  target_type: 'role' | 'member';
+  target_id: string;
+  allow: number | string;
+  deny: number | string;
+}
+
+export interface ServerInvite {
+  code: string;
+  server_id: string;
+  creator_id: string | null;
+  max_uses: number | null;
+  uses: number;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface ServerBan {
+  server_id: string;
+  user_id: string;
+  reason: string | null;
+  banned_by: string | null;
+  created_at: string;
+}
+
+export interface AuditEntry {
+  id: number;
+  server_id: string;
+  actor_id: string | null;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  target_name: string | null;
+  changes: Record<string, unknown>;
+  reason: string | null;
+  created_at: string;
 }
 
 export interface Channel {
@@ -70,6 +130,7 @@ export interface Channel {
   position: number;
   rate_limit_seconds: number;
   user_limit: number | null;
+  nsfw: boolean;
   created_at: string;
 }
 
@@ -114,6 +175,7 @@ export interface Message {
   forwarded_from: ForwardedFrom | null;
   mentions: string[];
   mention_everyone: boolean;
+  mention_roles: string[];
   edited_at: string | null;
   created_at: string;
 }

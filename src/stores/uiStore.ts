@@ -3,6 +3,8 @@ import { create } from 'zustand';
 
 export type SettingsTab = 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth';
 
+export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit';
+
 export interface JumpTarget {
   scopeId: string;
   messageId: string;
@@ -30,6 +32,8 @@ interface UiState {
   jumpTarget: JumpTarget | null;
   lightbox: LightboxImage | null;
   forwardMessageId: string | null;
+  serverSettings: { serverId: string; tab: ServerSettingsTab } | null;
+  channelSettingsId: string | null;
   openHome: (target?: 'friends' | string) => void;
   selectServer: (serverId: string | null) => void;
   selectChannel: (serverId: string, channelId: string) => void;
@@ -42,6 +46,8 @@ interface UiState {
   showProfile: (userId: string | null) => void;
   openLightbox: (image: LightboxImage | null) => void;
   openForward: (messageId: string | null) => void;
+  openServerSettings: (target: { serverId: string; tab: ServerSettingsTab } | null) => void;
+  openChannelSettings: (channelId: string | null) => void;
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -56,6 +62,8 @@ export const useUiStore = create<UiState>()((set) => ({
   jumpTarget: null,
   lightbox: null,
   forwardMessageId: null,
+  serverSettings: null,
+  channelSettingsId: null,
   openHome: (target) => set((s) => ({ view: 'home', homeTarget: target ?? s.homeTarget })),
   selectServer: (serverId) => set({ serverId, view: serverId ? 'server' : 'home' }),
   selectChannel: (serverId, channelId) =>
@@ -74,4 +82,6 @@ export const useUiStore = create<UiState>()((set) => ({
   showProfile: (profilePopoverUserId) => set({ profilePopoverUserId }),
   openLightbox: (lightbox) => set({ lightbox }),
   openForward: (forwardMessageId) => set({ forwardMessageId }),
+  openServerSettings: (serverSettings) => set({ serverSettings }),
+  openChannelSettings: (channelSettingsId) => set({ channelSettingsId }),
 }));

@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type Keyboar
 import { useSendMessage, useUploadAttachment } from '../hooks/useChatData';
 import { searchEmoji, useEmojiData } from '../lib/emoji';
 import { playSound } from '../lib/sounds';
-import type { Attachment, Channel, Message, MessageScope } from '../types/db';
+import type { Attachment, Channel, Message, MessageScope, ServerRole } from '../types/db';
 import { useProfiles } from './ConversationBits';
 import { EmojiPicker } from './EmojiPicker';
 import { DisplayName } from './MessageItem';
@@ -29,6 +29,12 @@ export interface ComposerProps {
   memberIds: string[];
   channels: Channel[];
   canMentionEveryone: boolean;
+  /** Server roles (for @role autocomplete). */
+  roles?: ServerRole[];
+  /** When set, the user is timed out and cannot send. */
+  timedOutUntil?: string | null;
+  /** Slow-mode delay that applies to this user (0 = none). */
+  slowmodeSeconds?: number;
   replyTo: Message | null;
   onCancelReply: () => void;
   onEditLast: () => void;
@@ -58,7 +64,15 @@ export function Composer(props: ComposerProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [, tick] = useState(0);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const cooldownLeft = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+  useEffect(() => {
+    if (cooldownUntil <= Date.now()) return;
+    const t = setInterval(() => tick((n) => n + 1), 500);
+    return () => clearInterval(t);
+  }, [cooldownUntil]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Focus the box when a reply is started.
@@ -125,7 +139,17 @@ export function Composer(props: ComposerProps) {
               icon: <span className="text-ae-warning">@</span>,
             }))
         : [];
-      return [...people.slice(0, 8), ...extra];
+      const roleHits: Suggestion[] = (props.roles ?? [])
+        .filter((r) => !r.is_default && (r.mentionable || props.canMentionEveryone) && r.name.toLowerCase().includes(q))
+        .slice(0, 5)
+        .map((r) => ({
+          key: r.id,
+          insert: `<@&${r.id}> `,
+          label: `@${r.name}`,
+          sub: 'Role',
+          icon: <span className="h-3 w-3 rounded-full" style={{ background: r.color ?? 'var(--ae-text-muted)' }} />,
+        }));
+      return [...people.slice(0, 8), ...roleHits, ...extra];
     }
     if (trigger.kind === '#') {
       return props.channels
@@ -141,7 +165,7 @@ export function Composer(props: ComposerProps) {
       sub: e.label,
       icon: <span className="text-xl leading-none">{e.emoji}</span>,
     }));
-  }, [trigger, props.memberIds, props.channels, props.canMentionEveryone, profiles, emoji]);
+  }, [trigger, props.memberIds, props.channels, props.canMentionEveryone, props.roles, profiles, emoji]);
 
   useEffect(() => setSelected(0), [trigger?.kind, trigger?.query]);
 
@@ -171,7 +195,7 @@ export function Composer(props: ComposerProps) {
   // ── Sending ───────────────────────────────────────────────────────────────────────────────
   const submit = () => {
     const content = draft.trim();
-    if ((!content && pending.length === 0) || send.isPending || uploading > 0) return;
+    if ((!content && pending.length === 0) || send.isPending || uploading > 0 || cooldownLeft > 0 || props.timedOutUntil) return;
     send.mutate(
       { content, replyToId: props.replyTo?.id ?? null, attachments: pending },
       {
@@ -182,6 +206,7 @@ export function Composer(props: ComposerProps) {
           props.onStopTyping();
           props.onSent();
           playSound('messageSent');
+          if (props.slowmodeSeconds) setCooldownUntil(Date.now() + props.slowmodeSeconds * 1000);
         },
       },
     );
@@ -243,6 +268,17 @@ export function Composer(props: ComposerProps) {
   };
 
   const hasTop = !!props.replyTo || pending.length > 0 || uploading > 0;
+
+  if (props.timedOutUntil) {
+    return (
+      <div className="px-4 pb-1">
+        <div className="rounded-ae border border-ae-warning/50 bg-ae-warning/10 px-4 py-3 text-sm">
+          ⏳ You&apos;re timed out until <strong>{new Date(props.timedOutUntil).toLocaleString()}</strong>. You can read, but not send,
+          react or join voice.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative px-4 pb-1">
@@ -398,6 +434,8 @@ export function Composer(props: ComposerProps) {
           />
         )}
       </div>
+      {cooldownLeft > 0 && <p className="text-xs text-ae-warning">🐢 Slow mode is on: you can send again in {cooldownLeft}s.</p>}
+      {!cooldownLeft && !!props.slowmodeSeconds && <p className="text-[11px] text-ae-muted">🐢 Slow mode: one message every {props.slowmodeSeconds}s.</p>}
       {(send.isError || upload.isError) && <p className="text-xs text-ae-danger">{(send.error ?? upload.error)?.message}</p>}
 
       {pollOpen && (

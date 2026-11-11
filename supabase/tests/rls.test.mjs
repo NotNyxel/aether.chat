@@ -286,6 +286,110 @@ await expectOk('DM unread count for alice (1 unread from carol)', async () => {
 await expectOk('spoiler + alt attachments accepted', () => as(A, `insert into public.messages (channel_id, attachments) values ($1, $2::jsonb)`,
   [general, JSON.stringify([{ url: 'https://x.test/a.png', name: 'a.png', size: 10, content_type: 'image/png', spoiler: true, alt: 'a cat' }])]));
 
+
+console.log('\nBatch 2: roles, timeouts, role mentions, audit log, invites, reordering');
+const D = '44444444-4444-4444-4444-444444444444';
+await db.exec(`insert into auth.users (id, raw_user_meta_data) values ('${D}', '{"username":"dave"}')`);
+const srv2 = (await as(A, `select id from public.servers where name = 'Test'`)).rows[0].id;
+const gen2 = (await as(A, `select id from public.channels where server_id = $1 and type = 'text'`, [srv2])).rows[0].id;
+const voice2 = (await as(A, `select id from public.channels where server_id = $1 and type = 'voice'`, [srv2])).rows[0].id;
+await expectOk('dave joins the server', async () => {
+  const code = (await as(A, `insert into public.server_invites (server_id) values ($1) returning code`, [srv2])).rows[0].code;
+  await as(D, `select public.join_server($1)`, [code]);
+});
+await expectOk('owner has all 22 permission bits', async () => {
+  const r = await as(A, `select public.server_permissions($1) p`, [srv2]);
+  if (Number(r.rows[0].p) !== 2 ** 22 - 1) throw new Error(String(r.rows[0].p));
+});
+const MOD_PERMS = (1 << 15) | (1 << 19) | (1 << 20) | (1 << 21); // kick, manage nicknames, moderate, audit log
+const modRole = (await expectOk('owner creates a mentionable Mod role', () =>
+  as(A, `insert into public.server_roles (server_id, name, color, position, permissions, mentionable, hoist) values ($1, 'Mod', '#ff8800', 2, $2, true, true) returning id`, [srv2, MOD_PERMS])))?.rows[0].id;
+await expectOk('owner gives carol the Mod role', () => as(A, `insert into public.member_roles (server_id, user_id, role_id) values ($1, '${C}', $2)`, [srv2, modRole]));
+await expectError('carol cannot create a role with ADMINISTRATOR (no MANAGE_ROLES)', () =>
+  as(C, `insert into public.server_roles (server_id, name, position, permissions) values ($1, 'x', 1, $2)`, [srv2, 1 << 18]));
+
+await expectOk('mod (carol) times out dave for 10 minutes', () => as(C, `select public.timeout_member($1, '${D}', 10, 'spam')`, [srv2]));
+await expectError('timed-out dave cannot post', () => as(D, `insert into public.messages (channel_id, content) values ($1, 'hi')`, [gen2]), 'timed out');
+await expectError('timed-out dave cannot react', async () => {
+  const m = (await as(A, `insert into public.messages (channel_id, content) values ($1, 'react to me') returning id`, [gen2])).rows[0].id;
+  await as(D, `insert into public.message_reactions (message_id, emoji) values ($1, '👍')`, [m]);
+}, 'timed out');
+await expectOk('timed-out dave cannot join voice', async () => {
+  const ok = (await as(D, `select public.can_access_realtime_topic($1) ok`, [`voice:${voice2}`])).rows[0].ok;
+  if (ok) throw new Error('allowed');
+});
+await expectError('dave cannot time out carol', () => as(D, `select public.timeout_member($1, '${C}', 10)`, [srv2]), 'permission');
+await expectError('carol cannot time out the owner', () => as(C, `select public.timeout_member($1, '${A}', 10)`, [srv2]), 'at or above');
+await expectOk('timeout removed: dave can post again', async () => {
+  await as(C, `select public.timeout_member($1, '${D}', 0)`, [srv2]);
+  await as(D, `insert into public.messages (channel_id, content) values ($1, 'back')`, [gen2]);
+});
+
+await expectOk('@role mention resolves for a mentionable role', async () => {
+  const r = await as(D, `insert into public.messages (channel_id, content) values ($1, $2) returning mention_roles`, [gen2, `ping <@&${modRole}>`]);
+  if (!r.rows[0].mention_roles.includes(modRole)) throw new Error(JSON.stringify(r.rows[0]));
+});
+await expectOk('carol sees the role mention in unread_summary', async () => {
+  await db.exec(`update public.channel_read_states set last_read_at = now() - interval '1 hour' where user_id = '${C}'`);
+  const row = (await as(C, `select * from public.unread_summary() where scope_id = $1`, [gen2])).rows[0];
+  if (!row || row.mention_count < 1) throw new Error(JSON.stringify(row));
+});
+await expectOk('non-mentionable role is ignored for dave', async () => {
+  await as(A, `update public.server_roles set mentionable = false where id = $1`, [modRole]);
+  const r = await as(D, `insert into public.messages (channel_id, content) values ($1, $2) returning mention_roles`, [gen2, `ping <@&${modRole}>`]);
+  if (r.rows[0].mention_roles.length !== 0) throw new Error('mentioned');
+});
+
+await expectError('dave cannot create a custom invite code', () =>
+  as(D, `insert into public.server_invites (server_id, code) values ($1, 'mycoolserver')`, [srv2]), 'Manage Server');
+await expectOk('owner creates a vanity invite', () => as(A, `insert into public.server_invites (server_id, code) values ($1, 'testvanity')`, [srv2]));
+
+await expectError('dave cannot reorder channels', () => as(D, `select public.reorder_channels($1, '[]'::jsonb)`, [srv2]), 'MANAGE_CHANNELS');
+await expectOk('owner moves #general to the top of the voice category', async () => {
+  const cat = (await as(A, `select id from public.channels where server_id = $1 and type = 'category' and name = 'Voice Channels'`, [srv2])).rows[0].id;
+  await as(A, `select public.reorder_channels($1, $2::jsonb)`, [srv2, JSON.stringify([{ id: gen2, parent_id: cat, position: 0 }])]);
+  const r = await as(A, `select parent_id from public.channels where id = $1`, [gen2]);
+  if (r.rows[0].parent_id !== cat) throw new Error('not moved');
+});
+await expectOk('owner reorders roles', async () => {
+  const second = (await as(A, `insert into public.server_roles (server_id, name, position) values ($1, 'Helper', 1) returning id`, [srv2])).rows[0].id;
+  await as(A, `select public.reorder_roles($1, array[$2, $3]::uuid[])`, [srv2, second, modRole]);
+  const r = await as(A, `select name, position from public.server_roles where server_id = $1 and not is_default order by position desc`, [srv2]);
+  if (r.rows[0].name !== 'Helper') throw new Error(JSON.stringify(r.rows));
+});
+
+await expectOk('mod sets dave\'s nickname', () => as(C, `select public.set_member_nickname($1, '${D}', 'Davey')`, [srv2]));
+await expectOk('mod kicks dave with a reason', () => as(C, `select public.kick_member($1, '${D}', 'rule 3')`, [srv2]));
+await expectOk('audit log records the moderation trail', async () => {
+  const r = await as(C, `select action, reason from public.audit_log where server_id = $1 order by id`, [srv2]);
+  const actions = r.rows.map((x) => x.action);
+  for (const need of ['role_create', 'member_role_add', 'member_timeout', 'member_timeout_remove', 'invite_create', 'channel_reorder', 'role_reorder', 'member_nickname', 'member_kick']) {
+    if (!actions.includes(need)) throw new Error(`missing ${need}: ${actions.join(',')}`);
+  }
+  if (r.rows.find((x) => x.action === 'member_kick').reason !== 'rule 3') throw new Error('kick reason missing');
+  if (actions.filter((x) => x === 'role_update').length > 1) throw new Error('reorder logged as role updates');
+});
+await expectOk('outsiders and members without VIEW_AUDIT_LOG see nothing', async () => {
+  const r = await as(B, `select count(*)::int n from public.audit_log`);
+  if (r.rows[0].n !== 0) throw new Error('leak');
+});
+await expectError('audit log cannot be written directly', () => as(A, `insert into public.audit_log (server_id, action) values ($1, 'fake')`, [srv2]), 'permission denied');
+await expectOk('ban is logged once (no extra kick entry)', async () => {
+  const code = (await as(A, `insert into public.server_invites (server_id) values ($1) returning code`, [srv2])).rows[0].code;
+  await as(D, `select public.join_server($1)`, [code]);
+  const before = (await as(A, `select count(*)::int n from public.audit_log where action = 'member_kick'`)).rows[0].n;
+  await as(A, `select public.ban_member($1, '${D}', 'raid')`, [srv2]);
+  const after = (await as(A, `select count(*)::int n from public.audit_log where action = 'member_kick'`)).rows[0].n;
+  const ban = (await as(A, `select reason from public.audit_log where action = 'member_ban' order by id desc limit 1`)).rows[0];
+  if (after !== before || ban?.reason !== 'raid') throw new Error(`${before} ${after} ${JSON.stringify(ban)}`);
+});
+await expectOk('NSFW flag is settable by channel managers', () => as(A, `update public.channels set nsfw = true where id = $1`, [gen2]));
+await expectOk('deleting a server does not fail on audit writes', async () => {
+  const s = (await as(B, `insert into public.servers (name) values ('Throwaway') returning id`)).rows[0].id;
+  await as(B, `update public.servers set name = 'Throwaway 2' where id = $1`, [s]);
+  await as(B, `delete from public.servers where id = $1`, [s]);
+});
+
 await expectOk('presence status column is writable', () => as(C, `update public.users set presence_status = 'dnd' where id = '${C}'`));
 await expectError('badge_ids still not writable', () => as(C, `update public.users set badge_ids = '["staff"]' where id = '${C}'`));
 

@@ -16,6 +16,7 @@ import {
   useToggleReaction,
 } from '../hooks/useChatData';
 import { useMarkRead, usePollVotes, useTogglePin, useUnreadSummary, useVotePoll } from '../hooks/useMessageExtras';
+import { useMemberStyles, useMyMembership, useServerRoles } from '../hooks/useServerAdmin';
 import { useTyping } from '../hooks/useTyping';
 import { hasPermission, Permission } from '../lib/permissions';
 import { useUiStore } from '../stores/uiStore';
@@ -94,6 +95,12 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
   const [awayFromBottom, setAwayFromBottom] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const styles = useMemberStyles(serverId);
+  const { data: roles = [] } = useServerRoles(serverId);
+  const { data: membership } = useMyMembership(serverId, userId);
+  const myRoleIds = useMemo(() => new Set(styles.get(userId)?.roleIds ?? []), [styles, userId]);
+  const timedOutUntil = membership?.timed_out_until && new Date(membership.timed_out_until) > new Date() ? membership.timed_out_until : null;
+  const slowmode = channels.find((c) => c.id === scope.id)?.rate_limit_seconds ?? 0;
   const canPin = serverId ? hasPermission(perms, Permission.MANAGE_MESSAGES) : true;
   const canMentionEveryone = !!serverId && hasPermission(perms, Permission.MENTION_EVERYONE);
 
@@ -290,6 +297,8 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
                       votes={votesByMessage.get(m.id)}
                       editing={editingId === m.id}
                       canPin={canPin}
+                      authorColor={m.author_id ? styles.get(m.author_id)?.color : null}
+                      myRoleIds={myRoleIds}
                       onReply={onReply}
                       onStartEdit={onStartEdit}
                       onSaveEdit={onSaveEdit}
@@ -352,6 +361,9 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             memberIds={memberIds}
             channels={channels}
             canMentionEveryone={canMentionEveryone}
+            roles={roles}
+            timedOutUntil={timedOutUntil}
+            slowmodeSeconds={serverId && !hasPermission(perms, Permission.MANAGE_MESSAGES) ? slowmode : 0}
             replyTo={replyTo}
             onCancelReply={() => setReplyTo(null)}
             onEditLast={() => {

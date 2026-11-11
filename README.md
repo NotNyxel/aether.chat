@@ -68,6 +68,17 @@ That's it. There's nothing to configure. The app keeps itself up to date: when a
 | **Presence** | Online, Idle, Do Not Disturb or Invisible, shown as status dots on avatars everywhere. |
 | **Member list** | Per-server online and offline lists with crowns for owners. |
 
+### 🛡️ Server management
+| | |
+|---|---|
+| **Server settings** | Name, description, icon, banner. |
+| **Roles** | Drag-to-reorder hierarchy, colours, *display separately*, mentionable, 22 permissions. You can't edit roles above your own or grant what you don't have. |
+| **Channel settings** | Rename, topic, slow mode, user limit, 18+ age gate, delete. Per-role and per-member permission overrides (allow / inherit / deny). |
+| **Moderation** | Assign roles, set nicknames, timeouts (60 s–1 week, enforced for messages, reactions and voice), kick and ban with reasons, unban. Also available from any member's profile card. |
+| **Invites** | Expiry, max uses, custom vanity codes, revoke. |
+| **Audit log** | Database-written, read-only history of every administrative change, filterable by user and action. |
+| **Organisation** | Drag-and-drop channels and categories. Role-coloured names. Member list grouped by roles set to *display separately*. `@role` mentions. |
+
 ### 🎙️ Voice, video & calls
 | | |
 |---|---|
@@ -168,6 +179,7 @@ Migrations live in `supabase/`. Run them in order in the Supabase SQL editor:
 |---|---|
 | `schema.sql` | Users, servers, channels, roles and permission bitmasks, messages, invites, bans, storage buckets |
 | `migrations/002_social.sql` | Friends, blocks, DMs, group DMs, calls, reactions, presence status, Realtime topic authorization |
+| `migrations/004_server_management.sql` | New permissions, timeouts, `@role` mentions, NSFW channels, channel and role reordering, kick and nickname RPCs, custom invite codes, audit log |
 | `migrations/003_messaging.sql` | Polls and votes, pins, full-text search index, mentions and `@everyone`, forwards, per-channel unread state, `unread_summary()` |
 
 Edge Functions live in `supabase/functions/` (`link-preview`: SSRF-safe Open Graph fetcher, signed-in users only).

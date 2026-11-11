@@ -12,7 +12,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Fragment, lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { useUiStore } from '../stores/uiStore';
-import type { Channel } from '../types/db';
+import type { Channel, ServerRole } from '../types/db';
 import { parseMessageLink } from './messageLinks';
 import { openExternal } from './platform';
 
@@ -69,6 +69,25 @@ function ChannelMention({ id }: { id: string }) {
   );
 }
 
+function RoleMention({ id }: { id: string }) {
+  const qc = useQueryClient();
+  let role: ServerRole | undefined;
+  for (const [, list] of qc.getQueriesData<ServerRole[]>({ queryKey: ['roles'] })) {
+    role = list?.find((r) => r.id === id);
+    if (role) break;
+  }
+  const color = role?.color ?? 'var(--ae-accent)';
+  return (
+    <span
+      className="rounded px-0.5 font-medium"
+      style={{ color, background: `color-mix(in srgb, ${color} 18%, transparent)` }}
+      title={role ? `@${role.name}` : 'Unknown role'}
+    >
+      @{role?.name ?? 'deleted-role'}
+    </span>
+  );
+}
+
 const TIME_STYLES: Record<string, Intl.DateTimeFormatOptions> = {
   t: { timeStyle: 'short' },
   T: { timeStyle: 'medium' },
@@ -111,6 +130,7 @@ const INLINE_RULES: InlineRule[] = [
   { re: /`([^`\n]+)`/, render: (m, k) => <code key={k}>{m[1]}</code> },
   { re: /<t:(-?\d{1,13})(?::([tTdDfFR]))?>/, render: (m, k) => <Timestamp key={k} unix={Number(m[1])} style={m[2] ?? 'f'} /> },
   { re: new RegExp(`<#(${UUID})>`, 'i'), render: (m, k) => <ChannelMention key={k} id={m[1]} /> },
+  { re: new RegExp(`<@&(${UUID})>`, 'i'), render: (m, k) => <RoleMention key={k} id={m[1]} /> },
   { re: /<(https?:\/\/[^>\s]+)>/, render: (m, k) => <Link key={k} href={m[1]}>{m[1]}</Link> },
   { re: /\*\*([\s\S]+?)\*\*/, render: (m, k) => <strong key={k}>{renderInline(m[1], k)}</strong> },
   { re: /__([\s\S]+?)__/, render: (m, k) => <u key={k}>{renderInline(m[1], k)}</u> },

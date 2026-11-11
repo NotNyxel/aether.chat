@@ -390,6 +390,46 @@ await expectOk('deleting a server does not fail on audit writes', async () => {
   await as(B, `delete from public.servers where id = $1`, [s]);
 });
 
+// ── Batch 3: notification settings, status expiry, inbox ──────────────────────────────
+console.log('\n# Batch 3: notifications');
+const unreadOf = async (uid, scope) => (await as(uid, `select mention_count from public.unread_summary() where scope_id = $1`, [scope])).rows[0]?.mention_count;
+await expectOk('carol (mod) gets an @everyone mention badge by default', async () => {
+  await as(A, `select public.mark_channel_read($1)`, [gen2]).catch(() => undefined);
+  await as(C, `select public.mark_channel_read($1)`, [gen2]);
+  await new Promise((r) => setTimeout(r, 25)); // PGlite's clock is coarse
+  await as(A, `insert into public.messages (channel_id, content) values ($1, '@everyone hello')`, [gen2]);
+  if ((await unreadOf(C, gen2)) !== 1) throw new Error(String(await unreadOf(C, gen2)));
+});
+await expectOk('suppress @everyone on the server hides it', async () => {
+  await as(C, `insert into public.notification_settings (scope_id, scope_kind, suppress_everyone) values ($1, 'server', true)`, [srv2]);
+  if ((await unreadOf(C, gen2)) !== 0) throw new Error(String(await unreadOf(C, gen2)));
+});
+await expectOk('direct mention still counts with suppression on', async () => {
+  await new Promise((r) => setTimeout(r, 25));
+  await as(A, `insert into public.messages (channel_id, content) values ($1, 'hey @carol, inbox test')`, [gen2]);
+  if ((await unreadOf(C, gen2)) !== 1) throw new Error(String(await unreadOf(C, gen2)));
+});
+await expectOk('channel level "none" zeroes the badge', async () => {
+  await as(C, `insert into public.notification_settings (scope_id, scope_kind, level) values ($1, 'channel', 'none')`, [gen2]);
+  if ((await unreadOf(C, gen2)) !== 0) throw new Error(String(await unreadOf(C, gen2)));
+});
+await expectOk('settings are private to their owner', async () => {
+  const r = await as(A, `select count(*)::int n from public.notification_settings`);
+  if (r.rows[0].n !== 0) throw new Error('leak');
+});
+await expectError('cannot write settings for someone else', () =>
+  as(A, `insert into public.notification_settings (user_id, scope_id, scope_kind, level) values ('${C}', $1, 'server', 'none')`, [srv2]), 'row-level security');
+await expectOk('inbox lists carol\'s mentions, newest first', async () => {
+  const r = await as(C, `select content from public.recent_mentions(null, 10)`);
+  if (r.rows[0]?.content !== 'hey @carol, inbox test' || r.rows.length < 2) throw new Error(JSON.stringify(r.rows));
+});
+await expectOk('inbox hides mentions in servers you cannot see', async () => {
+  const r = await as(B, `select count(*)::int n from public.recent_mentions(null, 100) m where m.channel_id = $1`, [gen2]);
+  if (r.rows[0].n !== 0) throw new Error('leak');
+});
+await expectOk('custom status expiry is writable', () =>
+  as(C, `update public.users set custom_status = 'brb', custom_status_expires_at = now() + interval '1 hour' where id = '${C}'`));
+
 await expectOk('presence status column is writable', () => as(C, `update public.users set presence_status = 'dnd' where id = '${C}'`));
 await expectError('badge_ids still not writable', () => as(C, `update public.users set badge_ids = '["staff"]' where id = '${C}'`));
 

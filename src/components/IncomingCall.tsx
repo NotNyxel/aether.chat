@@ -6,7 +6,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { useActiveCalls, useConversations, useSocialRealtime } from '../hooks/useSocialData';
+import { flashTaskbar, notify } from '../lib/desktop';
 import { loopSound } from '../lib/sounds';
+import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
 import type { Call, Conversation } from '../types/db';
 import { useCall } from './CallContext';
@@ -33,6 +35,16 @@ function RingCard({ call, conv, me, onAccept, onDecline, silent }: {
   const title = useConversationTitle(conv, me);
   const { data: caller } = useProfile(call.started_by);
   useRingtone(!silent);
+  // Flash the taskbar and show a desktop notification when the app is in the background.
+  const callerName = caller?.display_name || caller?.username;
+  useEffect(() => {
+    if (silent || !callerName) return;
+    const prefs = useSettingsStore.getState().notifications;
+    if (prefs.flashOnCall) void flashTaskbar();
+    if (prefs.desktop && !document.hasFocus()) {
+      void notify(conv.type === 'group' ? `Group call in ${title}` : `${callerName} is calling you`, 'Open aether.chat to answer.');
+    }
+  }, [call.id, callerName, conv.type, silent, title]);
 
   return (
     <div className="fixed top-6 left-1/2 z-50 w-80 -translate-x-1/2 rounded-ae border border-ae-border bg-ae-elevated p-5 text-center shadow-2xl ae-glow" role="alertdialog" aria-label="Incoming call">

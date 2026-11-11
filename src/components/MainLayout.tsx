@@ -2,6 +2,8 @@
 import { useEffect, useMemo } from 'react';
 import { useChannels, useProfile, useServerMembers, useServers } from '../hooks/useChatData';
 import { useActivityFeed } from '../hooks/useActivityFeed';
+import { useAutoIdle, useCustomStatusExpiry, useGameActivity, useTaskbarBadge, useTraySync } from '../hooks/useDesktop';
+import { useNotifyResolver } from '../hooks/useNotifications';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { useUnreadSummary } from '../hooks/useMessageExtras';
 import { PresenceProvider } from '../hooks/usePresence';
@@ -143,11 +145,16 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
 
   const conversation = homeTarget === 'friends' ? null : (conversations.find((c) => c.id === homeTarget) ?? null);
   const { data: unread = [] } = useUnreadSummary();
-  const dmIds = new Set(conversations.map((c) => c.id));
+  const { resolve } = useNotifyResolver();
+  const loudDms = conversations.filter((c) => c.id !== conversation?.id && !resolve({ kind: 'conversation', id: c.id }).muted);
+  const loudDmIds = new Set(loudDms.map((c) => c.id));
   const homeBadge =
-    unread.filter((r) => dmIds.has(r.scope_id) && r.scope_id !== conversation?.id).reduce((n, r) => n + r.mention_count, 0) +
-    conversations.filter((c) => c.id !== conversation?.id && isUnread(c, userId) && !unread.some((r) => r.scope_id === c.id && r.mention_count > 0)).length +
+    unread.filter((r) => loudDmIds.has(r.scope_id)).reduce((n, r) => n + r.mention_count, 0) +
+    loudDms.filter((c) => isUnread(c, userId) && !unread.some((r) => r.scope_id === c.id && r.mention_count > 0)).length +
     friendships.filter((f) => f.status === 'pending' && f.addressee_id === userId).length;
+  // Taskbar badge: everything that would show a red badge somewhere in the app.
+  const serverMentions = unread.filter((r) => r.server_id && r.scope_id !== channel?.id).reduce((n, r) => n + r.mention_count, 0);
+  useTaskbarBadge(homeBadge + serverMentions);
 
   // What the user is looking at right now (drives mark-as-read and notification sounds).
   const viewingScopeId = server ? (channel?.type === 'text' ? channel.id : null) : (conversation?.id ?? null);
@@ -194,10 +201,14 @@ export function MainLayout({ userId, onSignOut }: { userId: string; onSignOut: (
   const { data: me } = useProfile(userId);
   const setProfileAccent = useSettingsStore((s) => s.setProfileAccent);
   useEffect(() => setProfileAccent(me?.accent_color ?? null), [me?.accent_color, setProfileAccent]);
-
+  useTraySync();
+  useCustomStatusExpiry(userId, me);
   // Until the profile loads, stay untracked so an "invisible" user never flashes online.
+  const status = useAutoIdle(me?.presence_status ?? 'invisible');
+  const activity = useGameActivity();
+
   return (
-    <PresenceProvider userId={userId} status={me?.presence_status ?? 'invisible'}>
+    <PresenceProvider userId={userId} status={status} activity={activity}>
       <CallProvider userId={userId}>
         <Shell userId={userId} onSignOut={onSignOut} />
       </CallProvider>

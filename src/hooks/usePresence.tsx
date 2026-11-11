@@ -1,6 +1,7 @@
 /**
  * Global online presence. Every signed-in client joins the private Realtime topic `online:global`
- * and tracks `{ userId, status }`. Invisible users do not track at all, so they appear offline.
+ * and tracks `{ userId, status, activity }`. Invisible users do not track at all, so they appear offline.
+ * `activity` is the opt-in "Playing …" game name; it only lives in presence, never in the database.
  */
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -10,12 +11,26 @@ import type { PresenceStatus } from '../types/db';
 export type VisibleStatus = Exclude<PresenceStatus, 'invisible'> | 'offline';
 
 const PresenceContext = createContext<ReadonlyMap<string, VisibleStatus>>(new Map());
+const ActivityContext = createContext<ReadonlyMap<string, string>>(new Map());
 
-export function PresenceProvider({ userId, status, children }: { userId: string; status: PresenceStatus; children: ReactNode }) {
+interface Meta {
+  userId: string;
+  status: VisibleStatus;
+  activity?: string | null;
+}
+
+export function PresenceProvider({ userId, status, activity = null, children }: {
+  userId: string;
+  status: PresenceStatus;
+  activity?: string | null;
+  children: ReactNode;
+}) {
   const sb = useSupabase();
   const [online, setOnline] = useState<ReadonlyMap<string, VisibleStatus>>(new Map());
+  const [activities, setActivities] = useState<ReadonlyMap<string, string>>(new Map());
   const channelRef = useRef<RealtimeChannel | null>(null);
   const statusRef = useRef(status);
+  const activityRef = useRef(activity);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,16 +43,22 @@ export function PresenceProvider({ userId, status, children }: { userId: string;
       channelRef.current = ch;
       ch.on('presence', { event: 'sync' }, () => {
         const next = new Map<string, VisibleStatus>();
-        const state = ch!.presenceState<{ userId: string; status: VisibleStatus }>();
+        const acts = new Map<string, string>();
+        const state = ch!.presenceState<Meta>();
         for (const metas of Object.values(state)) {
           const latest = metas[metas.length - 1];
-          if (latest && typeof latest.userId === 'string') next.set(latest.userId, latest.status ?? 'online');
+          if (!latest || typeof latest.userId !== 'string') continue;
+          next.set(latest.userId, latest.status ?? 'online');
+          // Any of the user's open clients may be playing something.
+          const playing = metas.map((x) => x.activity).find((a) => typeof a === 'string' && a.length > 0 && a.length <= 128);
+          if (playing) acts.set(latest.userId, playing);
         }
         setOnline(next);
+        setActivities(acts);
       });
       ch.subscribe((s) => {
         if (s === 'SUBSCRIBED' && statusRef.current !== 'invisible') {
-          void ch!.track({ userId, status: statusRef.current });
+          void ch!.track({ userId, status: statusRef.current, activity: activityRef.current });
         }
       });
     })();
@@ -49,16 +70,27 @@ export function PresenceProvider({ userId, status, children }: { userId: string;
     };
   }, [sb, userId]);
 
-  // Status changes: re-track, or untrack to go invisible.
+  // Status or activity changes: re-track, or untrack to go invisible.
   useEffect(() => {
     statusRef.current = status;
+    activityRef.current = activity;
     const ch = channelRef.current;
     if (!ch) return;
     if (status === 'invisible') void ch.untrack();
-    else void ch.track({ userId, status });
-  }, [status, userId]);
+    else void ch.track({ userId, status, activity });
+  }, [status, activity, userId]);
 
-  return <PresenceContext.Provider value={online}>{children}</PresenceContext.Provider>;
+  return (
+    <PresenceContext.Provider value={online}>
+      <ActivityContext.Provider value={activities}>{children}</ActivityContext.Provider>
+    </PresenceContext.Provider>
+  );
+}
+
+/** "Playing …" game name for a user, if they share it and are online. */
+export function useActivityOf(userId: string | null | undefined): string | null {
+  const map = useContext(ActivityContext);
+  return (userId && map.get(userId)) || null;
 }
 
 export function usePresenceMap(): ReadonlyMap<string, VisibleStatus> {

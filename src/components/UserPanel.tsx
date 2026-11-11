@@ -1,7 +1,8 @@
 /** Bottom-of-sidebar area: voice connection dock and the user panel with status picker and controls. */
 import { useEffect, useRef, useState } from 'react';
 import { useProfile, useUpdateProfile } from '../hooks/useChatData';
-import { PresenceDot, STATUS_LABELS, usePresenceOf } from '../hooks/usePresence';
+import { activeCustomStatus } from '../hooks/useDesktop';
+import { PresenceDot, STATUS_LABELS, useActivityOf, usePresenceOf } from '../hooks/usePresence';
 import { useUiStore } from '../stores/uiStore';
 import type { PresenceStatus } from '../types/db';
 import { useCall } from './CallContext';
@@ -15,6 +16,7 @@ import {
   ScreenIcon,
   SettingsIcon,
 } from './icons';
+import { Dialog } from './Dialog';
 import { Avatar } from './ProfileCard';
 
 function IconButton({ label, danger, active, onClick, children }: {
@@ -79,6 +81,85 @@ export function VoiceDock() {
 
 const STATUSES: PresenceStatus[] = ['online', 'idle', 'dnd', 'invisible'];
 
+const CLEAR_AFTER: { label: string; value: string }[] = [
+  { label: 'Today', value: 'today' },
+  { label: '30 minutes', value: '30' },
+  { label: '1 hour', value: '60' },
+  { label: '4 hours', value: '240' },
+  { label: 'This week', value: '10080' },
+  { label: "Don't clear", value: 'never' },
+];
+
+function expiryFrom(value: string): string | null {
+  if (value === 'never') return null;
+  if (value === 'today') {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return d.toISOString();
+  }
+  return new Date(Date.now() + Number(value) * 60_000).toISOString();
+}
+
+function CustomStatusDialog({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const { data: me } = useProfile(userId);
+  const update = useUpdateProfile(userId);
+  const current = activeCustomStatus(me);
+  const [text, setText] = useState(current ?? '');
+  const [emoji, setEmoji] = useState(current ? (me?.status_emoji ?? '') : '');
+  const [clearAfter, setClearAfter] = useState('today');
+  const input = 'w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm outline-none focus:border-ae-accent';
+  return (
+    <Dialog title="Set a custom status" onClose={onClose}>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const value = text.trim();
+          update.mutate(
+            value || emoji.trim()
+              ? { custom_status: value || null, status_emoji: emoji.trim() || null, custom_status_expires_at: expiryFrom(clearAfter) }
+              : { custom_status: null, status_emoji: null, custom_status_expires_at: null },
+            { onSuccess: onClose },
+          );
+        }}
+      >
+        <div className="flex gap-2">
+          <input className={`${input} w-14 text-center`} value={emoji} maxLength={8} placeholder="😀" onChange={(e) => setEmoji(e.target.value)} aria-label="Status emoji" />
+          <input className={input} value={text} maxLength={128} autoFocus placeholder="What's happening?" onChange={(e) => setText(e.target.value)} />
+        </div>
+        <label className="block text-sm">
+          <span className="mb-1 block text-xs font-bold tracking-wide text-ae-muted uppercase">Clear after</span>
+          <select className={input} value={clearAfter} onChange={(e) => setClearAfter(e.target.value)}>
+            {CLEAR_AFTER.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {update.error && <p className="text-xs text-ae-danger">{update.error.message}</p>}
+        <div className="flex justify-end gap-2">
+          {current && (
+            <button
+              type="button"
+              className="mr-auto rounded-ae px-3 py-2 text-sm text-ae-danger hover:bg-ae-hover"
+              onClick={() => update.mutate({ custom_status: null, status_emoji: null, custom_status_expires_at: null }, { onSuccess: onClose })}
+            >
+              Clear status
+            </button>
+          )}
+          <button type="button" className="rounded-ae px-3 py-2 text-sm hover:bg-ae-hover" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" disabled={update.isPending} className="rounded-ae bg-ae-accent px-4 py-2 text-sm font-semibold text-ae-on-accent disabled:opacity-50">
+            Save
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
 export function UserPanel({ userId }: { userId: string }) {
   const { voice } = useCall();
   const { data: me } = useProfile(userId);
@@ -87,6 +168,8 @@ export function UserPanel({ userId }: { userId: string }) {
   const showProfile = useUiStore((s) => s.showProfile);
   const live = usePresenceOf(userId);
   const [menu, setMenu] = useState(false);
+  const [statusDialog, setStatusDialog] = useState(false);
+  const playing = useActivityOf(userId);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -116,7 +199,9 @@ export function UserPanel({ userId }: { userId: string }) {
           </span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold">{me?.display_name || me?.username || '…'}</span>
-            <span className="block truncate text-xs text-ae-muted">{me?.custom_status || STATUS_LABELS[status]}</span>
+            <span className="block truncate text-xs text-ae-muted">
+              {playing ? `Playing ${playing}` : (me?.status_emoji && activeCustomStatus(me) ? `${me.status_emoji} ` : '') + (activeCustomStatus(me) || STATUS_LABELS[status])}
+            </span>
           </span>
         </button>
         <IconButton label={voice.isMuted ? 'Unmute' : 'Mute'} danger={voice.isMuted} onClick={voice.toggleMute}>
@@ -141,6 +226,16 @@ export function UserPanel({ userId }: { userId: string }) {
             >
               View my profile
             </button>
+            <button
+              type="button"
+              className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-ae-hover"
+              onClick={() => {
+                setStatusDialog(true);
+                setMenu(false);
+              }}
+            >
+              {activeCustomStatus(me) ? 'Edit custom status' : 'Set custom status'}
+            </button>
             <div className="my-1 h-px bg-ae-border" />
             {STATUSES.map((s) => (
               <button
@@ -159,6 +254,7 @@ export function UserPanel({ userId }: { userId: string }) {
           </div>
         )}
       </footer>
+      {statusDialog && <CustomStatusDialog userId={userId} onClose={() => setStatusDialog(false)} />}
     </>
   );
 }

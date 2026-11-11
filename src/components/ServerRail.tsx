@@ -2,10 +2,12 @@
 import { useMemo, useState } from 'react';
 import { useCreateServer, useJoinServer } from '../hooks/useChatData';
 import { isRowUnread, useUnreadSummary } from '../hooks/useMessageExtras';
+import { resolveNotify, useNotifyResolver } from '../hooks/useNotifications';
 import { useUiStore } from '../stores/uiStore';
 import type { Server } from '../types/db';
 import { Dialog, PromptForm } from './Dialog';
 import { PlusIcon } from './icons';
+import { InboxButton } from './Inbox';
 
 function initials(name: string): string {
   return name
@@ -30,15 +32,17 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
   const create = useCreateServer(userId);
   const join = useJoinServer(userId);
   const { data: unread = [] } = useUnreadSummary();
+  const { map: notifyMap } = useNotifyResolver();
   const perServer = useMemo(() => {
     const map = new Map<string, { unread: boolean; mentions: number }>();
     for (const r of unread) {
       if (!r.server_id) continue;
       const cur = map.get(r.server_id) ?? { unread: false, mentions: 0 };
-      map.set(r.server_id, { unread: cur.unread || isRowUnread(r), mentions: cur.mentions + r.mention_count });
+      const muted = resolveNotify(notifyMap, { kind: 'channel', id: r.scope_id, serverId: r.server_id }).muted;
+      map.set(r.server_id, { unread: cur.unread || (!muted && isRowUnread(r)), mentions: cur.mentions + r.mention_count });
     }
     return map;
-  }, [unread]);
+  }, [unread, notifyMap]);
 
   return (
     <nav className="ae-scroll flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-ae-sunken py-3" aria-label="Servers">
@@ -57,10 +61,12 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
           </span>
         )}
       </button>
+      <InboxButton userId={userId} servers={servers} />
       <div className="my-1 h-px w-8 bg-ae-border" />
       {servers.map((s) => {
         const active = s.id === activeId;
         const state = perServer.get(s.id);
+        const serverMuted = resolveNotify(notifyMap, { kind: 'server', id: s.id }).muted;
         return (
           <div key={s.id} className="relative">
             {/* Discord-style pill: tall for the active server, a dot for unread ones */}
@@ -71,9 +77,9 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
             />
             <button
               type="button"
-              title={s.name}
+              title={serverMuted ? `${s.name} (muted)` : s.name}
               onClick={() => selectServer(s.id)}
-              className={`relative grid h-12 w-12 place-items-center overflow-hidden text-sm font-semibold transition-all ${
+              className={`relative grid h-12 w-12 place-items-center overflow-hidden text-sm font-semibold transition-all ${serverMuted && !active ? 'opacity-50 ' : ''}${
                 active ? 'rounded-[16px] bg-ae-accent text-ae-on-accent ae-glow' : 'rounded-[24px] bg-ae-surface hover:rounded-[16px] hover:bg-ae-hover'
               }`}
             >

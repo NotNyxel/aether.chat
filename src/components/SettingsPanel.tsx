@@ -1,5 +1,6 @@
 /**
- * Settings suite: a full-screen modal with five tabs.
+ * Settings suite: a full-screen modal with these tabs (plus Notifications, Windows and Activity
+ * Privacy from SettingsDesktop.tsx):
  *   Profile    : edit every profile field, upload media, live ProfileCard preview, save to Supabase
  *   Appearance : theme presets, accent override or profile accent, reduce motion, custom CSS editor
  *   Voice      : input/output devices, live mic meter with noise-gate threshold, processing toggles
@@ -18,6 +19,7 @@ import { AVATAR_FRAMES, isHexColor, PRESET_ORDER, THEME_PRESETS } from '../theme
 import type { EditableProfile, UserProfile } from '../types/db';
 import { CloseIcon } from './icons';
 import { ProfileCard } from './ProfileCard';
+import { ActivityTab, BackgroundShortcutsSection, DesktopNotificationsSection, WindowsTab } from './SettingsDesktop';
 import { useTheme } from './ThemeEngine';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -196,6 +198,8 @@ function ProfileTab({ userId }: { userId: string }) {
   const save = () => {
     const patch: Partial<EditableProfile> = {};
     for (const k of EDITABLE_KEYS) if ((draft[k] ?? null) !== (profile[k] ?? null)) (patch as Record<string, unknown>)[k] = draft[k];
+    // A status typed here doesn't expire (use the status menu for a timed one).
+    if ('custom_status' in patch || 'status_emoji' in patch) patch.custom_status_expires_at = null;
     update.mutate(patch);
   };
 
@@ -657,6 +661,7 @@ function NotificationsTab() {
 
   return (
     <div className="space-y-6">
+      <DesktopNotificationsSection />
       <Section
         title="Sounds"
         description="DM and mention sounds only play when you're not already looking at that chat. Do Not Disturb silences messages and ringing."
@@ -723,7 +728,7 @@ function KeybindsTab() {
     <div className="space-y-6">
       <Section
         title="Shortcuts"
-        description="Shortcuts work while the aether.chat window is focused. Single keys without modifiers are ignored while you type in a text box."
+        description="Single keys without modifiers are ignored while you type in a text box. They also work from the tray icon's menu."
       >
         <KeybindRow label="Toggle mute" hint="Mute or unmute your microphone." combo={keybinds.toggleMute} onChange={bind('toggleMute')} />
         <KeybindRow label="Toggle deafen" hint="Silence all incoming audio (also mutes you)." combo={keybinds.toggleDeafen} onChange={bind('toggleDeafen')} />
@@ -737,6 +742,7 @@ function KeybindsTab() {
         />
         <KeybindRow label="Push-to-talk key" hint="Hold to transmit." combo={keybinds.pushToTalk} onChange={bind('pushToTalk')} />
       </Section>
+      <BackgroundShortcutsSection />
     </div>
   );
 }
@@ -823,6 +829,8 @@ const TABS: { id: SettingsTab; label: string }[] = [
   { id: 'notifications', label: 'Notifications & Sounds' },
   { id: 'keybinds', label: 'Keybinds' },
   { id: 'bandwidth', label: 'Streaming & Bandwidth' },
+  { id: 'activity', label: 'Activity Privacy' },
+  { id: 'windows', label: 'Windows Settings' },
 ];
 
 export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
@@ -870,6 +878,8 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
           {tab === 'notifications' && <NotificationsTab />}
           {tab === 'keybinds' && <KeybindsTab />}
           {tab === 'bandwidth' && <BandwidthTab />}
+          {tab === 'activity' && <ActivityTab userId={userId} />}
+          {tab === 'windows' && <WindowsTab />}
         </div>
         <button
           type="button"

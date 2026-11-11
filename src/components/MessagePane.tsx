@@ -4,6 +4,7 @@
  * pins and search), jump to present, auto mark-as-read, pins and search panels, drag-and-drop
  * uploads, typing indicator and the composer.
  */
+import { NotificationBell } from './NotificationMenu';
 import { useQueryClient } from '@tanstack/react-query';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import {
@@ -227,6 +228,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ae-border px-4">
         {header}
         <div className="ml-3 flex shrink-0 items-center gap-2">
+          <NotificationBell scope={scope} />
           <button
             type="button"
             title="Pinned messages"

@@ -96,7 +96,18 @@ That's it. There's nothing to configure. The app keeps itself up to date: when a
 | **Custom CSS** | App-wide CSS that is sanitized and sandboxed (it can't escape the app or load scripts). |
 | **Profiles** | Banner, animated avatar frames (pulse, aurora, neon, orbit, glitch), Markdown bio, badges, an audio status clip, profile colors and sandboxed profile CSS. |
 
-### 🔔 Sounds
+### 🔔 Notifications & presence
+| | |
+|---|---|
+| **Desktop notifications** | DMs, mentions and calls while the app is in the background. Optional message text. |
+| **Per-chat settings** | 🔔 in any header: mute for a duration, all messages / only @mentions / nothing, suppress @everyone per server. |
+| **Inbox** | Recent mentions (direct, role, @everyone) and every unread chat, with mark-as-read. |
+| **Taskbar** | Unread badge on the taskbar icon, flashing on incoming calls. |
+| **Presence** | Auto-idle after inactivity, custom status with emoji and expiry, opt-in "Playing …" game activity. |
+| **System tray** | Close to tray, start with Windows, tray menu with mute and deafen, single instance. |
+| **Background shortcuts** | Mute, deafen and push-to-talk work while you're in another app. |
+
+### 🔊 Sounds
 Synthesized sound effects for DMs, mentions, joining and leaving voice, others joining or leaving, mute and
 deafen, streams starting and stopping, incoming and outgoing calls, and calls ending. Volume, per-sound toggles
 and previews live in **Settings → Notifications & Sounds**. Do Not Disturb silences messages and ringing.
@@ -104,7 +115,8 @@ and previews live in **Settings → Notifications & Sounds**. Do Not Disturb sil
 ### ⚙️ App
 - **Automatic, signed updates** from GitHub Releases.
 - **Tiny footprint:** about a 1.3 MB installer, using the system WebView2 instead of bundling Chromium.
-- **Settings:** profile editor, appearance, audio and video devices, keybinds, bandwidth.
+- **Settings:** profile editor, appearance, audio and video devices, notifications, keybinds, bandwidth, activity
+  privacy, Windows (tray, startup, idle).
 
 ---
 
@@ -148,6 +160,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for diagrams and the join seque
   built into it.
 - **Online presence** is shared on one global channel, so any signed-in user can see who's online. Choose
   **Invisible** to hide.
+- **Activity status is opt-in.** Game detection runs on your PC; only a matched game's name is shared, only in
+  presence (never stored), and only while you're online.
 
 ---
 
@@ -179,6 +193,7 @@ Migrations live in `supabase/`. Run them in order in the Supabase SQL editor:
 |---|---|
 | `schema.sql` | Users, servers, channels, roles and permission bitmasks, messages, invites, bans, storage buckets |
 | `migrations/002_social.sql` | Friends, blocks, DMs, group DMs, calls, reactions, presence status, Realtime topic authorization |
+| `migrations/005_notifications.sql` | Notification settings (levels, mute, @everyone suppression) honoured by unread counts, custom status expiry, `recent_mentions` for the inbox |
 | `migrations/004_server_management.sql` | New permissions, timeouts, `@role` mentions, NSFW channels, channel and role reordering, kick and nickname RPCs, custom invite codes, audit log |
 | `migrations/003_messaging.sql` | Polls and votes, pins, full-text search index, mentions and `@everyone`, forwards, per-channel unread state, `unread_summary()` |
 
@@ -243,5 +258,6 @@ Features ship in themed batches, one minor version each. See **[ROADMAP.md](ROAD
 - **Voice rooms work best with up to about 8–10 people** (full mesh, no media server).
 - **Some strict networks can't connect peer-to-peer** (symmetric NAT, some corporate networks). There's no TURN relay
   by default, to keep the cost at $0.
-- **Shortcuts only work while the window is focused** until global shortcuts land in Batch 3.
+- **Clicking a desktop notification doesn't jump to the message** in the desktop app yet (the notification plugin
+  has no click events on Windows). Open the Inbox to jump to it.
 - **Windows only** for now.

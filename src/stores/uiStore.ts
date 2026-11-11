@@ -1,7 +1,7 @@
 /** Ephemeral UI state: Home vs server view, selections, panels, dialogs, jump targets, lightbox. */
 import { create } from 'zustand';
 
-export type SettingsTab = 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth';
+export type SettingsTab = 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows';
 
 export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit';
 

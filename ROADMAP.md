@@ -14,6 +14,7 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 | **0.1.0** | Servers, channels, live chat, P2P mesh voice, screen share, theme engine, rich profiles, settings |
 | **0.2.0** | Friends, blocks, DMs, group DMs, 1:1 and group calls, camera, replies, edits, reactions, uploads, typing, presence |
 | **0.3.0** | Renamed to aether.chat, built-in backend (no setup), signed auto-updates via GitHub Releases |
+| **0.6.0** | Batch 3: desktop notifications, per-chat mute and levels, inbox, taskbar badge, auto-idle, status expiry, activity status, tray, start on boot, background shortcuts |
 | **0.5.0** | Batch 2: server settings, roles editor, channel permission overrides, timeouts, kick/ban, invites, audit log, drag-reorder, `@role` mentions |
 | **0.4.0** | Batch 1: emoji picker, autocomplete, unreads and mentions, pins, search, link previews, polls, forwarding, message links, lightbox, sound effects |
 
@@ -47,14 +48,15 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ✅ **Bonus:** `@role` mentions, role-colored names, hoisted member-list groups, moderation from profile cards
 - ⬜ Server templates, welcome screen and rules screening (moved to Batch 7: Community)
 
-## Batch 3: Notifications & presence → 0.6.0
-- ⬜ Native desktop notifications (Tauri notification plugin) for DMs, mentions and calls
-- ⬜ Notification settings per server, channel and DM: all, mentions only, nothing; mute for a duration
-- ⬜ Inbox: mentions and unread overview
-- ⬜ Taskbar unread badge and flashing on incoming calls
-- ⬜ Auto-idle after inactivity, custom status with expiry
-- ⬜ Activity status ("Playing …" via opt-in process detection)
-- ⬜ System tray: minimise to tray, start on boot, global shortcuts (mute and deafen work while unfocused)
+## Batch 3: Notifications & presence → 0.6.0 ✅
+- ✅ Native desktop notifications for DMs, mentions and calls
+- ✅ Notification settings per server, channel and DM: all, mentions only, nothing; mute for a duration; suppress @everyone
+- ✅ Inbox: mentions and unread overview
+- ✅ Taskbar unread badge and flashing on incoming calls
+- ✅ Auto-idle after inactivity (system-wide), custom status with expiry
+- ✅ Activity status ("Playing …" via opt-in process detection, custom games)
+- ✅ System tray: minimise to tray, start on boot, global shortcuts (mute, deafen and push-to-talk work while unfocused)
+- ✅ **Bonus:** single-instance (launching again focuses the running app)
 
 ## Batch 4: Voice & video upgrades → 0.7.0
 - ⬜ See who is in a voice channel before joining (live occupancy)

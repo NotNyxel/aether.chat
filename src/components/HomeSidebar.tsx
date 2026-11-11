@@ -1,6 +1,7 @@
 /** Home sidebar: Friends entry and the Direct Messages list (DMs + group DMs) with unread and call markers. */
 import { useState } from 'react';
 import { useUnreadSummary } from '../hooks/useMessageExtras';
+import { useNotifyResolver } from '../hooks/useNotifications';
 import { useActiveCalls, useConversationActions, useConversations, useFriendships } from '../hooks/useSocialData';
 import { useUiStore } from '../stores/uiStore';
 import type { Conversation } from '../types/db';
@@ -9,11 +10,19 @@ import { GroupDialog } from './GroupDialog';
 import { CloseIcon, PhoneIcon, PlusIcon, UsersIcon } from './icons';
 import { UserPanel } from './UserPanel';
 
-function ConversationRow({ conv, me, active, inCall, count }: { conv: Conversation; me: string; active: boolean; inCall: boolean; count: number }) {
+function ConversationRow({ conv, me, active, inCall, count: rawCount, muted }: {
+  conv: Conversation;
+  me: string;
+  active: boolean;
+  inCall: boolean;
+  count: number;
+  muted: boolean;
+}) {
   const openHome = useUiStore((s) => s.openHome);
   const actions = useConversationActions();
   const title = useConversationTitle(conv, me);
-  const unread = isUnread(conv, me);
+  const unread = !muted && isUnread(conv, me);
+  const count = muted ? 0 : rawCount;
   const memberCount = conv.conversation_members.length;
 
   return (
@@ -22,7 +31,7 @@ function ConversationRow({ conv, me, active, inCall, count }: { conv: Conversati
         type="button"
         onClick={() => openHome(conv.id)}
         className={`flex w-full items-center gap-3 rounded-ae px-2 py-1.5 text-left ${
-          active ? 'bg-ae-surface text-ae-text' : unread ? 'text-ae-text hover:bg-ae-hover' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'
+          active ? 'bg-ae-surface text-ae-text' : unread ? 'text-ae-text hover:bg-ae-hover' : `text-ae-muted hover:bg-ae-hover hover:text-ae-text ${muted ? 'opacity-50' : ''}`
         }`}
       >
         <ConversationAvatar conv={conv} me={me} />
@@ -64,6 +73,7 @@ export function HomeSidebar({ userId }: { userId: string }) {
   const [groupOpen, setGroupOpen] = useState(false);
   const { data: unread = [] } = useUnreadSummary();
   const counts = new Map(unread.map((r) => [r.scope_id, r.mention_count]));
+  const { resolve } = useNotifyResolver();
 
   const pending = friendships.filter((f) => f.status === 'pending' && f.addressee_id === userId).length;
   const visible = conversations.filter((c) => !c.conversation_members.find((m) => m.user_id === userId)?.hidden);
@@ -97,7 +107,7 @@ export function HomeSidebar({ userId }: { userId: string }) {
         <ul className="space-y-0.5">
           {visible.length === 0 && <li className="px-2 py-3 text-xs text-ae-muted">No conversations yet. Message a friend to start one.</li>}
           {visible.map((c) => (
-            <ConversationRow key={c.id} conv={c} me={userId} active={homeTarget === c.id} inCall={callIds.has(c.id)} count={counts.get(c.id) ?? 0} />
+            <ConversationRow key={c.id} conv={c} me={userId} active={homeTarget === c.id} inCall={callIds.has(c.id)} count={counts.get(c.id) ?? 0} muted={resolve({ kind: 'conversation', id: c.id }).muted} />
           ))}
         </ul>
       </div>

@@ -2,6 +2,8 @@
 import { useMemo, useState } from 'react';
 import { useCreateChannel, useCreateInvite, useDeleteServer, useLeaveServer, useProfile, useServerPermissions } from '../hooks/useChatData';
 import { isRowUnread, useUnreadSummary } from '../hooks/useMessageExtras';
+import { useNotifyResolver } from '../hooks/useNotifications';
+import { NotificationOptions } from './NotificationMenu';
 import { useChannelActions } from '../hooks/useServerAdmin';
 import { hasPermission, Permission } from '../lib/permissions';
 import { useUiStore } from '../stores/uiStore';
@@ -51,6 +53,8 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
   const [newChannel, setNewChannel] = useState<{ parentId: string | null } | null>(null);
   const [newType, setNewType] = useState<ChannelType>('text');
   const [confirm, setConfirm] = useState<'leave' | 'delete' | null>(null);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const { resolve } = useNotifyResolver();
   const { data: unread = [] } = useUnreadSummary();
   const unreadById = useMemo(() => new Map(unread.map((r) => [r.scope_id, r])), [unread]);
 
@@ -158,6 +162,16 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
             >
               Server settings <span>⚙</span>
             </button>
+            <button
+              type="button"
+              className={menuItem}
+              onClick={() => {
+                setMenuOpen(false);
+                setNotifyOpen(true);
+              }}
+            >
+              Notification settings <span>🔔</span>
+            </button>
             {canManageChannels && (
               <>
                 <button
@@ -236,7 +250,8 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                 {items.map((ch) => {
                   const row = unreadById.get(ch.id);
                   const isActive = ch.id === activeChannelId;
-                  const hasUnread = !isActive && isRowUnread(row);
+                  const muted = resolve({ kind: 'channel', id: ch.id, serverId: server.id }).muted;
+                  const hasUnread = !isActive && !muted && isRowUnread(row);
                   const mentions = isActive ? 0 : (row?.mention_count ?? 0);
                   return (
                     <li key={ch.id} className={`group/ch relative ${drag?.id === ch.id ? 'opacity-40' : ''}`} {...dragProps(ch)}>
@@ -250,7 +265,9 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                             ? 'bg-ae-surface text-ae-text'
                             : hasUnread
                               ? 'font-semibold text-ae-text hover:bg-ae-hover'
-                              : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'
+                              : muted
+                                ? 'text-ae-muted opacity-50 hover:bg-ae-hover hover:opacity-100'
+                                : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'
                         }`}
                       >
                         <ChannelGlyph type={ch.type} />
@@ -286,6 +303,13 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
       </div>
 
       <UserPanel userId={userId} />
+
+      {notifyOpen && (
+        <Dialog title={`Notification settings: ${server.name}`} onClose={() => setNotifyOpen(false)}>
+          <NotificationOptions scope={{ kind: 'server', id: server.id }} />
+          <p className="px-2 text-xs text-ae-muted">Channels follow these settings unless you change them with the 🔔 in a channel&apos;s header.</p>
+        </Dialog>
+      )}
 
       {inviteCode && (
         <Dialog title="Invite people" onClose={() => setInviteCode(null)}>

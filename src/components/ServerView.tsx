@@ -1,7 +1,8 @@
 /** Main pane for a server: text channels (with member list) or voice/stream channels. */
 import { useMemo, useState } from 'react';
 import { useProfile, useServerMembers } from '../hooks/useChatData';
-import { PresenceDot, usePresenceMap } from '../hooks/usePresence';
+import { activeCustomStatus } from '../hooks/useDesktop';
+import { PresenceDot, useActivityOf, usePresenceMap } from '../hooks/usePresence';
 import { useMemberStyles, useServerLive } from '../hooks/useServerAdmin';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, Server, ServerMember } from '../types/db';
@@ -23,6 +24,8 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut }: {
   const { data: p } = useProfile(userId);
   const showProfile = useUiStore((s) => s.showProfile);
   const status = usePresenceMap().get(userId) ?? 'offline';
+  const playing = useActivityOf(userId);
+  const customStatus = activeCustomStatus(p);
   return (
     <li>
       <button
@@ -38,7 +41,9 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut }: {
           <span className="block truncate text-sm" style={{ color: color ?? undefined }}>
             {nickname || p?.display_name || p?.username || '…'}
           </span>
-          {p?.custom_status && !offline && <span className="block truncate text-xs text-ae-muted">{p.custom_status}</span>}
+          {!offline && (playing || customStatus) && (
+            <span className="block truncate text-xs text-ae-muted">{playing ? <>Playing <b>{playing}</b></> : customStatus}</span>
+          )}
         </span>
         {timedOut && <span title="Timed out">⏳</span>}
         {owner && <span title="Server owner">👑</span>}

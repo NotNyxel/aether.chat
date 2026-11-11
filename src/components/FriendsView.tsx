@@ -1,7 +1,8 @@
 /** Friends page: Online / All / Pending / Blocked tabs and Add Friend by username. */
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { useProfile } from '../hooks/useChatData';
-import { PresenceDot, STATUS_LABELS, usePresenceMap, usePresenceOf } from '../hooks/usePresence';
+import { activeCustomStatus } from '../hooks/useDesktop';
+import { PresenceDot, STATUS_LABELS, useActivityOf, usePresenceMap, usePresenceOf } from '../hooks/usePresence';
 import { useBlocks, useConversationActions, useFriendActions, useFriendships } from '../hooks/useSocialData';
 import { useUiStore } from '../stores/uiStore';
 import { useCall } from './CallContext';
@@ -30,6 +31,7 @@ function ActionButton({ title, onClick, danger, children }: { title: string; onC
 function PersonRow({ userId, subtitle, actions }: { userId: string; subtitle?: string; actions: ReactNode }) {
   const { data: p } = useProfile(userId);
   const status = usePresenceOf(userId);
+  const playing = useActivityOf(userId);
   const showProfile = useUiStore((s) => s.showProfile);
   return (
     <li
@@ -44,7 +46,7 @@ function PersonRow({ userId, subtitle, actions }: { userId: string; subtitle?: s
         <span className="block truncate text-sm font-semibold">
           {p?.display_name || p?.username || '…'} <span className="font-normal text-ae-muted">@{p?.username}</span>
         </span>
-        <span className="block truncate text-xs text-ae-muted">{subtitle ?? (p?.custom_status || STATUS_LABELS[status])}</span>
+        <span className="block truncate text-xs text-ae-muted">{subtitle ?? (playing ? `Playing ${playing}` : activeCustomStatus(p) || STATUS_LABELS[status])}</span>
       </span>
       <span className="flex gap-2">{actions}</span>
     </li>

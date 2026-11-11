@@ -3,6 +3,37 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [0.6.0] - 2026-11-11
+
+**Batch 3: notifications and presence**
+
+- **Desktop notifications** for DMs, mentions and incoming calls while aether.chat is in the background, with an
+  option to hide the message text. Test them from Settings → Notifications & Sounds.
+- **Per-chat notification settings** (🔔 in any channel or DM header, or *Notification settings* in the server
+  menu):
+  - mute for 15 minutes, 1, 3, 8 or 24 hours, or until you turn it back on;
+  - notify about all messages, only @mentions, or nothing;
+  - suppress @everyone and @here for a whole server.
+  Muted servers, channels and DMs are dimmed and don't show unread dots. "Nothing" also removes their mention
+  badges.
+- **Inbox** (tray icon under Home): every recent message that mentions you or your roles, plus every chat with
+  unread messages, with *Mark as read* and *Mark all as read*.
+- **Taskbar badge:** a red unread count on the taskbar icon and in the window title. The taskbar button flashes on
+  incoming calls.
+- **Auto-idle:** you show as Idle after 10 minutes without keyboard or mouse input anywhere on your PC (adjustable,
+  or off). Your chosen status isn't changed.
+- **Custom status with expiry:** set a status and emoji from the user menu and clear it after 30 minutes, 1 hour,
+  4 hours, today or this week.
+- **Activity status (opt-in):** "Playing VALORANT" in the member list, friends list and profile. About 70 games are
+  recognised and you can add your own. Detection runs on your PC and only the game's name is shared. Turn it on in
+  Settings → Activity Privacy.
+- **System tray:** closing the window keeps aether.chat running in the tray, which has Open, Toggle mute, Toggle
+  deafen and Quit. Launching it again brings the running copy to the front.
+- **Start with Windows** (Settings → Windows Settings): opens quietly in the tray when you sign in.
+- **Background shortcuts:** mute, deafen and push-to-talk work while you're in a game or another app. Keys you type
+  with, such as a bare letter, stay inside aether.chat so they don't break typing elsewhere.
+- Database: `supabase/migrations/005_notifications.sql`.
+
 ## [0.5.0] - 2026-11-11
 
 **Batch 2: server management**

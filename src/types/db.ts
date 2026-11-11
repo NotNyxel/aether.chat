@@ -8,6 +8,7 @@ export interface UserProfile {
   username: string;
   display_name: string | null;
   custom_status: string | null;
+  custom_status_expires_at: string | null;
   status_emoji: string | null;
   bio: string | null;
   avatar_url: string | null;
@@ -30,6 +31,7 @@ export type EditableProfile = Pick<
   | 'username'
   | 'display_name'
   | 'custom_status'
+  | 'custom_status_expires_at'
   | 'status_emoji'
   | 'bio'
   | 'avatar_url'
@@ -251,4 +253,18 @@ export interface Call {
   started_by: string | null;
   started_at: string;
   ended_at: string | null;
+}
+
+export type NotificationLevel = 'all' | 'mentions' | 'none';
+
+export interface NotificationSetting {
+  user_id: string;
+  scope_id: string;
+  scope_kind: 'server' | 'channel' | 'conversation';
+  /** null = inherit (channel → server → default). */
+  level: NotificationLevel | null;
+  /** null = not muted; far future ('infinity') = muted until turned off. */
+  muted_until: string | null;
+  suppress_everyone: boolean;
+  updated_at: string;
 }

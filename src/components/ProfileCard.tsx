@@ -7,6 +7,8 @@
  * including position: fixed overlays.
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { activeCustomStatus } from '../hooks/useDesktop';
+import { useActivityOf } from '../hooks/usePresence';
 import { Markdown } from '../lib/markdown';
 import { isHexColor } from '../theme/presets';
 import type { UserProfile } from '../types/db';
@@ -147,6 +149,8 @@ interface ProfileCardProps {
 
 export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
   const scopeId = `p-${profile.id.replace(/[^a-z0-9-]/gi, '')}`;
+  const customStatus = activeCustomStatus(profile);
+  const playing = useActivityOf(profile.id);
   const primary = isHexColor(profile.primary_color) ? profile.primary_color : 'var(--ae-surface)';
   const accent = isHexColor(profile.accent_color) ? profile.accent_color : 'var(--ae-accent)';
   const memberSince = new Date(profile.created_at).toLocaleDateString(undefined, {
@@ -187,13 +191,23 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
           <header>
             <h2 className="text-lg leading-tight font-bold">{profile.display_name || profile.username}</h2>
             <p className="text-sm text-ae-muted">@{profile.username}</p>
-            {(profile.custom_status || profile.status_emoji) && (
+            {customStatus && (
               <p className="mt-1 text-sm">
                 {profile.status_emoji && <span className="mr-1">{profile.status_emoji}</span>}
-                {profile.custom_status}
+                {customStatus}
               </p>
             )}
           </header>
+
+          {playing && (
+            <section>
+              <h3 className="mb-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Playing a game</h3>
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <span className="grid h-8 w-8 place-items-center rounded-ae bg-ae-surface text-base">🎮</span>
+                {playing}
+              </p>
+            </section>
+          )}
 
           {profile.bio && (
             <section>

@@ -28,7 +28,7 @@
 ## Install
 
 1. Download the latest `aether.chat_<version>_x64-setup.exe` from the
-   [Releases page](https://github.com/notnyxel/aether.chat-releases/releases/latest).
+   [Releases page](https://github.com/NotNyxel/aether.chat-releases/releases/latest).
 2. Run it. It installs for your Windows user only, so no admin prompt.
 3. Sign up with a username, email and password.
 

@@ -674,6 +674,8 @@ function BandwidthTab() {
             <select className={inputCls} value={screen.resolution} onChange={(e) => setScreen({ resolution: e.target.value as ScreenResolution })}>
               <option value="720p">720p</option>
               <option value="1080p">1080p</option>
+              <option value="1440p">1440p</option>
+              <option value="source">Source (full resolution)</option>
             </select>
           </Field>
           <Field label="Frame-rate cap">
@@ -682,7 +684,8 @@ function BandwidthTab() {
               value={screen.frameRate}
               onChange={(e) => setScreen({ frameRate: Number(e.target.value) as ScreenFrameRate })}
             >
-              <option value={15}>15 FPS: text and slides</option>
+              {![24, 30, 60].includes(screen.frameRate) && <option value={screen.frameRate}>{screen.frameRate} FPS (custom)</option>}
+              <option value={24}>24 FPS: films, text and slides</option>
               <option value={30}>30 FPS: general use</option>
               <option value={60}>60 FPS: games and video</option>
             </select>
@@ -738,7 +741,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
   if (!open) return null;
 
   return (
-    <div className="ae-zoom-in ae-settings fixed inset-0 z-50 flex bg-ae-bg" data-pane={mobileTab ? 'main' : 'nav'} role="dialog" aria-modal="true" aria-label="Settings">
+    <div className="ae-zoom-in ae-settings absolute inset-0 z-50 flex bg-ae-bg" data-pane={mobileTab ? 'main' : 'nav'} role="dialog" aria-modal="true" aria-label="Settings">
       <nav className="ae-panel ae-scroll flex w-64 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-ae-border p-4">
         {groups.map((g) => (
           <div key={g.title} className="mb-3">
@@ -769,7 +772,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
         </div>
       </nav>
 
-      <main className="ae-scroll relative flex-1 overflow-y-auto">
+      <main className="ae-scroll min-w-0 flex-1 overflow-y-auto">
         <div key={tab} className="ae-enter mx-auto max-w-5xl p-8">
           <button type="button" className="ae-mobile-only mb-3 flex items-center gap-1 text-sm text-ae-muted" onClick={() => setMobileTab(false)}>
             <BackIcon size={16} /> Settings
@@ -792,7 +795,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
           type="button"
           onClick={close}
           aria-label="Close settings"
-          className="fixed top-6 right-6 grid h-9 w-9 place-items-center rounded-full border border-ae-border text-ae-muted hover:text-ae-text"
+          className="absolute top-4 right-5 z-10 grid h-9 w-9 bg-ae-bg/80 backdrop-blur place-items-center rounded-full border border-ae-border text-ae-muted hover:text-ae-text"
         >
           <CloseIcon />
         </button>

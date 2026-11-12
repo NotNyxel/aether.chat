@@ -90,6 +90,12 @@ export interface Server {
   banner_url: string | null;
   owner_id: string;
   created_at: string;
+  verification_level?: 'none' | 'low' | 'medium' | 'high';
+  welcome_channel_id?: string | null;
+  welcome_message?: string | null;
+  rules?: string | null;
+  bot_enabled?: boolean;
+  bot_welcome?: boolean;
 }
 
 export interface ServerMember {
@@ -251,6 +257,10 @@ export interface Message {
   /** Set on copies delivered from a followed announcement channel. */
   crossposted_from: { message_id: string; channel_id: string; channel_name: string; server_id: string; server_name: string } | null;
   published_at: string | null;
+  /** Posted by the built-in bot (author_id is null). */
+  is_bot?: boolean;
+  bot_invoker_id?: string | null;
+  bot_command?: string | null;
 }
 
 export interface PollVote {

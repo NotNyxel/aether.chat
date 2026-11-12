@@ -17,7 +17,7 @@ const STUBS = `
 create role anon nologin; create role authenticated nologin; create role service_role nologin;
 create schema auth;
 create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid);
-create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb, email text, last_sign_in_at timestamptz, email_confirmed_at timestamptz);
+create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb, email text, last_sign_in_at timestamptz, email_confirmed_at timestamptz, created_at timestamptz default now());
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;
 create schema extensions; grant usage on schema extensions to authenticated, anon;
@@ -937,6 +937,46 @@ await expectOk('admins delete accounts', async () => {
   if (n !== 0) throw new Error('still there');
 });
 await expectError('non-admins cannot delete accounts', () => as(B, `select public.admin_delete_user('${D}', 'x')`), 'Admins only');
+
+console.log('\nServers, bot and group size (1.2)');
+const H = '88888888-8888-8888-8888-888888888888';
+await db.exec(`insert into auth.users (id, raw_user_meta_data, email_confirmed_at, created_at) values ('${H}', '{"username":"hank"}', null, now())`);
+const botSrv = (await as(A, `insert into public.servers (name) values ('Bot Town') returning id`)).rows[0].id;
+const botCh = (await as(A, `select id from public.channels where server_id = $1 and type = 'text'`, [botSrv])).rows[0].id;
+await expectError('bot commands need the bot turned on', () => as(A, `select public.bot_command($1, 'ping')`, [botCh]), 'bot is off');
+await expectOk('owner turns the bot on; /ping, /roll and /help answer as the bot', async () => {
+  await as(A, `update public.servers set bot_enabled = true, welcome_channel_id = $2, welcome_message = 'Hi {user}, welcome to {server}!' where id = $1`, [botSrv, botCh]);
+  for (const [c, a] of [['ping', ''], ['roll', '2d6'], ['help', ''], ['coinflip', ''], ['choose', 'a | b'], ['serverinfo', ''], ['userinfo', '']]) await as(A, `select public.bot_command($1, $2, $3)`, [botCh, c, a]);
+  const r = (await as(A, `select count(*)::int n, bool_and(is_bot) b, bool_and(author_id is null) a from public.messages where channel_id = $1`, [botCh])).rows[0];
+  if (r.n !== 7 || !r.b || !r.a) throw new Error(JSON.stringify(r));
+});
+await expectError('unknown commands are explained', () => as(A, `select public.bot_command($1, 'nope')`, [botCh]), 'Unknown command');
+await expectError('users cannot fake bot messages', () => as(A, `insert into public.messages (channel_id, content, is_bot) values ($1, 'fake', true)`, [botCh]), 'permission denied');
+await expectError('outsiders cannot run commands', () => as(C, `select public.bot_command($1, 'ping')`, [botCh]));
+await expectOk('/purge and /slowmode work for moderators', async () => {
+  await as(A, `select public.bot_command($1, 'purge', '3')`, [botCh]);
+  await as(A, `select public.bot_command($1, 'slowmode', '5')`, [botCh]);
+  const r = (await as(A, `select rate_limit_seconds s from public.channels where id = $1`, [botCh])).rows[0];
+  if (r.s !== 5) throw new Error(JSON.stringify(r));
+});
+const botInvite = (await as(A, `insert into public.server_invites (server_id) values ($1) returning code`, [botSrv])).rows[0].code;
+await expectError('verification "low" keeps unverified emails out', async () => {
+  await as(A, `update public.servers set verification_level = 'low' where id = $1`, [botSrv]);
+  await as(H, `select public.join_server($1)`, [botInvite]);
+}, 'verified email');
+await expectOk('verified accounts join and the bot welcomes them', async () => {
+  await db.exec(`update auth.users set email_confirmed_at = now() where id = '${H}'`);
+  await as(H, `select public.join_server($1)`, [botInvite]);
+  const r = (await as(A, `select content from public.messages where channel_id = $1 and bot_command = 'welcome'`, [botCh])).rows[0];
+  if (!r?.content.includes('hank') || !r.content.includes('Bot Town')) throw new Error(JSON.stringify(r));
+});
+await expectOk('admins change the group DM size', async () => {
+  await as(A, `select public.admin_set_config('group_dm_limit', '2'::jsonb)`);
+  let refused = false;
+  try { await as(A, `select public.create_group_dm(array['${B}', '${C}']::uuid[])`); } catch (e) { refused = e.message.includes('limited to 2'); }
+  await as(A, `select public.admin_set_config('group_dm_limit', '25'::jsonb)`);
+  if (!refused) throw new Error('limit not applied');
+});
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

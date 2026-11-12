@@ -113,11 +113,18 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ✅ Platform moderation: warnings and danger levels, timed and permanent bans with appeals, account editing and
   deletion, Account Standing, admin audit log
 
-## Batch 7: Community & integrations → 1.2
+## 1.2.0 ✅
+- ✅ Built-in server bot with slash commands and welcome messages
+- ✅ Server verification levels, welcome channel, rules; cleaner roles editor
+- ✅ Screen share window: resolution, frame rate (24/30/60/custom), content hint, audio
+- ✅ Admin: create users, adjustable group DM size
+- ✅ Layout and mobile web fixes
+
+## Batch 7: Community & integrations → 1.3
 - ⬜ Server discovery (opt-in public directory, categories, search)
 - ⬜ Server templates, welcome screen, rules screening
 - ⬜ Incoming webhooks (Edge Function endpoint per channel)
-- ⬜ Bot accounts and a slash-command framework
+- 🟨 Bot accounts and a slash-command framework (built-in bot done in 1.2; third-party bots next)
 - ⬜ Custom server emoji and stickers (upload, manage, use anywhere you're a member), emoji skin tones
 - ⬜ GIF picker (Tenor or GIPHY free tier, needs an API key)
 - ⬜ Connections on profiles (GitHub, Twitch, Spotify via OAuth)

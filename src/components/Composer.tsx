@@ -13,9 +13,11 @@ import type { Attachment, Channel, Message, MessageScope, ServerRole } from '../
 import { useProfiles } from './ConversationBits';
 import { EmojiPicker } from './EmojiPicker';
 import { DisplayName } from './MessageItem';
-import { AttachIcon, ClockIcon, CloseIcon, EyeOffIcon, FileIcon, HashIcon, PlusIcon, PollIcon, ReplyIcon, SendIcon, SmileIcon, TimeoutIcon, TrashIcon, UploadIcon } from './icons';
+import { AttachIcon, BotIcon, ClockIcon, CloseIcon, EyeOffIcon, FileIcon, HashIcon, PlusIcon, PollIcon, ReplyIcon, SendIcon, SmileIcon, TimeoutIcon, TrashIcon, UploadIcon } from './icons';
 import { PollDialog } from './PollDialog';
 import { Avatar } from './ProfileCard';
+import { BOT_COMMANDS, parseBotCommand } from '../lib/botCommands';
+import { useSupabase } from '../lib/supabase';
 
 interface Suggestion {
   key: string;
@@ -43,6 +45,8 @@ export interface ComposerProps {
   onSent: () => void;
   onTyping: () => void;
   onStopTyping: () => void;
+  /** The server's built-in bot is on: "/command" runs a bot command. */
+  botCommands?: boolean;
   /** Files dropped onto the chat area, forwarded by the parent. */
   droppedFiles: File[] | null;
   onDroppedHandled: () => void;
@@ -53,6 +57,7 @@ const TRIGGER = /(^|\s)([@#:])([\w.+-]*)$/;
 export function Composer(props: ComposerProps) {
   const { scope } = props;
   const send = useSendMessage(scope);
+  const sb = useSupabase();
   const upload = useUploadAttachment(scope);
   const emoji = useEmojiData();
   const profiles = useProfiles(props.memberIds);
@@ -104,16 +109,27 @@ export function Composer(props: ComposerProps) {
   // ── Autocomplete ──────────────────────────────────────────────────────────────────────────
   const trigger = useMemo(() => {
     if (dismissed) return null;
+    const slash = props.botCommands ? /^\/([a-z0-9]*)$/i.exec(draft.slice(0, caret)) : null;
+    if (slash) return { kind: '/', query: slash[1]!.toLowerCase(), start: 0 };
     const m = TRIGGER.exec(draft.slice(0, caret));
     if (!m) return null;
     const [, , kind, query] = m;
     if (kind === ':' && query.length < 2) return null;
     return { kind, query: query.toLowerCase(), start: caret - query.length - 1 };
-  }, [draft, caret, dismissed]);
+  }, [draft, caret, dismissed, props.botCommands]);
 
   const suggestions = useMemo<Suggestion[]>(() => {
     if (!trigger) return [];
     const q = trigger.query;
+    if (trigger.kind === '/') {
+      return BOT_COMMANDS.filter((c) => c.name.startsWith(q)).map((c) => ({
+        key: c.name,
+        insert: `/${c.name} `,
+        label: `/${c.name}${c.args ? ` ${c.args}` : ''}`,
+        sub: `${c.description}${c.mod ? ' · moderators' : ''}`,
+        icon: <BotIcon size={18} className="text-ae-accent" />,
+      }));
+    }
     if (trigger.kind === '@') {
       const people: Suggestion[] = [];
       props.memberIds.forEach((id, i) => {
@@ -198,6 +214,17 @@ export function Composer(props: ComposerProps) {
   const submit = () => {
     const content = draft.trim();
     if ((!content && pending.length === 0) || send.isPending || uploading > 0 || cooldownLeft > 0 || props.timedOutUntil) return;
+    const command = props.botCommands && scope.kind === 'channel' && pending.length === 0 ? parseBotCommand(content) : null;
+    if (command) {
+      setDraft('');
+      void sb.rpc('bot_command', { p_channel_id: scope.id, p_command: command.name, p_args: command.args }).then(({ error }) => {
+        if (error) {
+          toast.error(error.message);
+          setDraft(content);
+        } else props.onSent();
+      });
+      return;
+    }
     send.mutate(
       { content, replyToId: props.replyTo?.id ?? null, attachments: pending },
       {
@@ -286,7 +313,7 @@ export function Composer(props: ComposerProps) {
       {suggestions.length > 0 && (
         <ul className="absolute right-4 bottom-full left-4 z-30 mb-1 overflow-hidden rounded-ae border border-ae-border bg-ae-elevated py-1 shadow-2xl" role="listbox">
           <li className="px-3 pb-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">
-            {trigger?.kind === '@' ? 'Members' : trigger?.kind === '#' ? 'Text channels' : 'Emoji matching'} {trigger?.query && `"${trigger.query}"`}
+            {trigger?.kind === '/' ? 'Bot commands' : trigger?.kind === '@' ? 'Members' : trigger?.kind === '#' ? 'Text channels' : 'Emoji matching'} {trigger?.query && `"${trigger.query}"`}
           </li>
           {suggestions.map((s, i) => (
             <li key={s.key} role="option" aria-selected={i === selected}>

@@ -444,3 +444,35 @@ input[type='checkbox'] {
     font-size: 16px !important;
   }
 }
+
+/* ── Touch devices: no page bounce, independent scroll areas, no double-tap zoom ───────── */
+html,
+body {
+  overscroll-behavior: none;
+}
+#root {
+  height: 100dvh;
+}
+.ae-scroll,
+.overflow-y-auto,
+.overflow-auto {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+@media (pointer: coarse) {
+  html,
+  body {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+  }
+  button,
+  a,
+  [role='button'] {
+    touch-action: manipulation;
+  }
+  /* Hover-only toolbars are unreachable on touch; long-press opens the message menu instead. */
+  .ae-hover-only {
+    display: none !important;
+  }
+}

@@ -5,6 +5,7 @@ import { useUiStore } from '../stores/uiStore';
 import { useProfiles } from './ConversationBits';
 import { Dialog } from './Dialog';
 import { Avatar } from './ProfileCard';
+import { useAppSetting } from '../hooks/useAppSetting';
 
 export function GroupDialog({ me, onClose, existing }: {
   me: string;
@@ -23,7 +24,8 @@ export function GroupDialog({ me, onClose, existing }: {
   const [picked, setPicked] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [filter, setFilter] = useState('');
-  const room = 10 - (existing ? existing.memberIds.length : 1);
+  const groupLimit = useAppSetting<number>('group_dm_limit', 10);
+  const room = groupLimit - (existing ? existing.memberIds.length : 1);
 
   const rows = ids
     .map((id, i) => ({ id, p: profiles[i] }))

@@ -44,8 +44,11 @@ export const ICE_SERVERS: RTCIceServer[] = [
   { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
 ];
 
-export type ScreenResolution = '720p' | '1080p';
-export type ScreenFrameRate = 15 | 30 | 60;
+export type ScreenResolution = '720p' | '1080p' | '1440p' | 'source';
+/** Any whole number from 5 to 120; 24, 30 and 60 are the presets. */
+export type ScreenFrameRate = number;
+export type ScreenSurface = 'monitor' | 'window' | 'browser';
+export type ScreenContent = 'auto' | 'detail' | 'motion';
 export type BandwidthProfile = 'low' | 'balanced' | 'high';
 export type VoiceStatus = 'idle' | 'connecting' | 'connected' | 'error';
 export type PeerConnectionState = 'connecting' | 'connected' | 'failed';
@@ -122,12 +125,18 @@ export interface ScreenShareOptions {
   frameRate: ScreenFrameRate;
   /** Capture tab or system audio when the browser offers it. */
   includeAudio: boolean;
+  /** Which tab the system picker opens on (it remembers your last choice too). */
+  surface?: ScreenSurface;
+  /** 'detail' keeps text sharp, 'motion' keeps games and video smooth. */
+  content?: ScreenContent;
 }
 
 export const DEFAULT_SCREEN_SHARE: ScreenShareOptions = {
   resolution: '720p',
   frameRate: 30,
   includeAudio: true,
+  surface: 'monitor',
+  content: 'auto',
 };
 
 export interface VoiceParticipant {
@@ -314,9 +323,11 @@ const CAMERA_SIZE: Record<BandwidthProfile, { width: number; height: number }> =
 const RESOLUTIONS: Record<ScreenResolution, { width: number; height: number }> = {
   '720p': { width: 1280, height: 720 },
   '1080p': { width: 1920, height: 1080 },
+  '1440p': { width: 2560, height: 1440 },
+  source: { width: 3840, height: 2160 },
 };
 /** Base video bitrate (bps) per resolution at 30 FPS on the "balanced" profile. */
-const SCREEN_BASE_BITRATE: Record<ScreenResolution, number> = { '720p': 2_500_000, '1080p': 4_500_000 };
+const SCREEN_BASE_BITRATE: Record<ScreenResolution, number> = { '720p': 2_500_000, '1080p': 4_500_000, '1440p': 7_000_000, source: 9_000_000 };
 const PROFILE_FACTOR: Record<BandwidthProfile, number> = { low: 0.5, balanced: 1, high: 1.6 };
 
 function screenVideoBitrate(opts: ScreenShareOptions, profile: BandwidthProfile): number {
@@ -1337,18 +1348,26 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
   const startScreenShare = useCallback(
     async (partial?: Partial<ScreenShareOptions>) => {
       if (!peerRef.current || !localRef.current) throw new Error('Join a call before sharing your screen.');
-      const options: ScreenShareOptions = { ...DEFAULT_SCREEN_SHARE, ...partial };
+      const merged: ScreenShareOptions = { ...DEFAULT_SCREEN_SHARE, ...partial };
+      const options: ScreenShareOptions = {
+        ...merged,
+        resolution: RESOLUTIONS[merged.resolution] ? merged.resolution : '1080p',
+        frameRate: Math.round(clamp(Number(merged.frameRate) || 30, 5, 120)),
+      };
       const { width, height } = RESOLUTIONS[options.resolution];
+      const native = options.resolution === 'source';
       const session = sessionRef.current;
 
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: {
-          width: { ideal: width, max: width },
-          height: { ideal: height, max: height },
+          ...(native ? {} : { width: { ideal: width, max: width }, height: { ideal: height, max: height } }),
           frameRate: { ideal: options.frameRate, max: options.frameRate },
+          displaySurface: options.surface ?? 'monitor',
         },
-        audio: options.includeAudio,
-      });
+        audio: options.includeAudio ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false } : false,
+        // Chromium hints: open on the chosen tab, offer system audio, hide this app's own window.
+        ...({ systemAudio: options.includeAudio ? 'include' : 'exclude', selfBrowserSurface: 'exclude', surfaceSwitching: 'include', monitorTypeSurfaces: 'include' } as object),
+      } as DisplayMediaStreamOptions);
       if (session !== sessionRef.current) {
         for (const t of stream.getTracks()) t.stop();
         return;
@@ -1358,12 +1377,12 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
       if (video) {
         // Some capture sources ignore getDisplayMedia limits, so enforce the cap again on the live track.
         try {
-          await video.applyConstraints({ width: { max: width }, height: { max: height }, frameRate: { max: options.frameRate } });
+          await video.applyConstraints(native ? { frameRate: { max: options.frameRate } } : { width: { max: width }, height: { max: height }, frameRate: { max: options.frameRate } });
         } catch {
           // Not every source supports applyConstraints. The sender maxFramerate and maxBitrate caps still apply.
         }
         // 'detail' keeps text sharp at low FPS. 'motion' keeps high-FPS content fluid.
-        video.contentHint = options.frameRate >= 60 ? 'motion' : 'detail';
+        video.contentHint = options.content && options.content !== 'auto' ? options.content : options.frameRate >= 50 ? 'motion' : 'detail';
       }
       screenOptionsRef.current = options;
       await publishVideo('screen', stream);

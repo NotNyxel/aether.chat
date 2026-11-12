@@ -23,10 +23,11 @@ import { hasPermission, Permission, PERMISSION_GROUPS, toMask, type PermissionNa
 import { useUiStore, type ServerSettingsTab } from '../stores/uiStore';
 import type { AuditEntry, Server, ServerMember, ServerRole } from '../types/db';
 import { useProfiles } from './ConversationBits';
-import { ArchiveIcon, BellIcon, BellOffIcon, BlockIcon, CalendarIcon, CheckIcon, CloseIcon, CrownIcon, FlagIcon, GavelIcon, GripIcon, LockIcon, MailIcon, MegaphoneIcon, MicIcon, MicOffIcon, MinusIcon, PartyIcon, PhoneOffIcon, PlayIcon, PlusIcon, SettingsIcon, SoundboardIcon, SquareIcon, TagIcon, TimeoutIcon, TrashIcon, UnlockIcon, UserCheckIcon, UserCogIcon, UserXIcon } from './icons';
+import { ArchiveIcon, BellIcon, BellOffIcon, BlockIcon, CalendarIcon, CheckIcon, CloseIcon, CrownIcon, SearchIcon, UsersIcon, FlagIcon, GavelIcon, GripIcon, LockIcon, MailIcon, MegaphoneIcon, MicIcon, MicOffIcon, MinusIcon, PartyIcon, PhoneOffIcon, PlayIcon, PlusIcon, SettingsIcon, SoundboardIcon, SquareIcon, TagIcon, TimeoutIcon, TrashIcon, UnlockIcon, UserCheckIcon, UserCogIcon, UserXIcon } from './icons';
 import { DisplayName, formatTime } from './MessageItem';
 import { Avatar } from './ProfileCard';
 import { SoundboardTab } from './SoundboardSettings';
+import { BotTab, CommunityTab } from './ServerExtras';
 import { ColorField, Field, inputCls, Section, Toggle } from './SettingsPanel';
 import { useEscape } from '../lib/escape';
 
@@ -215,6 +216,18 @@ function RoleEditor({ server, role, rank, members, onDeleted }: {
 
   const togglePerm = (key: PermissionName, on: boolean) =>
     setDraft((d) => ({ ...d, perms: on ? d.perms | Permission[key] : d.perms & ~Permission[key] }));
+  const [section, setSection] = useState<'display' | 'permissions' | 'members'>(role.is_default ? 'permissions' : 'display');
+  const [permQuery, setPermQuery] = useState('');
+  const [memberQuery, setMemberQuery] = useState('');
+  const granted = PERMISSION_GROUPS.flatMap((g) => g.items).filter((i) => (draft.perms & Permission[i.key]) !== 0n).length;
+  const pq = permQuery.trim().toLowerCase();
+  const subTabs: { id: typeof section; label: string; count?: number }[] = role.is_default
+    ? [{ id: 'permissions', label: 'Permissions', count: granted }]
+    : [
+        { id: 'display', label: 'Display' },
+        { id: 'permissions', label: 'Permissions', count: granted },
+        { id: 'members', label: 'Members', count: holders.length },
+      ];
 
   return (
     <div className="space-y-6">
@@ -223,8 +236,27 @@ function RoleEditor({ server, role, rank, members, onDeleted }: {
           {rank.can(Permission.MANAGE_ROLES) ? 'This role is at or above your highest role, so you can only view it.' : 'You need Manage Roles to edit roles.'}
         </p>
       )}
-      <Section title={role.is_default ? '@everyone' : 'Display'} description={role.is_default ? 'The base permissions every member has.' : undefined}>
-        {!role.is_default && (
+      <div className="flex items-center gap-3">
+        <span className="h-4 w-4 shrink-0 rounded-full" style={{ background: role.is_default ? 'var(--ae-text-muted)' : (draft.color ?? 'var(--ae-text-muted)') }} />
+        <h3 className="min-w-0 flex-1 truncate text-lg font-bold">{role.is_default ? '@everyone' : draft.name || 'new role'}</h3>
+      </div>
+      <div className="sticky top-0 z-10 -mx-1 flex gap-1 border-b border-ae-border bg-ae-bg px-1">
+        {subTabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setSection(t.id)}
+            className={`-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm ${section === t.id ? 'border-ae-accent font-semibold text-ae-text' : 'border-transparent text-ae-muted hover:text-ae-text'}`}
+          >
+            {t.label}
+            {t.count !== undefined && <span className="rounded-full bg-ae-surface px-1.5 text-[11px] tabular-nums">{t.count}</span>}
+          </button>
+        ))}
+      </div>
+      {role.is_default && <p className="text-sm text-ae-muted">The base permissions every member has. Other roles add to these.</p>}
+      {section === 'display' && !role.is_default && (
+      <Section title="Display">
+        {(
           <>
             <Field label="Role name">
               <input className={inputCls} disabled={!editable} maxLength={64} value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
@@ -244,15 +276,32 @@ function RoleEditor({ server, role, rank, members, onDeleted }: {
           </>
         )}
       </Section>
+      )}
 
-      {PERMISSION_GROUPS.map((group) => (
+      {section === 'permissions' && (
+        <div className="flex items-center gap-2">
+          <div className="ae-field flex-1">
+            <SearchIcon size={15} />
+            <input className="ae-input" placeholder="Search permissions" value={permQuery} onChange={(e) => setPermQuery(e.target.value)} />
+          </div>
+          {editable && (
+            <button type="button" className="shrink-0 rounded-ae px-3 py-2 text-sm text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={() => setDraft((d) => ({ ...d, perms: 0n }))}>
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
+      {section === 'permissions' &&
+        PERMISSION_GROUPS.map((group) => ({ ...group, items: group.items.filter((i) => !pq || `${i.label} ${i.hint}`.toLowerCase().includes(pq)) }))
+          .filter((group) => group.items.length > 0)
+          .map((group) => (
         <Section key={group.title} title={`${group.title} permissions`}>
-          <div className="space-y-3">
+          <div className="divide-y divide-ae-border/60">
             {group.items.map((item) => {
               const bit = Permission[item.key];
               const lacking = !rank.can(bit); // can't grant what you don't have
               return (
-                <label key={item.key} className={`flex items-start justify-between gap-4 ${lacking || !editable ? 'opacity-60' : 'cursor-pointer'}`}>
+                <label key={item.key} className={`flex items-start justify-between gap-4 py-3 ${lacking || !editable ? 'opacity-60' : 'cursor-pointer'}`}>
                   <span>
                     <span className="block text-sm">{item.label}</span>
                     <span className="block text-xs text-ae-muted">{item.hint}</span>
@@ -271,13 +320,15 @@ function RoleEditor({ server, role, rank, members, onDeleted }: {
         </Section>
       ))}
 
-      {!role.is_default && (
+      {section === 'members' && !role.is_default && (
         <Section title={`Members with this role (${holders.length})`}>
+          {holders.length > 6 && <input className={inputCls} placeholder="Search members" value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)} />}
+          {holders.length === 0 && <p className="text-sm text-ae-muted">Nobody has this role yet.</p>}
           <ul className="space-y-1">
-            {holders.map((m, i) => (
+            {holders.map((m, i) => ({ m, p: holderProfiles[i] })).filter(({ m, p }) => !memberQuery || `${m.nickname ?? ''} ${p?.display_name ?? ''} ${p?.username ?? ''}`.toLowerCase().includes(memberQuery.toLowerCase())).map(({ m, p }) => (
               <li key={m.user_id} className="flex items-center gap-2 rounded-ae px-2 py-1 hover:bg-ae-hover">
-                <Avatar profile={holderProfiles[i]} size={24} showFrame={false} />
-                <span className="flex-1 truncate text-sm">{m.nickname || holderProfiles[i]?.display_name || holderProfiles[i]?.username}</span>
+                <Avatar profile={p} size={24} showFrame={false} />
+                <span className="flex-1 truncate text-sm">{m.nickname || p?.display_name || p?.username}</span>
                 {editable && (
                   <button type="button" className="text-xs text-ae-muted hover:text-ae-danger" onClick={() => actions.unassign.mutate({ userId: m.user_id, roleId: role.id })}>
                     Remove
@@ -303,7 +354,7 @@ function RoleEditor({ server, role, rank, members, onDeleted }: {
         </Section>
       )}
 
-      {!role.is_default && editable && (
+      {section === 'display' && !role.is_default && editable && (
         <Section title="Danger zone">
           <button
             type="button"
@@ -346,6 +397,10 @@ function RolesTab({ server, rank }: { server: Server; rank: Rank }) {
   const everyone = roles.find((r) => r.is_default);
   const selected = roles.find((r) => r.id === selectedId) ?? ordered[0] ?? everyone ?? null;
   const canManage = rank.can(Permission.MANAGE_ROLES);
+  const styles = useMemberStyles(server.id);
+  const [roleQuery, setRoleQuery] = useState('');
+  const countFor = (roleId: string) => members.filter((m) => styles.get(m.user_id)?.roleIds.includes(roleId)).length;
+  const shown = ordered.filter((r) => !roleQuery.trim() || r.name.toLowerCase().includes(roleQuery.trim().toLowerCase()));
 
   const dropOn = (targetId: string) => {
     if (!dragId || dragId === targetId) return;
@@ -370,9 +425,10 @@ function RolesTab({ server, rank }: { server: Server; rank: Rank }) {
             <PlusIcon size={14} /> Create role
           </button>
         )}
+        {ordered.length > 5 && <input className="ae-input w-full !py-1.5 text-sm" placeholder="Search roles" value={roleQuery} onChange={(e) => setRoleQuery(e.target.value)} />}
         <p className="px-1 text-[11px] text-ae-muted">Drag to reorder. Higher roles outrank lower ones.</p>
         <ul className="space-y-0.5">
-          {ordered.map((r) => {
+          {shown.map((r) => {
             const movable = canManage && rank.above(r.position);
             return (
               <li
@@ -390,8 +446,11 @@ function RolesTab({ server, rank }: { server: Server; rank: Rank }) {
                 >
                   {movable && <GripIcon size={14} className="cursor-grab text-ae-muted" />}
                   <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: r.color ?? 'var(--ae-text-muted)' }} />
-                  <span className="truncate">{r.name}</span>
-                  {!movable && canManage && <span className="ml-auto text-xs text-ae-muted" title="Above your highest role"><LockIcon size={15} className="ae-ico" /></span>}
+                  <span className="min-w-0 flex-1 truncate">{r.name}</span>
+                  {!movable && canManage && <span className="text-xs text-ae-muted" title="Above your highest role"><LockIcon size={13} /></span>}
+                  <span className="flex items-center gap-0.5 text-[11px] text-ae-muted tabular-nums" title="Members">
+                    <UsersIcon size={11} /> {countFor(r.id)}
+                  </span>
                 </button>
               </li>
             );
@@ -867,6 +926,8 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
   const { data: settingsChannels = [] } = useChannels(server.id);
   const tabs: { id: ServerSettingsTab; label: string; show: boolean }[] = [
     { id: 'overview', label: 'Overview', show: true },
+    { id: 'community', label: 'Safety & Welcome', show: rank.can(Permission.MANAGE_SERVER) },
+    { id: 'bot', label: 'Bot', show: rank.can(Permission.MANAGE_SERVER) },
     { id: 'roles', label: 'Roles', show: rank.can(Permission.MANAGE_ROLES) },
     {
       id: 'members',
@@ -884,7 +945,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
   const active = visible.some((t) => t.id === tab) ? tab : 'overview';
 
   return (
-    <div className="ae-zoom-in fixed inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Server settings">
+    <div className="ae-zoom-in absolute inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Server settings">
       <nav className="ae-panel flex w-60 shrink-0 flex-col gap-1 border-r border-ae-border p-4">
         <p className="mb-2 truncate px-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">{server.name}</p>
         {visible.map((t) => (
@@ -898,7 +959,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
           </button>
         ))}
       </nav>
-      <main className="ae-scroll relative flex-1 overflow-y-auto">
+      <main className="ae-scroll min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl p-8">
           <h2 className="mb-6 text-xl font-bold">{visible.find((t) => t.id === active)?.label}</h2>
           {active === 'overview' && (
@@ -911,6 +972,8 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
           )}
           {active === 'moderation' && <ModerationTab server={server} channels={settingsChannels} />}
           {active === 'automod' && <AutomodTab server={server} />}
+          {active === 'community' && <CommunityTab server={server} userId={userId} editable={rank.can(Permission.MANAGE_SERVER)} />}
+          {active === 'bot' && <BotTab server={server} userId={userId} editable={rank.can(Permission.MANAGE_SERVER)} />}
           {active === 'roles' && <RolesTab server={server} rank={rank} />}
           {active === 'members' && <MembersTab server={server} rank={rank} />}
           {active === 'soundboard' && <SoundboardTab server={server} canManage={rank.can(Permission.MANAGE_EXPRESSIONS)} />}
@@ -922,7 +985,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
           type="button"
           onClick={() => open(null)}
           aria-label="Close server settings"
-          className="fixed top-6 right-6 grid h-9 w-9 place-items-center rounded-full border border-ae-border text-ae-muted hover:text-ae-text"
+          className="absolute top-4 right-5 z-10 grid h-9 w-9 bg-ae-bg/80 backdrop-blur place-items-center rounded-full border border-ae-border text-ae-muted hover:text-ae-text"
         >
           <CloseIcon />
         </button>

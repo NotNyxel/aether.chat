@@ -140,6 +140,7 @@ and previews live in **Settings → Notifications & Sounds**. Do Not Disturb sil
 ### ⚙️ App
 - **Automatic, signed updates** from GitHub Releases, installed at startup before the app opens.
 - **One-click installer** (aether.chat Setup) and a **web app** with a phone layout.
+- **Built-in server bot** with slash commands (`/roll`, `/8ball`, `/purge`, `/slowmode` and more) and welcome messages.
 - **No default browser UI:** custom title bar, menus, pickers, media players and dialogs; Twemoji for emoji.
 - **40 themes.**
 - **Admin panel** for app admins: stats, users, badges, app settings, report review, warnings with danger
@@ -230,6 +231,7 @@ Migrations live in `supabase/`. Run them in order in the Supabase SQL editor:
 | `migrations/004_server_management.sql` | New permissions, timeouts, `@role` mentions, NSFW channels, channel and role reordering, kick and nickname RPCs, custom invite codes, audit log |
 | `migrations/009_final.sql` | App admins and `app_config`, people search, DMs to anyone as limited message requests, nameplates, profile frames and widgets, admin RPCs |
 | `migrations/010_invites.sql` | Case-insensitive invite codes, friendly join errors, `invite_details()` previews |
+| `migrations/012_servers_bot.sql` | The built-in bot (`bot_command`, welcome messages), server verification levels, welcome channel and rules, adjustable group DM size |
 | `migrations/011_moderation.sql` | Platform bans (enforced on every table) and appeals, warnings and danger levels, admin account editing and deletion, admin audit log |
 | `migrations/003_messaging.sql` | Polls and votes, pins, full-text search index, mentions and `@everyone`, forwards, per-channel unread state, `unread_summary()` |
 

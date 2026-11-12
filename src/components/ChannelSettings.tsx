@@ -388,7 +388,7 @@ function ChannelSettingsInner({ channel, server, userId, onClose }: { channel: C
   const canPerms = rank.can(Permission.MANAGE_ROLES);
 
   return (
-    <div className="ae-zoom-in fixed inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Channel settings">
+    <div className="ae-zoom-in absolute inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Channel settings">
       <nav className="ae-panel flex w-60 shrink-0 flex-col gap-1 border-r border-ae-border p-4">
         <p className="mb-2 flex items-center gap-1 truncate px-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">
           {channel.type !== 'category' && <ChannelGlyph type={channel.type} size={12} />} {channel.name}
@@ -404,7 +404,7 @@ function ChannelSettingsInner({ channel, server, userId, onClose }: { channel: C
           </button>
         ))}
       </nav>
-      <main className="ae-scroll relative flex-1 overflow-y-auto">
+      <main className="ae-scroll min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl p-8">
           <h2 className="mb-6 text-xl font-bold capitalize">{tab}</h2>
           {tab === 'overview' && <OverviewTab channel={channel} server={server} editable={canManage} onDeleted={onClose} />}
@@ -414,7 +414,7 @@ function ChannelSettingsInner({ channel, server, userId, onClose }: { channel: C
           type="button"
           onClick={onClose}
           aria-label="Close channel settings"
-          className="fixed top-6 right-6 grid h-9 w-9 place-items-center rounded-full border border-ae-border text-ae-muted hover:text-ae-text"
+          className="absolute top-4 right-5 z-10 grid h-9 w-9 bg-ae-bg/80 backdrop-blur place-items-center rounded-full border border-ae-border text-ae-muted hover:text-ae-text"
         >
           <CloseIcon />
         </button>

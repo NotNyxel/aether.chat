@@ -26,7 +26,7 @@ import { ChannelSidebar } from './ChannelSidebar';
 import { isUnread } from './ConversationBits';
 import { ConversationView } from './ConversationView';
 import { ForwardDialog } from './ForwardDialog';
-import { FriendsView } from './FriendsView';
+import { FriendsView, MessageRequestsView } from './FriendsView';
 import { HomeSidebar } from './HomeSidebar';
 import { IncomingCall } from './IncomingCall';
 import { Lightbox } from './Lightbox';
@@ -213,7 +213,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
     <WindowFrame
       bar={
         <TitleBar
-          title={server ? server.name : conversation ? 'Direct messages' : 'Friends'}
+          title={server ? server.name : conversation ? 'Direct messages' : homeTarget === 'requests' ? 'Message requests' : 'Friends'}
           lead={
             mobilePane === 'main' && (
               <button type="button" aria-label="Back" className="ae-mobile-only -ml-1 grid h-9 w-9 place-items-center rounded-full text-ae-muted hover:bg-ae-hover" onClick={() => setMobilePane('nav')}>
@@ -249,6 +249,8 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
           <ServerView server={server} channel={channel} channels={channels.data ?? []} userId={userId} />
         ) : conversation ? (
           <ConversationView key={conversation.id} conv={conversation} userId={userId} />
+        ) : homeTarget === 'requests' ? (
+          <MessageRequestsView userId={userId} />
         ) : (
           <FriendsView userId={userId} />
         )}

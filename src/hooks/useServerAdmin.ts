@@ -110,7 +110,7 @@ export function useUpdateServer(userId: string) {
   const sb = useSupabase();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Pick<Server, 'name' | 'description' | 'icon_url' | 'banner_url'>> }) =>
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Omit<Server, 'id' | 'owner_id' | 'created_at'>> }) =>
       unwrap(await sb.from('servers').update(patch).eq('id', id).select('*').single()) as Server,
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['servers', userId] }),
   });

@@ -7,6 +7,7 @@
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { useSupabase } from '../lib/supabase';
 import { ask, promptText } from './ConfirmDialog';
 import {
@@ -106,6 +107,8 @@ const ACTION_LABEL: Record<string, string> = {
   standing: 'Standing changed',
   profile_edited: 'Profile edited',
   account_edited: 'Email or password changed',
+  account_created: 'Account created',
+  email_verified: 'Email verified',
   signed_out: 'Signed out everywhere',
   delete: 'Account deleted',
   appeal_accepted: 'Appeal accepted',
@@ -121,6 +124,20 @@ function durationText(hours: number) {
   return d % 7 === 0 && d < 60 ? `${d / 7}-week` : `${d}-day`;
 }
 export const actionLabel = (a: string) => ACTION_LABEL[a] ?? a.replace(/_/g, ' ');
+
+/** Calls the admin-user Edge Function and returns its error message, if any. */
+export async function adminUserCall(sb: SupabaseClient, body: Record<string, unknown>): Promise<{ error: string | null; data: Record<string, unknown> | null }> {
+  const { data, error } = await sb.functions.invoke('admin-user', { body });
+  let message: string | null = error ? error.message : ((data as { error?: string } | null)?.error ?? null);
+  if (error && 'context' in error) {
+    try {
+      message = ((await (error as { context: Response }).context.json()) as { error?: string }).error ?? message;
+    } catch {
+      // keep the generic message
+    }
+  }
+  return { error: message, data: (data as Record<string, unknown> | null) ?? null };
+}
 
 const btn = 'ae-press flex items-center justify-center gap-1.5 rounded-ae px-3.5 py-2 text-sm font-semibold disabled:opacity-40';
 const label = 'mb-1 block text-[11px] font-bold tracking-wide text-ae-muted uppercase';
@@ -317,21 +334,19 @@ function Account({ d, onChanged, onDeleted }: { d: Detail; onChanged: () => void
     const body = what === 'email' ? { user_id: d.id, email } : { user_id: d.id, password };
     if (what === 'password' && !(await ask(`Set a new password for @${d.username}? They'll be signed out on every device.`, { confirmLabel: 'Change password' }))) return;
     setBusy(what);
-    const { data, error } = await sb.functions.invoke('admin-user', { body });
-    let message = error ? error.message : (data as { error?: string } | null)?.error;
-    if (error && 'context' in error) {
-      try {
-        message = ((await (error as { context: Response }).context.json()) as { error?: string }).error ?? message;
-      } catch {
-        // keep the generic message
-      }
-    }
+    const { error: message } = await adminUserCall(sb, body);
     if (!message && what === 'password') await sb.rpc('admin_sign_out_user', { p_user_id: d.id });
     setBusy(null);
     if (message) return toast.error(message);
     toast.success(what === 'email' ? 'Email changed.' : 'Password changed and sessions signed out.');
     if (what === 'email') setEmail('');
     else setPassword('');
+    onChanged();
+  };
+  const verify = async () => {
+    const { error } = await adminUserCall(sb, { action: 'verify', user_id: d.id });
+    if (error) return toast.error(error);
+    toast.success('Email marked as verified.');
     onChanged();
   };
   const signOut = async () => {
@@ -396,7 +411,19 @@ function Account({ d, onChanged, onDeleted }: { d: Detail; onChanged: () => void
       <div className={`mt-6 space-y-4 border-t border-ae-border pt-5 ${protectedAccount ? 'pointer-events-none opacity-40' : ''}`}>
         <p className="text-sm font-semibold">Sign-in</p>
         <div>
-          <span className={label}>Email · currently {d.email ?? 'none'}</span>
+          <span className={`${label} flex items-center gap-2`}>
+            Email · currently {d.email ?? 'none'}
+            {d.email_confirmed_at ? (
+              <span className="rounded bg-ae-success/15 px-1.5 text-[10px] text-ae-success normal-case">verified</span>
+            ) : (
+              <>
+                <span className="rounded bg-ae-warning/15 px-1.5 text-[10px] text-ae-warning normal-case">not verified</span>
+                <button type="button" className="text-[11px] text-ae-accent normal-case hover:underline" onClick={() => void verify()}>
+                  Verify now
+                </button>
+              </>
+            )}
+          </span>
           <div className="flex gap-2">
             <div className="ae-field flex-1">
               <MailIcon size={15} />

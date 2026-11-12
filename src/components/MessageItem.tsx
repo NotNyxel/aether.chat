@@ -14,10 +14,11 @@ import { Markdown } from '../lib/markdown';
 import { useUiStore } from '../stores/uiStore';
 import type { Attachment, Message, PollVote } from '../types/db';
 import { EmojiPicker } from './EmojiPicker';
-import { CheckIcon, EditIcon, FileIcon, FlagIcon, ForwardIcon, LinkIcon, LockIcon, MegaphoneIcon, PinIcon, PinOffIcon, ReactIcon, ThreadIcon, TrashIcon, ReplyIcon, CopyIcon } from './icons';
+import { BotIcon, CheckIcon, EditIcon, FileIcon, FlagIcon, ForwardIcon, LinkIcon, LockIcon, MegaphoneIcon, PinIcon, PinOffIcon, ReactIcon, ThreadIcon, TrashIcon, ReplyIcon, CopyIcon } from './icons';
 import { LinkEmbed } from './LinkEmbed';
 import { PollCard } from './PollCard';
 import { Avatar, StyledName } from './ProfileCard';
+import { BOT_NAME } from '../lib/botCommands';
 
 export function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -162,12 +163,13 @@ function MessageItemImpl(props: MessageItemProps) {
   const [picker, setPicker] = useState(false);
   const [draft, setDraft] = useState(message.content);
   const [copied, setCopied] = useState(false);
-  const name = props.authorNickname || author?.display_name || author?.username || 'Deleted user';
+  const bot = !!message.is_bot;
+  const name = bot ? BOT_NAME : props.authorNickname || author?.display_name || author?.username || 'Deleted user';
   const avatarProfile = author && props.authorAvatar ? { ...author, avatar_url: props.authorAvatar } : author;
   const mine = message.author_id === me;
   const mentioned =
     message.mentions?.includes(me) || message.mention_everyone || !!message.mention_roles?.some((id) => props.myRoleIds?.has(id));
-  const showHeader = !grouped || !!message.reply_to_id || !!message.forwarded_from;
+  const showHeader = !grouped || bot || !!message.reply_to_id || !!message.forwarded_from;
   const scopeId = message.channel_id ?? message.conversation_id!;
   const embeds = editing ? [] : extractEmbedUrls(message.content);
   const inviteCodes = editing ? [] : inviteCodesIn(message.content);
@@ -175,7 +177,7 @@ function MessageItemImpl(props: MessageItemProps) {
   return (
     <li
       id={`msg-${message.id}`}
-      className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-[17px] pt-0.5 pb-0.5' : 'py-[1px]'} ${mentioned && !mine ? 'ae-mentioned' : ''}`}
+      className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-4 pt-0.5 pb-px' : 'py-px'} ${mentioned && !mine ? 'ae-mentioned' : ''}`}
       onMouseLeave={() => setPicker(false)}
       onContextMenu={(e) => {
         if (editing) return;
@@ -223,12 +225,16 @@ function MessageItemImpl(props: MessageItemProps) {
       }}
     >
       <div className="w-10 shrink-0">
-        {showHeader ? (
+        {showHeader && bot ? (
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-ae-accent to-[#00d4ff] text-white shadow-md">
+            <BotIcon size={20} />
+          </span>
+        ) : showHeader ? (
           <button type="button" onClick={() => message.author_id && showProfile(message.author_id)} className={message.reply_to_id ? 'mt-5' : ''}>
             <Avatar profile={avatarProfile} size={40} showFrame={false} />
           </button>
         ) : (
-          <time className="invisible block pt-[3px] text-right text-[10px] leading-5 text-ae-muted tabular-nums group-hover:visible" dateTime={message.created_at}>
+          <time className="invisible block h-[22px] text-right text-[10px] leading-[22px] text-ae-muted tabular-nums group-hover:visible" dateTime={message.created_at}>
             {new Date(message.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
           </time>
         )}
@@ -257,11 +263,12 @@ function MessageItemImpl(props: MessageItemProps) {
           <div className="flex items-baseline gap-2">
             <button
               type="button"
-              className="text-[15px] leading-5 font-semibold hover:underline"
+              className="text-[15px] leading-[22px] font-semibold hover:underline"
               onClick={() => message.author_id && showProfile(message.author_id)}
             >
-              <StyledName profile={author} text={name} color={props.authorColor ?? author?.accent_color ?? undefined} />
+              {bot ? <span className="text-ae-accent">{name}</span> : <StyledName profile={author} text={name} color={props.authorColor ?? author?.accent_color ?? undefined} />}
             </button>
+            {bot && <span className="rounded bg-ae-accent px-1 py-px text-[10px] leading-none font-bold text-ae-on-accent">BOT</span>}
             <time className="text-[11px] text-ae-muted" dateTime={message.created_at} title={new Date(message.created_at).toLocaleString()}>
               {formatTime(message.created_at)}
             </time>
@@ -269,6 +276,11 @@ function MessageItemImpl(props: MessageItemProps) {
           </div>
         )}
 
+        {bot && message.bot_invoker_id && message.bot_command && message.bot_command !== 'welcome' && (
+          <p className="text-xs text-ae-muted">
+            <DisplayName userId={message.bot_invoker_id} /> used <span className="font-mono text-ae-accent">/{message.bot_command}</span>
+          </p>
+        )}
         {message.crossposted_from && (
           <p className="mt-0.5 text-xs text-ae-muted">
             <MegaphoneIcon size={15} className="ae-ico" /> From <strong className="text-ae-text">{message.crossposted_from.server_name}</strong> · #{message.crossposted_from.channel_name}

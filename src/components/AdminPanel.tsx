@@ -4,12 +4,13 @@
  * Admins can also be granted straight in Supabase: `update public.users set is_admin = true where username = '…'`.
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { Dialog } from './Dialog';
 import { useSupabase } from '../lib/supabase';
-import { AdminUserManager, AuditList } from './AdminUserManager';
+import { adminUserCall, AdminUserManager, AuditList } from './AdminUserManager';
 import { ask, promptText } from './ConfirmDialog';
 import { LevelChip } from './Moderation';
-import { AdminIcon, AuditIcon, BannedIcon, CheckIcon, CloseIcon, DashboardIcon, FlagIcon, GavelIcon, MegaphoneIcon, MessageIcon, ReportsIcon, ScaleIcon, SearchIcon, ServerIcon, SlidersIcon, UsersIcon, LiveIcon, WarningIcon } from './icons';
+import { AdminIcon, AuditIcon, BannedIcon, CheckIcon, CloseIcon, DashboardIcon, FlagIcon, GavelIcon, MegaphoneIcon, MessageIcon, ReportsIcon, ScaleIcon, SearchIcon, ServerIcon, SlidersIcon, UserPlusIcon, UsersIcon, LiveIcon, WarningIcon } from './icons';
 import { BADGE_CATALOG, BadgeRow } from './ProfileCard';
 import { Section, Toggle } from './SettingsPanel';
 import { toast } from './Toaster';
@@ -205,6 +206,7 @@ function Users({ me, initial }: { me: string; initial: string }) {
   const [q, setQ] = useState(initial);
   const [term, setTerm] = useState(initial);
   const [open, setOpen] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setTerm(q.trim()), 250);
     return () => clearTimeout(t);
@@ -226,9 +228,14 @@ function Users({ me, initial }: { me: string; initial: string }) {
   ];
   return (
     <div className="space-y-3">
-      <div className="ae-field">
-        <SearchIcon size={15} />
-        <input className="ae-input" placeholder="Search by username, display name, email or user ID" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="flex gap-2">
+        <div className="ae-field flex-1">
+          <SearchIcon size={15} />
+          <input className="ae-input" placeholder="Search by username, display name, email or user ID" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <button type="button" onClick={() => setCreating(true)} className="ae-press flex shrink-0 items-center gap-1.5 rounded-ae bg-ae-accent px-4 text-sm font-semibold text-ae-on-accent">
+          <UserPlusIcon size={15} /> Create user
+        </button>
       </div>
       <div className="flex items-center gap-1.5">
         {filters.map((f) => (
@@ -255,7 +262,74 @@ function Users({ me, initial }: { me: string; initial: string }) {
         </ul>
       )}
       {open && <AdminUserManager userId={open} onClose={() => setOpen(null)} />}
+      {creating && (
+        <CreateUserDialog
+          onClose={() => setCreating(false)}
+          onCreated={(id) => {
+            setCreating(false);
+            void refetch();
+            setOpen(id);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function CreateUserDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+  const sb = useSupabase();
+  const [f, setF] = useState({ email: '', password: '', username: '', display_name: '', verified: false });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const set = (k: keyof typeof f, v: string | boolean) => setF((cur) => ({ ...cur, [k]: v }));
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    const { error, data } = await adminUserCall(sb, { action: 'create', ...f });
+    setBusy(false);
+    if (error) return setErr(error);
+    toast.success(`@${f.username} was created.`);
+    onCreated(String(data?.user_id ?? ''));
+  };
+  const lbl = 'mb-1 block text-[11px] font-bold tracking-wide text-ae-muted uppercase';
+  return (
+    <Dialog title="Create a user" onClose={onClose}>
+      <form onSubmit={(e) => void submit(e)} className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label>
+            <span className={lbl}>Username</span>
+            <input className="ae-input w-full" required maxLength={32} value={f.username} placeholder="new_user" onChange={(e) => set('username', e.target.value)} />
+          </label>
+          <label>
+            <span className={lbl}>Display name</span>
+            <input className="ae-input w-full" maxLength={64} value={f.display_name} placeholder="Optional" onChange={(e) => set('display_name', e.target.value)} />
+          </label>
+        </div>
+        <label className="block">
+          <span className={lbl}>Email</span>
+          <input className="ae-input w-full" type="email" required value={f.email} placeholder="name@example.com" onChange={(e) => set('email', e.target.value)} />
+        </label>
+        <label className="block">
+          <span className={lbl}>Password</span>
+          <input className="ae-input w-full" type="text" required minLength={8} maxLength={72} autoComplete="off" value={f.password} placeholder="At least 8 characters" onChange={(e) => set('password', e.target.value)} />
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" className="h-4 w-4" checked={f.verified} onChange={(e) => set('verified', e.target.checked)} />
+          Mark the email as verified now
+          <span className="text-xs text-ae-muted">(otherwise you can verify it later)</span>
+        </label>
+        {err && <p className="rounded-ae bg-ae-danger/10 px-3 py-2 text-sm text-ae-danger">{err}</p>}
+        <div className="flex justify-end gap-2 pt-1">
+          <button type="button" onClick={onClose} className="rounded-ae px-4 py-2 text-sm hover:bg-ae-hover">
+            Cancel
+          </button>
+          <button type="submit" disabled={busy} className="ae-press rounded-ae bg-ae-accent px-5 py-2 text-sm font-semibold text-ae-on-accent disabled:opacity-50">
+            {busy ? 'Creating…' : 'Create user'}
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -378,6 +452,7 @@ function Config() {
   const qc = useQueryClient();
   const { data: cfg } = useConfig();
   const [limit, setLimit] = useState<string | null>(null);
+  const [group, setGroup] = useState<string | null>(null);
   const [announce, setAnnounce] = useState<string | null>(null);
   const set = async (key: string, value: unknown) => {
     const { error } = await sb.rpc('admin_set_config', { p_key: key, p_value: value });
@@ -387,6 +462,7 @@ function Config() {
   };
   if (!cfg) return <div className="ae-skeleton h-32" />;
   const limitValue = limit ?? String(cfg.message_request_limit ?? 3);
+  const groupValue = group ?? String(cfg.group_dm_limit ?? 10);
   const announceValue = announce ?? ((cfg.announcement as string | null) ?? '');
   return (
     <div className="space-y-5">
@@ -402,6 +478,24 @@ function Config() {
               const n = Math.round(Number(limitValue));
               if (!(n >= 1 && n <= 20)) return toast.error('Pick a number from 1 to 20.');
               void set('message_request_limit', n);
+            }}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+      <div>
+        <p className="text-sm font-semibold">Group DM size</p>
+        <p className="mb-2 text-xs text-ae-muted">The most people a group DM can have, including its owner.</p>
+        <div className="flex gap-2">
+          <input type="number" min={2} max={10000} className="ae-input !w-28" value={groupValue} onChange={(e) => setGroup(e.target.value)} />
+          <button
+            type="button"
+            className="ae-press rounded-ae bg-ae-surface px-4 text-sm hover:bg-ae-hover"
+            onClick={() => {
+              const n = Math.round(Number(groupValue));
+              if (!(n >= 2 && n <= 10000)) return toast.error('Pick a number from 2 to 10,000.');
+              void set('group_dm_limit', n);
             }}
           >
             Save

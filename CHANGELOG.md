@@ -3,6 +3,41 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.2.0] - 2026-11-12
+
+**Server bot, better screen sharing, server settings and layout fixes**
+
+- **The Aether bot:** a built-in bot each server can switch on (Server Settings → Bot). Type `/` in a channel to
+  see its commands: `/help`, `/ping`, `/roll 2d6`, `/coinflip`, `/8ball`, `/choose a | b`, `/serverinfo`,
+  `/userinfo` and `/rules`. Moderators also get `/say`, `/purge 10` and `/slowmode 10`. It can also welcome new
+  members.
+- **New server settings (Safety & Welcome):**
+  - a verification level: None, Low (verified email), Medium (also an account older than 5 minutes), or High
+    (also, new members without a role wait 10 minutes before talking);
+  - a welcome channel and welcome message;
+  - server rules.
+- **Cleaner roles:** each role has Display, Permissions and Members tabs. You can search permissions and clear
+  them all at once, and the role list shows how many members have each role.
+- **Screen sharing, redone:** a new "Share your screen" window with:
+  - Entire screen or Application (and Browser tab on the web);
+  - 720p, 1080p, 1440p or Source resolution;
+  - 24, 30 or 60 FPS, or a custom rate from 5 to 120;
+  - Auto, Text & detail, or Motion & games;
+  - a Share audio toggle.
+
+  Your choices are remembered. After Go Live, the system's own chooser asks which screen or window to share.
+- **Admin Panel:**
+  - **Create user:** pick the username, display name, email and password, and choose whether the email starts
+    out verified. Unverified emails can be verified later from the user's file.
+  - **Group DM size** is now a setting, from 2 to 10,000.
+- **Message requests** moved into the left sidebar, under Friends.
+- **Layout fixes:**
+  - Settings, Server Settings, Channel Settings and Edit Profile no longer slide under the title bar;
+  - messages have even spacing, and there's more room above the message box.
+- **Web app on phones:** no glass blur over the top bar on iOS, no page bounce, and lists scroll smoothly on their
+  own.
+- Database: `supabase/migrations/012_servers_bot.sql`.
+
 ## [1.1.0] - 2026-11-12
 
 **Updates on launch, a new installer, moderation tools and the web app**

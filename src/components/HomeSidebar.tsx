@@ -13,7 +13,8 @@ import { ConversationAvatar, isUnread, useConversationTitle } from './Conversati
 import { GroupDialog } from './GroupDialog';
 import { useProfile } from '../hooks/useChatData';
 import { ActivityLine } from './ActivityCards';
-import { BellIcon, BellOffIcon, CheckIcon, CloseIcon, PhoneIcon, PlusIcon, SearchIcon, UsersIcon } from './icons';
+import { BellIcon, BellOffIcon, CheckIcon, CloseIcon, InboxIcon, PhoneIcon, PlusIcon, SearchIcon, UsersIcon } from './icons';
+import { useRequestConversations } from './FriendsExtras';
 import { UserPanel } from './UserPanel';
 
 function ConversationRow({ conv, me, active, inCall, count: rawCount, muted }: {
@@ -112,6 +113,7 @@ export function HomeSidebar({ userId }: { userId: string }) {
   const counts = new Map(unread.map((r) => [r.scope_id, r.mention_count]));
   const { resolve } = useNotifyResolver();
 
+  const requestCount = useRequestConversations(userId).length;
   const pending = friendships.filter((f) => f.status === 'pending' && f.addressee_id === userId).length;
   const mine = (c: Conversation) => c.conversation_members.find((m) => m.user_id === userId);
   const visible = conversations.filter((c) => !mine(c)?.hidden && !mine(c)?.request_pending);
@@ -142,6 +144,17 @@ export function HomeSidebar({ userId }: { userId: string }) {
           <UsersIcon size={20} />
           <span className="flex-1 font-medium">Friends</span>
           {pending > 0 && <span className="rounded-full bg-ae-danger px-1.5 text-xs font-bold text-white">{pending}</span>}
+        </button>
+        <button
+          type="button"
+          onClick={() => openHome('requests')}
+          className={`mt-0.5 flex w-full items-center gap-3 rounded-ae px-2 py-2 text-left text-sm ${
+            homeTarget === 'requests' ? 'bg-ae-surface text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'
+          }`}
+        >
+          <InboxIcon size={20} />
+          <span className="flex-1 font-medium">Message requests</span>
+          {requestCount > 0 && <span className="rounded-full bg-ae-danger px-1.5 text-xs font-bold text-white">{requestCount}</span>}
         </button>
 
         <div className="mt-4 mb-1 flex items-center justify-between px-2">

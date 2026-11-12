@@ -15,7 +15,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { unwrap } from '../hooks/useChatData';
 import { useCallActions } from '../hooks/useSocialData';
 import { useVoiceStates } from '../hooks/useVoiceStates';
-import { useVoiceEngine, type VoiceEngine } from '../hooks/useVoiceEngine';
+import { useVoiceEngine, type ScreenShareOptions, type VoiceEngine } from '../hooks/useVoiceEngine';
+import { ScreenShareDialog } from './ScreenShareDialog';
 import { loopSound, playSound } from '../lib/sounds';
 import { useSupabase } from '../lib/supabase';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -51,7 +52,6 @@ const CallCtx = createContext<CallController | null>(null);
 export function CallProvider({ userId, children }: { userId: string; children: ReactNode }) {
   const sb = useSupabase();
   const audio = useSettingsStore((s) => s.audio);
-  const screenDefaults = useSettingsStore((s) => s.screen);
   const voice = useVoiceEngine({ supabase: sb, userId, initialSettings: audio });
   const { join, leave: leaveEngine, updateSettings, startCamera, stopCamera, startScreenShare, stopScreenShare } = voice;
   const calls = useCallActions();
@@ -234,10 +234,19 @@ export function CallProvider({ userId, children }: { userId: string; children: R
     return loopSound('callOutgoing', 3_000, 30_000);
   }, [waitingForAnswer]);
 
+  // Share screen: our options dialog first, then the system's screen/window chooser.
+  const [shareDialog, setShareDialog] = useState(false);
   const toggleScreenShare = useCallback(() => {
     if (voice.isSharingScreen) stopScreenShare();
-    else void startScreenShare(screenDefaults).catch(() => undefined); // the user cancelled the picker
-  }, [voice.isSharingScreen, stopScreenShare, startScreenShare, screenDefaults]);
+    else setShareDialog(true);
+  }, [voice.isSharingScreen, stopScreenShare]);
+  const startShare = useCallback(
+    (options: ScreenShareOptions) => {
+      setShareDialog(false);
+      void startScreenShare(options).catch(() => undefined); // the user cancelled the system chooser
+    },
+    [startScreenShare],
+  );
 
   const toggleCamera = useCallback(() => {
     if (voice.isCameraOn) stopCamera();
@@ -248,7 +257,12 @@ export function CallProvider({ userId, children }: { userId: string; children: R
     () => ({ voice, room, myVoiceState, notice, joinChannel, callConversation, leave, toggleScreenShare, toggleCamera }),
     [voice, room, myVoiceState, notice, joinChannel, callConversation, leave, toggleScreenShare, toggleCamera],
   );
-  return <CallCtx.Provider value={value}>{children}</CallCtx.Provider>;
+  return (
+    <CallCtx.Provider value={value}>
+      {children}
+      {shareDialog && <ScreenShareDialog onStart={startShare} onClose={() => setShareDialog(false)} />}
+    </CallCtx.Provider>
+  );
 }
 
 export function useCall(): CallController {

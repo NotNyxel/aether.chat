@@ -1,5 +1,5 @@
 /** Friends page: Online / All / Pending / Blocked tabs and Add Friend by username. */
-import { MessageRequests, SearchPeople, useRequestConversations } from './FriendsExtras';
+import { MessageRequests, SearchPeople } from './FriendsExtras';
 import { ask } from './ConfirmDialog';
 import { useFriendNickname } from '../hooks/useAccount';
 import { useMeId } from '../hooks/useMe';
@@ -12,10 +12,10 @@ import { ActivityLine } from './ActivityCards';
 import { useBlocks, useConversationActions, useFriendActions, useFriendships } from '../hooks/useSocialData';
 import { useUiStore } from '../stores/uiStore';
 import { useCall } from './CallContext';
-import { CheckIcon, CloseIcon, MessageIcon, PhoneIcon, SearchIcon, UsersIcon } from './icons';
+import { CheckIcon, CloseIcon, InboxIcon, MessageIcon, PhoneIcon, SearchIcon, UsersIcon } from './icons';
 import { Avatar } from './ProfileCard';
 
-type Tab = 'online' | 'all' | 'pending' | 'requests' | 'blocked' | 'add' | 'search';
+type Tab = 'online' | 'all' | 'pending' | 'blocked' | 'add' | 'search';
 
 function ActionButton({ title, onClick, danger, children }: { title: string; onClick: () => void; danger?: boolean; children: ReactNode }) {
   return (
@@ -112,6 +112,21 @@ function AddFriend() {
   );
 }
 
+/** Home → Message requests (opened from the sidebar, under Friends). */
+export function MessageRequestsView({ userId }: { userId: string }) {
+  return (
+    <section className="flex min-w-0 flex-1 flex-col">
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-ae-border px-4">
+        <InboxIcon size={20} className="text-ae-muted" />
+        <h1 className="font-semibold">Message requests</h1>
+      </header>
+      <div className="ae-scroll flex-1 overflow-y-auto p-4">
+        <MessageRequests me={userId} />
+      </div>
+    </section>
+  );
+}
+
 export function FriendsView({ userId }: { userId: string }) {
   const [tab, setTab] = useState<Tab>('online');
   const { data: friendships = [] } = useFriendships();
@@ -121,7 +136,6 @@ export function FriendsView({ userId }: { userId: string }) {
   const { callConversation } = useCall();
   const openHome = useUiStore((s) => s.openHome);
   const presence = usePresenceMap();
-  const requestCount = useRequestConversations(userId).length;
 
   const friends = useMemo(
     () =>
@@ -167,7 +181,6 @@ export function FriendsView({ userId }: { userId: string }) {
     { id: 'online', label: 'Online' },
     { id: 'all', label: 'All' },
     { id: 'pending', label: 'Pending', badge: incoming.length },
-    { id: 'requests', label: 'Message requests', badge: requestCount },
     { id: 'blocked', label: 'Blocked' },
   ];
 
@@ -210,7 +223,6 @@ export function FriendsView({ userId }: { userId: string }) {
         {error && <p className="mb-2 text-sm text-ae-danger">{error.message}</p>}
         {tab === 'add' && <AddFriend />}
         {tab === 'search' && <SearchPeople />}
-        {tab === 'requests' && <MessageRequests me={userId} />}
 
         {(tab === 'online' || tab === 'all') && (
           <>

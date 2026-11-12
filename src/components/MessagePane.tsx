@@ -6,7 +6,7 @@
  */
 import { ArrowDownIcon, LockIcon, MegaphoneIcon, PinIcon } from './icons';
 import { ask } from './ConfirmDialog';
-import { useServerMembers } from '../hooks/useChatData';
+import { useServerMembers, useServers } from '../hooks/useChatData';
 import { NotificationBell } from './NotificationMenu';
 import { useQueryClient } from '@tanstack/react-query';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
@@ -91,6 +91,8 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
   const { data: unread } = useUnreadSummary();
   const { data: me } = useProfile(userId);
   const { data: perms = 0n } = useServerPermissions(serverId);
+  const { data: myServers = [] } = useServers(userId);
+  const botOn = !!serverId && scope.kind === 'channel' && !!myServers.find((s) => s.id === serverId)?.bot_enabled;
   const { typers, notifyTyping, notifyStopped } = useTyping(scope.id, userId);
   const jumpTarget = useUiStore((s) => s.jumpTarget);
   const clearJump = useUiStore((s) => s.clearJump);
@@ -293,7 +295,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
 
           <div
             ref={scrollRef}
-            className="ae-scroll flex flex-1 flex-col-reverse overflow-y-auto pb-2"
+            className="ae-scroll flex flex-1 flex-col-reverse overflow-y-auto pb-6"
             onScroll={(e) => setAwayFromBottom((e.currentTarget.scrollTop ?? 0) < -500)}
           >
             <ul className="flex flex-col-reverse">
@@ -401,6 +403,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             </p>
           ) : (
           <Composer
+            botCommands={botOn}
             scope={scope}
             placeholder={placeholder}
             memberIds={memberIds}

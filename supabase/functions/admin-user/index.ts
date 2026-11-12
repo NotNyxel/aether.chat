@@ -30,18 +30,55 @@ Deno.serve(async (req) => {
   const { data: caller } = await admin.from('users').select('is_admin').eq('id', me.user.id).maybeSingle();
   if (!caller?.is_admin) return json({ error: 'Admins only.' }, 403);
 
-  let body: { user_id?: string; email?: string; password?: string };
+  let body: { action?: 'update' | 'create' | 'verify'; user_id?: string; email?: string; password?: string; username?: string; display_name?: string; verified?: boolean };
   try {
     body = await req.json();
   } catch {
     return json({ error: 'Bad request.' }, 400);
   }
+
+  // Create an account: the admin picks email, password and username. Unverified unless asked.
+  if (body.action === 'create') {
+    const email = String(body.email ?? '').trim().toLowerCase();
+    const password = String(body.password ?? '');
+    const username = String(body.username ?? '').trim();
+    const display = String(body.display_name ?? '').trim().slice(0, 64);
+    if (!EMAIL.test(email) || email.length > 254) return json({ error: "That email address doesn't look right." }, 400);
+    if (password.length < 8 || password.length > 72) return json({ error: 'Passwords need 8 to 72 characters.' }, 400);
+    if (!/^[A-Za-z0-9_.]{2,32}$/.test(username)) return json({ error: 'Usernames are 2–32 letters, numbers, dots or underscores.' }, 400);
+    const { data: taken } = await admin.from('users').select('id').ilike('username', username.replace(/[_%]/g, '\\$&')).maybeSingle();
+    if (taken) return json({ error: 'That username is taken.' }, 400);
+    const { data: created, error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: body.verified === true,
+      user_metadata: { username, display_name: display || username },
+    });
+    if (error || !created.user) return json({ error: error?.message.includes('already') ? 'Another account already uses that email.' : (error?.message ?? 'Could not create the account.') }, 400);
+    await admin.from('admin_audit').insert({
+      actor_id: me.user.id,
+      action: 'account_created',
+      target_id: created.user.id,
+      target_name: username,
+      details: { email, verified: body.verified === true },
+    });
+    return json({ ok: true, user_id: created.user.id });
+  }
+
   const target = String(body.user_id ?? '');
   if (!/^[0-9a-f-]{36}$/i.test(target)) return json({ error: 'Pick a user.' }, 400);
   if (target === me.user.id) return json({ error: 'Change your own email or password in Settings → My Account.' }, 400);
   const { data: t } = await admin.from('users').select('id, username, is_admin').eq('id', target).maybeSingle();
   if (!t) return json({ error: "That account doesn't exist." }, 404);
   if (t.is_admin) return json({ error: 'That account is an admin. Remove their admin access first.' }, 403);
+
+  // Mark the account's email as verified.
+  if (body.action === 'verify') {
+    const { error } = await admin.auth.admin.updateUserById(target, { email_confirm: true });
+    if (error) return json({ error: error.message }, 400);
+    await admin.from('admin_audit').insert({ actor_id: me.user.id, action: 'email_verified', target_id: target, target_name: t.username, details: {} });
+    return json({ ok: true });
+  }
 
   const changes: { email?: string; email_confirm?: boolean; password?: string } = {};
   const logged: Record<string, unknown> = {};

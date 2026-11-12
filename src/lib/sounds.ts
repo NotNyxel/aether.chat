@@ -1,5 +1,5 @@
 /**
- * aether.chat sound effects, synthesized with the Web Audio API (no audio assets shipped).
+ * Aether sound effects, synthesized with the Web Audio API (no audio assets shipped).
  * Each sound is a short list of notes with a soft attack/release envelope. Volume, the master
  * switch and per-sound toggles come from the settings store; the selected output device is honored.
  */

@@ -1,7 +1,30 @@
 # Changelog
 
-All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
+All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
+
+## [1.6.0] - 2026-11-12
+
+**Aether: new name, profile cards, better emoji**
+
+- **aether.chat is now called Aether.** The app, its windows, shortcuts, tray icon and installer all use the new
+  name. Updating moves your install over by itself: you stay signed in, and "open at sign-in" keeps working.
+- **Profile cards:** clicking someone's name or avatar opens a small card next to it, with their status, mutual
+  friends and servers, bio and activity, plus a box to message them straight away. The button in its corner
+  opens the full profile.
+- **Cleaner full profile:** smaller and tidier. Message, Add friend and the ⋯ menu sit next to the avatar, and the
+  details are in tabs: **About me**, **Board**, **Mutual Friends** and **Mutual Servers**. Your note is on the
+  About tab.
+- **Profile panel in DMs:** the right side of a DM shows the other person's profile. The new button in the DM
+  header hides or shows it.
+- **Emoji:**
+  - drawn as images, so they look the same everywhere and multi-part emoji (families, flags, skin tones) are no
+    longer broken into pieces;
+  - bigger in text;
+  - a message of only emoji shows them **large** (up to 3) or **medium** (4 or more).
+- **Sending a message:** it slides in once, when you send it (not a second time when it's delivered), dimmed
+  until the server has it, then fades to full white.
+- **Typing:** opening a chat puts the cursor in the message box, and you can start typing anywhere in the chat.
 
 ## [1.5.1] - 2026-11-12
 

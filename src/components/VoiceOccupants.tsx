@@ -87,7 +87,7 @@ function Occupant({ state, speaking, canModerate, channels, perms, isOwner, me }
   me: string;
 }) {
   const { data: profile } = useProfile(state.user_id);
-  const showProfile = useUiStore((s) => s.showProfile);
+  const peekProfile = useUiStore((s) => s.peekProfile);
   const [menu, setMenu] = useState(false);
   const userMenu = useUserMenu(me);
   const muted = state.self_mute || state.server_mute;
@@ -96,7 +96,7 @@ function Occupant({ state, speaking, canModerate, channels, perms, isOwner, me }
     <li className="ae-enter relative">
       <button
         type="button"
-        onClick={() => showProfile(state.user_id)}
+        onClick={(e) => peekProfile(state.user_id, e.currentTarget)}
         onContextMenu={(e) =>
           userMenu(e, state.user_id, canModerate && state.user_id !== me ? [{ label: 'Voice moderation…', icon: <SlidersIcon size={15} />, onClick: () => setMenu(true) }] : [], state.server_id)
         }

@@ -25,7 +25,7 @@ export function DesktopNotificationsSection() {
   return (
     <Section
       title="Desktop notifications"
-      description="Shown while aether.chat is in the background, for DMs, mentions and calls. Muted chats and Do Not Disturb never notify. Choose per server, channel or DM with the bell in its header."
+      description="Shown while Aether is in the background, for DMs, mentions and calls. Muted chats and Do Not Disturb never notify. Choose per server, channel or DM with the bell in its header."
     >
       <Toggle label="Enable desktop notifications" checked={prefs.desktop} onChange={(v) => set({ desktop: v })} />
       <Toggle
@@ -45,7 +45,7 @@ export function DesktopNotificationsSection() {
         <button
           type="button"
           className="rounded-ae bg-ae-surface px-3 py-1.5 text-sm hover:bg-ae-hover"
-          onClick={() => void notify('aether.chat', 'Notifications are working!').then(() => !isTauri && 'Notification' in window && setPermission(Notification.permission))}
+          onClick={() => void notify('Aether', 'Notifications are working!').then(() => !isTauri && 'Notification' in window && setPermission(Notification.permission))}
         >
           Send a test notification
         </button>
@@ -73,21 +73,21 @@ export function BackgroundShortcutsSection() {
   return (
     <Section title="Work in the background">
       <Toggle
-        label="Shortcuts work while aether.chat isn't focused"
+        label="Shortcuts work while Aether isn't focused"
         hint="Mute, deafen and push-to-talk keep working while you're in a game or another app."
         checked={system.globalShortcuts}
         onChange={(v) => setSystem({ globalShortcuts: v })}
       />
       {system.globalShortcuts && unsafe.length > 0 && (
         <p className="text-xs text-ae-warning">
-          {unsafe.map(formatCombo).join(', ')} only work{unsafe.length === 1 ? 's' : ''} inside aether.chat: a background shortcut on a key you type
+          {unsafe.map(formatCombo).join(', ')} only work{unsafe.length === 1 ? 's' : ''} inside Aether: a background shortcut on a key you type
           with would stop that key working in other apps. Add Ctrl, Alt or Shift, or use an F-key.
         </p>
       )}
       {system.globalShortcuts && failed.length > 0 && (
         <p className="text-xs text-ae-danger">
           {failed.map(formatCombo).join(', ')} {failed.length === 1 ? 'is' : 'are'} already taken by another app, so {failed.length === 1 ? 'it only works' : 'they only work'} inside
-          aether.chat.
+          Aether.
         </p>
       )}
     </Section>
@@ -111,12 +111,12 @@ export function WindowsTab() {
         <Section title="System tray">
           <Toggle
             label="Close button minimises to the tray"
-            hint="aether.chat keeps running so you still get calls and notifications. Quit from the tray icon's menu."
+            hint="Aether keeps running so you still get calls and notifications. Quit from the tray icon's menu."
             checked={system.closeToTray}
             onChange={(v) => setSystem({ closeToTray: v })}
           />
           <Toggle
-            label="Open aether.chat when you sign in to Windows"
+            label="Open Aether when you sign in to Windows"
             hint="Starts quietly in the tray."
             checked={!!boot}
             onChange={(v) => {

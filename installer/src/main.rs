@@ -1,8 +1,8 @@
-//! aether.chat Setup: the one-click installer people download.
+//! Aether Setup: the one-click installer people download.
 //!
 //! It carries the signed NSIS installer inside it (embedded at build time), runs it silently for the
 //! current user (no admin prompt, no wizard pages), shows its own animated window while it works,
-//! then opens aether.chat and closes itself. The NSIS installer still does the real work (files,
+//! then opens Aether and closes itself. The NSIS installer still does the real work (files,
 //! shortcuts, uninstaller, aetherchat:// links), so installs stay identical to auto-updates.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -24,7 +24,7 @@ fn work_dir() -> PathBuf {
 /// Where the NSIS installer put the app (it records the folder in the registry).
 fn install_dir() -> PathBuf {
     let mut cmd = Command::new("reg");
-    cmd.args(["query", r"HKCU\Software\aether.chat\aether.chat", "/ve"]);
+    cmd.args(["query", r"HKCU\Software\Aether\Aether", "/ve"]);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -42,7 +42,7 @@ fn install_dir() -> PathBuf {
         }
     }
     let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from).unwrap_or_else(std::env::temp_dir);
-    local.join("aether.chat")
+    local.join("Aether")
 }
 
 /// Unpacks and runs the real installer silently. Returns the installed app's path.
@@ -60,13 +60,13 @@ async fn install() -> Result<String, String> {
         if !status.success() {
             return Err(match status.code() {
                 Some(1) => "The installation was cancelled.".into(),
-                Some(c) => format!("The installer stopped with code {c}. Close aether.chat if it's open and try again."),
+                Some(c) => format!("The installer stopped with code {c}. Close Aether if it's open and try again."),
                 None => "The installer stopped unexpectedly.".into(),
             });
         }
         let app = install_dir().join(APP_EXE);
         if !app.exists() {
-            return Err("aether.chat was installed, but its program file wasn't found.".into());
+            return Err("Aether was installed, but its program file wasn't found.".into());
         }
         Ok(app.display().to_string())
     })
@@ -98,7 +98,7 @@ fn main() {
             // Keep Setup's browser data in temp so it leaves nothing behind in AppData.
             let data = work_dir().join("webview");
             WebviewWindowBuilder::new(app, "setup", WebviewUrl::App("index.html".into()))
-                .title("aether.chat Setup")
+                .title("Aether Setup")
                 .inner_size(440.0, 300.0)
                 .resizable(false)
                 .maximizable(false)
@@ -112,5 +112,5 @@ fn main() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running aether.chat Setup");
+        .expect("error while running Aether Setup");
 }

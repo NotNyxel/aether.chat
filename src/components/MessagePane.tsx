@@ -6,7 +6,7 @@
  */
 import { ArrowDownIcon, LockIcon, MegaphoneIcon, PinIcon } from './icons';
 import { ask } from './ConfirmDialog';
-import { useServerMembers, useServers } from '../hooks/useChatData';
+import { messageRenderKey, useServerMembers, useServers } from '../hooks/useChatData';
 import { NotificationBell } from './NotificationMenu';
 import { useQueryClient } from '@tanstack/react-query';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
@@ -309,7 +309,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
                   !m.forwarded_from &&
                   new Date(m.created_at).getTime() - new Date(older.created_at).getTime() < GROUP_WINDOW_MS;
                 return (
-                  <Fragment key={m.id}>
+                  <Fragment key={messageRenderKey(m)}>
                     <MessageItem
                       message={m}
                       serverId={serverId}

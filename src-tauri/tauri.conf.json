@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "aether.chat",
+  "productName": "Aether",
   "mainBinaryName": "aetherchat",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "identifier": "app.aetherchat.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "splash",
-        "title": "aether.chat",
+        "title": "Aether",
         "url": "splash.html",
         "width": 300,
         "height": 360,
@@ -29,7 +29,7 @@
         "alwaysOnTop": false
       },
       {
-        "title": "aether.chat",
+        "title": "Aether",
         "width": 1280,
         "height": 800,
         "minWidth": 940,
@@ -52,10 +52,10 @@
       "nsis"
     ],
     "createUpdaterArtifacts": true,
-    "publisher": "aether.chat",
+    "publisher": "Aether",
     "category": "SocialNetworking",
     "shortDescription": "Lightweight P2P chat, voice and video",
-    "longDescription": "aether.chat is a zero-cost messaging client: text over Supabase, voice, video and screen share directly peer-to-peer over WebRTC.",
+    "longDescription": "Aether is a zero-cost messaging client: text over Supabase, voice, video and screen share directly peer-to-peer over WebRTC.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -3,7 +3,7 @@
  *
  * On desktop, with "Work in the background" on (Settings → Keybinds), they're registered as
  * system-wide shortcuts so they work while you're in a game or another app. Any combo that can't
- * be registered (another app owns it) falls back to working only while aether.chat is focused.
+ * be registered (another app owns it) falls back to working only while Aether is focused.
  * The tray menu's Toggle mute / Toggle deafen are handled here too.
  */
 import { useEffect, useRef, useState } from 'react';

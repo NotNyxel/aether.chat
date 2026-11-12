@@ -1,4 +1,4 @@
-// aether.chat Setup window: drives the silent install and shows progress.
+// Aether Setup window: drives the silent install and shows progress.
 (() => {
   const { invoke } = window.__TAURI__.core;
   const win = window.__TAURI__.window.getCurrentWindow();
@@ -9,7 +9,7 @@
     'Tip: click your name at the bottom left to switch status or accounts.',
     'Tip: share an invite as aether.chat/inv/yourcode, or just the code.',
     'Tip: Profile Studio has nameplates, frames and a profile board.',
-    'Tip: aether.chat updates itself every time it starts.',
+    'Tip: Aether updates itself every time it starts.',
   ];
   let tipIndex = Math.floor(Math.random() * tips.length);
   const showTip = () => {
@@ -48,7 +48,7 @@
     setTimeout(() => {
       if (!document.body.classList.contains('err')) {
         step(2);
-        $('status').textContent = 'Installing aether.chat…';
+        $('status').textContent = 'Installing Aether…';
       }
     }, 700);
     try {
@@ -57,7 +57,7 @@
       setPct(100);
       step(3);
       document.body.classList.add('done');
-      $('status').textContent = 'All set! Opening aether.chat…';
+      $('status').textContent = 'All set! Opening Aether…';
       setTimeout(() => invoke('launch', { path }), 1100);
     } catch (e) {
       clearInterval(timer);

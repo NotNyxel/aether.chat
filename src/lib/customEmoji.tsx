@@ -38,5 +38,5 @@ export function CustomEmoji({ id, name, big = false }: { id: string; name: strin
     },
   });
   if (!data) return <span className="text-ae-muted">:{name}:</span>;
-  return <img src={data} alt={`:${name}:`} title={`:${name}:`} draggable={false} className={`inline-block align-[-0.3em] object-contain ${big ? 'h-12 w-12' : 'h-[1.375em] w-[1.375em]'}`} />;
+  return <img src={data} alt={`:${name}:`} title={`:${name}:`} draggable={false} className={`ae-emoji object-contain ${big ? 'ae-emoji-big' : ''}`} />;
 }

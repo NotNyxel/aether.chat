@@ -5,7 +5,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "aether.chat",
+        "title": "Aether",
         "visible": true,
         "backgroundColor": "#08080f"
       }

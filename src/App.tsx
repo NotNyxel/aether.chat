@@ -68,7 +68,7 @@ function AuthGate() {
           return;
         }
         if (kind === 'recovery') setRecovering(true);
-        else if (kind === 'signup') toast.success('Email confirmed. Welcome to aether.chat!', <PartyIcon size={14} />);
+        else if (kind === 'signup') toast.success('Email confirmed. Welcome to Aether!', <PartyIcon size={14} />);
         else if (kind === 'email_change') toast.success('Email change confirmed.', <MailIcon size={14} />);
       }),
     [sb],

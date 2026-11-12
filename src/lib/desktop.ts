@@ -46,7 +46,7 @@ export async function notify(title: string, body: string, onClick?: () => void):
 
 // ── Taskbar ─────────────────────────────────────────────────────────────────────────────────
 
-const BASE_TITLE = 'aether.chat';
+const BASE_TITLE = 'Aether';
 let lastBadge = -1;
 
 /** Red count overlay on the taskbar icon (Windows) and "(n)" in the window title. */

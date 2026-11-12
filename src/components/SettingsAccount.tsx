@@ -135,7 +135,7 @@ function TwoFactor() {
     setBusy(true);
     // Drop half-finished enrolments so they don't pile up.
     for (const f of factors.data ?? []) if (f.status !== 'verified') await sb.auth.mfa.unenroll({ factorId: f.id });
-    const { data, error: err } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: `aether.chat ${new Date().toLocaleDateString()}` });
+    const { data, error: err } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: `Aether ${new Date().toLocaleDateString()}` });
     setBusy(false);
     if (err) return setError(err.message);
     setEnroll({ id: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
@@ -454,7 +454,7 @@ export function PrivacyTab({ userId }: { userId: string }) {
         <ul className="list-disc space-y-1 pl-5 text-sm text-ae-muted">
           <li>Right-click any message or user to report them to the server&apos;s moderators.</li>
           <li>Turn on two-factor authentication in My Account.</li>
-          <li>aether.chat staff will never ask for your password.</li>
+          <li>Aether staff will never ask for your password.</li>
         </ul>
       </Section>
     </div>

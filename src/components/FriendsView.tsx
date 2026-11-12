@@ -41,12 +41,12 @@ function PersonRow({ userId, subtitle, actions }: { userId: string; subtitle?: s
   const nickname = useFriendNickname(userId);
   const { data: p } = useProfile(userId);
   const status = usePresenceOf(userId);
-  const showProfile = useUiStore((s) => s.showProfile);
+  const peekProfile = useUiStore((s) => s.peekProfile);
   return (
     <li
       {...plateProps(p?.nameplate, p?.decor)}
       className="ae-plate group flex cursor-pointer items-center gap-3 border-t border-ae-border px-2 py-2.5 hover:rounded-ae hover:bg-ae-hover"
-      onClick={() => showProfile(userId)}
+      onClick={(e) => peekProfile(userId, e.currentTarget)}
       onContextMenu={(e) => userMenu(e, userId)}
     >
       <span className="relative inline-block shrink-0 leading-none">
@@ -89,7 +89,7 @@ function AddFriend() {
   return (
     <form onSubmit={submit} className="space-y-2">
       <h2 className="font-semibold">Add friend</h2>
-      <p className="text-sm text-ae-muted">You can add friends with their aether.chat username.</p>
+      <p className="text-sm text-ae-muted">You can add friends with their Aether username.</p>
       <div className="flex gap-2 rounded-ae border border-ae-border bg-ae-sunken p-2 focus-within:border-ae-accent">
         <input
           autoFocus

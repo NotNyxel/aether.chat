@@ -32,7 +32,7 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut, me, serv
   timedOut: boolean;
 }) {
   const { data: p } = useProfile(userId);
-  const showProfile = useUiStore((s) => s.showProfile);
+  const peekProfile = useUiStore((s) => s.peekProfile);
   const userMenu = useUserMenu(me);
   const status = usePresenceMap().get(userId) ?? 'offline';
   const customStatus = activeCustomStatus(p);
@@ -40,7 +40,7 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut, me, serv
     <li>
       <button
         type="button"
-        onClick={() => showProfile(userId)}
+        onClick={(e) => peekProfile(userId, e.currentTarget)}
         onContextMenu={(e) => userMenu(e, userId, [], serverId)}
         {...plateProps((!offline && p?.nameplate) || 'none', p?.decor)}
         className={`ae-plate flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left hover:bg-ae-hover ${offline ? 'opacity-45' : ''}`}

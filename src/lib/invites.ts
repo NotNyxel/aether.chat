@@ -1,5 +1,5 @@
 /**
- * Invite links. The canonical form is aether.chat/inv/CODE. Inside aether.chat those links turn
+ * Invite links. The canonical form is aether.chat/inv/CODE. Inside Aether those links turn
  * into join cards. The web link that works anywhere is the web app's /inv/CODE (older links on the
  * GitHub Pages site still work). Anything a user pastes (any of those links, the aetherchat://
  * deep link, or just the code) is accepted by parseInviteCode().

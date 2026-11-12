@@ -1,6 +1,6 @@
 {
-  "name": "aether.chat",
-  "short_name": "aether.chat",
+  "name": "Aether",
+  "short_name": "Aether",
   "description": "Chat, voice and video with your friends and communities.",
   "start_url": "/",
   "scope": "/",

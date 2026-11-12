@@ -1,5 +1,5 @@
 /**
- * useVoiceEngine — aether.chat's peer-to-peer mesh voice, camera and screen-share engine.
+ * useVoiceEngine — Aether's peer-to-peer mesh voice, camera and screen-share engine.
  *
  * Works for any room id: a server voice/stream channel, a 1:1 DM call or a group DM call.
  * Every room is the Realtime topic `voice:<roomId>`, and RLS decides who may join it.

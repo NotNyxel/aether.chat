@@ -60,7 +60,7 @@ export interface NotificationPrefs {
 }
 
 export interface SystemPrefs {
-  /** Closing the window keeps aether.chat running in the system tray. */
+  /** Closing the window keeps Aether running in the system tray. */
   closeToTray: boolean;
   /** Mute, deafen and push-to-talk shortcuts work while another app is focused. */
   globalShortcuts: boolean;

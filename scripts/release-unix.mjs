@@ -62,13 +62,13 @@ const named = (path, name) => {
   renameSync(path, to);
   return to;
 };
-const dmg = named(find(/\.dmg$/), `aether.chat_${version}_macos-universal.dmg`);
-const appTar = named(find(/\.app\.tar\.gz$/), `aether.chat_${version}_macos-universal.app.tar.gz`);
-const appSig = named(find(/\.app\.tar\.gz\.sig$/), `aether.chat_${version}_macos-universal.app.tar.gz.sig`);
-const appImage = named(find(/\.AppImage$/), `aether.chat_${version}_linux-x86_64.AppImage`);
-const appImageSig = named(find(/\.AppImage\.sig$/), `aether.chat_${version}_linux-x86_64.AppImage.sig`);
-const deb = named(find(/\.deb$/), `aether.chat_${version}_linux-amd64.deb`);
-const apk = named(find(/\.apk$/), `aether.chat_${version}_android.apk`);
+const dmg = named(find(/\.dmg$/), `Aether_${version}_macos-universal.dmg`);
+const appTar = named(find(/\.app\.tar\.gz$/), `Aether_${version}_macos-universal.app.tar.gz`);
+const appSig = named(find(/\.app\.tar\.gz\.sig$/), `Aether_${version}_macos-universal.app.tar.gz.sig`);
+const appImage = named(find(/\.AppImage$/), `Aether_${version}_linux-x86_64.AppImage`);
+const appImageSig = named(find(/\.AppImage\.sig$/), `Aether_${version}_linux-x86_64.AppImage.sig`);
+const deb = named(find(/\.deb$/), `Aether_${version}_linux-amd64.deb`);
+const apk = named(find(/\.apk$/), `Aether_${version}_android.apk`);
 const assets = [dmg, appTar, appSig, appImage, appImageSig, deb, apk];
 for (const repo of [SRC, FEED]) run('gh', ['release', 'upload', tag, ...assets.map((a) => `"${a}"`), '--repo', repo, '--clobber']);
 

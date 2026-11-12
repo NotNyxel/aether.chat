@@ -212,6 +212,14 @@ function upsertMessage(data: MessagePages | undefined, msg: Message): MessagePag
   return { ...data, pages: [[msg, ...first], ...rest] };
 }
 
+/**
+ * The real id of a message you sent → the temporary id it was shown under while sending. The
+ * message list keys rows by this so the row isn't rebuilt (and doesn't animate in a second time)
+ * when the server confirms it.
+ */
+const clientKeys = new Map<string, string>();
+export const messageRenderKey = (m: { id: string }): string => clientKeys.get(m.id) ?? m.id;
+
 /** Drops the optimistic copy of a message once the real one arrives (same author and text). */
 function settlePending(data: MessagePages | undefined, msg: Message): MessagePages | undefined {
   if (!data) return data;
@@ -221,7 +229,10 @@ function settlePending(data: MessagePages | undefined, msg: Message): MessagePag
     pages: data.pages.map((page) =>
       page.filter((m) => {
         const hit = !done && (m as { pending?: boolean }).pending && m.author_id === msg.author_id && m.content === msg.content;
-        if (hit) done = true;
+        if (hit) {
+          done = true;
+          if (!clientKeys.has(msg.id)) clientKeys.set(msg.id, m.id);
+        }
         return !hit;
       }),
     ),
@@ -354,8 +365,10 @@ export function useSendMessage(scope: MessageScope) {
         `🛡️ Your message was blocked by AutoMod: ${why}.${(ev as { action?: string } | null)?.action === 'block_and_timeout' ? ' You were also timed out.' : ''}`,
       );
     },
-    onSuccess: (msg, v) =>
-      qc.setQueryData<MessagePages>(key, (d) => upsertMessage(v.tempId ? removeMessage(d, v.tempId) : d, msg)),
+    onSuccess: (msg, v) => {
+      if (v.tempId && !clientKeys.has(msg.id)) clientKeys.set(msg.id, v.tempId);
+      qc.setQueryData<MessagePages>(key, (d) => upsertMessage(v.tempId ? removeMessage(d, v.tempId) : d, msg));
+    },
   });
 }
 

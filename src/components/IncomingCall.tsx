@@ -42,7 +42,7 @@ function RingCard({ call, conv, me, onAccept, onDecline, silent }: {
     const prefs = useSettingsStore.getState().notifications;
     if (prefs.flashOnCall) void flashTaskbar();
     if (prefs.desktop && !document.hasFocus()) {
-      void notify(conv.type === 'group' ? `Group call in ${title}` : `${callerName} is calling you`, 'Open aether.chat to answer.');
+      void notify(conv.type === 'group' ? `Group call in ${title}` : `${callerName} is calling you`, 'Open Aether to answer.');
     }
   }, [call.id, callerName, conv.type, silent, title]);
 

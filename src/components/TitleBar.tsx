@@ -1,5 +1,5 @@
 /**
- * aether.chat's own title bar (the Windows frame is turned off). Drag to move, double-click to
+ * Aether's own title bar (the Windows frame is turned off). Drag to move, double-click to
  * maximise, and custom minimise / maximise / close buttons. Close follows the tray setting.
  * In a browser it's just a slim header.
  */
@@ -12,7 +12,7 @@ async function win() {
   return getCurrentWindow();
 }
 
-export function TitleBar({ children, title = 'aether.chat', lead }: { children?: ReactNode; title?: ReactNode; lead?: ReactNode }) {
+export function TitleBar({ children, title = 'Aether', lead }: { children?: ReactNode; title?: ReactNode; lead?: ReactNode }) {
   const [maximized, setMaximized] = useState(false);
   useEffect(() => {
     if (!isTauri) return;

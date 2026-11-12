@@ -6,6 +6,7 @@ import { useEscape } from '../lib/escape';
 import { useMeId } from '../hooks/useMe';
 import { useServers } from '../hooks/useChatData';
 import { customEmojiToken, useServerEmojis } from '../lib/customEmoji';
+import { Emoji, EmojiText } from '../lib/twemoji';
 
 interface EmojiPickerProps {
   onPick: (emoji: string) => void;
@@ -54,7 +55,7 @@ export function EmojiPicker({ onPick, onClose, className = 'bottom-full right-0 
       onClick={() => pick(e.emoji)}
       className="grid h-9 w-9 place-items-center rounded text-[22px] leading-none hover:bg-ae-hover"
     >
-      {e.emoji}
+      <Emoji emoji={e.emoji} className="!m-0" />
     </button>
   );
 
@@ -150,7 +151,7 @@ export function EmojiPicker({ onPick, onClose, className = 'bottom-full right-0 
       <footer className="flex h-11 items-center gap-2 border-t border-ae-border px-3 text-sm">
         {hovered ? (
           <>
-            <span className="text-2xl">{hovered.emoji}</span>
+            <span className="text-2xl"><Emoji emoji={hovered.emoji} className="!m-0" /></span>
             <span className="truncate">
               {hovered.shortcodes[0] ? `:${hovered.shortcodes[0]}:` : hovered.label}
             </span>
@@ -182,7 +183,7 @@ export function EmojiButton({ value, onChange, size = 'md' }: { value: string | 
         }}
         className={`ae-press grid place-items-center rounded-ae border border-ae-border bg-ae-sunken leading-none hover:border-ae-accent ${box}`}
       >
-        {value || <SmilePlusIcon size={18} className="text-ae-muted" />}
+        {value ? <EmojiText text={value} /> : <SmilePlusIcon size={18} className="text-ae-muted" />}
       </button>
       {open && (
         <EmojiPicker

@@ -1,5 +1,5 @@
 /* ═════════════════════════════════════════════════════════════════════════════════════════
-   aether.chat motion & effects (Batch 4).
+   Aether motion & effects (Batch 4).
    Levels: data-ae-animations = full | subtle | off | system on <html>. "subtle" keeps short fades
    but drops decorative loops; "off" and Reduce Motion stop everything; "system" follows the OS.
    ═════════════════════════════════════════════════════════════════════════════════════════ */
@@ -68,6 +68,15 @@
 }
 .ae-msg {
   animation: ae-msg-in 220ms var(--ae-ease-out) both;
+}
+/* Sending: the text is dimmed until the server has it, then fades up to full white. */
+.ae-msg .ae-md,
+.ae-msg [data-attachments] {
+  transition: opacity 420ms ease;
+}
+.ae-msg-pending .ae-md,
+.ae-msg-pending [data-attachments] {
+  opacity: 0.5;
 }
 
 /* Tactile buttons. Uses the `scale` property, so Tailwind's `translate` utilities on positioned

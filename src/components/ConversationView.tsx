@@ -9,7 +9,8 @@ import type { Conversation } from '../types/db';
 import { useCall } from './CallContext';
 import { ConversationAvatar, otherMemberIds, useConversationTitle } from './ConversationBits';
 import { GroupDialog } from './GroupDialog';
-import { CameraIcon, CrownIcon, LogOutIcon, PhoneIcon, UserPlusIcon, UsersIcon, UserXIcon } from './icons';
+import { CameraIcon, CrownIcon, LogOutIcon, PhoneIcon, SidePanelIcon, UserPlusIcon, UsersIcon, UserXIcon } from './icons';
+import { MiniProfile } from './ProfilePeek';
 import { MessagePane } from './MessagePane';
 import { Avatar } from './ProfileCard';
 import { VoiceRoom } from './VoiceRoom';
@@ -21,7 +22,7 @@ import { toast } from './Toaster';
 function MemberRow({ userId, owner, conv, me }: { userId: string; owner: boolean; conv: Conversation; me: string }) {
   const { data: p } = useProfile(userId);
   const status = usePresenceOf(userId);
-  const showProfile = useUiStore((s) => s.showProfile);
+  const peekProfile = useUiStore((s) => s.peekProfile);
   const openHome = useUiStore((s) => s.openHome);
   const userMenu = useUserMenu(me);
   const sb = useSupabase();
@@ -71,7 +72,7 @@ function MemberRow({ userId, owner, conv, me }: { userId: string; owner: boolean
       <button
         type="button"
         onContextMenu={menu}
-        onClick={() => showProfile(userId)}
+        onClick={(e) => peekProfile(userId, e.currentTarget)}
         className={`flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left hover:bg-ae-hover ${status === 'offline' ? 'opacity-50' : ''}`}
       >
         <span className="relative inline-block shrink-0 leading-none">
@@ -127,7 +128,25 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
   const { voice, room, callConversation, leave, toggleScreenShare, toggleCamera } = useCall();
   const { data: activeCalls = [] } = useActiveCalls();
   const actions = useConversationActions();
-  const [showMembers, setShowMembers] = useState(conv.type === 'group');
+  const [showMembers, setShowMembersRaw] = useState(() => {
+    if (conv.type === 'group') return true;
+    try {
+      return localStorage.getItem('aether.dmProfilePanel') !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const setShowMembers = (fn: (v: boolean) => boolean) =>
+    setShowMembersRaw((v) => {
+      const next = fn(v);
+      if (conv.type === 'dm')
+        try {
+          localStorage.setItem('aether.dmProfilePanel', next ? '1' : '0');
+        } catch {
+          /* not saved */
+        }
+      return next;
+    });
   const [adding, setAdding] = useState(false);
   const others = otherMemberIds(conv, userId);
   const dmPartner = usePresenceOf(conv.type === 'dm' ? others[0] : null);
@@ -160,6 +179,17 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
         <button type="button" title="Start video call" className="hover:text-ae-text" onClick={() => callConversation(conv.id, title, true)}>
           <CameraIcon size={20} />
         </button>
+        {conv.type === 'dm' && (
+          <button
+            type="button"
+            data-tip={showMembers ? 'Hide user profile' : 'Show user profile'}
+            aria-label="Toggle user profile"
+            className={`ae-desktop-only ${showMembers ? 'text-ae-text' : 'hover:text-ae-text'}`}
+            onClick={() => setShowMembers((s) => !s)}
+          >
+            <SidePanelIcon size={19} />
+          </button>
+        )}
         {conv.type === 'group' && (
           <>
             <button type="button" title="Add friends to group" className="hover:text-ae-text" onClick={() => setAdding(true)}>
@@ -198,7 +228,11 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
   ) : null);
 
   const aside =
-    conv.type === 'group' && showMembers ? (
+    conv.type === 'dm' && showMembers && others[0] ? (
+      <aside className="ae-memberlist w-[300px] shrink-0 overflow-hidden border-l border-ae-border">
+        <MiniProfile key={others[0]} userId={others[0]} me={userId} variant="panel" />
+      </aside>
+    ) : conv.type === 'group' && showMembers ? (
       <aside className="ae-memberlist ae-scroll w-60 shrink-0 overflow-y-auto border-l border-ae-border p-3">
         <p className="mb-2 px-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Members — {conv.conversation_members.length}</p>
         <ul className="space-y-0.5">

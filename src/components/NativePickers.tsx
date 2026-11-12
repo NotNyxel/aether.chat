@@ -146,7 +146,7 @@ const hexToRgb = (hex: string) => {
 };
 const rgbToHex = (r: number, g: number, b: number) => `#${[r, g, b].map((x) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('')}`;
 
-/** aether.chat's colour picker: replaces every <input type="color"> in the app. */
+/** Aether's colour picker: replaces every <input type="color"> in the app. */
 export function ColorPopover({ el, onClose }: { el: HTMLInputElement; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const original = useRef(el.value || '#7c5cff');

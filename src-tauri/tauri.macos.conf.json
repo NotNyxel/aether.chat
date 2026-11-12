@@ -4,7 +4,7 @@
     "windows": [
       {
         "label": "splash",
-        "title": "aether.chat",
+        "title": "Aether",
         "url": "splash.html",
         "width": 300,
         "height": 360,
@@ -19,7 +19,7 @@
       },
       {
         "label": "main",
-        "title": "aether.chat",
+        "title": "Aether",
         "width": 1280,
         "height": 800,
         "minWidth": 940,

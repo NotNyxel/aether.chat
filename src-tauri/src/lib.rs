@@ -1,4 +1,4 @@
-//! aether.chat desktop shell. The whole app is the web frontend in ../dist rendered by the
+//! Aether desktop shell. The whole app is the web frontend in ../dist rendered by the
 //! system WebView2. Rust hosts the window and the system tray, opens external links in the
 //! default browser, installs signed updates published to GitHub Releases, and exposes a few
 //! small OS helpers the web layer can't reach (idle time, running games).
@@ -259,7 +259,7 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, idle_seconds, running_processes, now_playing])
         .run(tauri::generate_context!())
-        .expect("error while running aether.chat");
+        .expect("error while running Aether");
 }
 
 #[cfg(desktop)]
@@ -279,7 +279,7 @@ pub fn run() {
             Some(vec!["--autostart"]),
         ))
         // Answer the browser's "allow microphone / camera?" prompts ourselves, the way Discord's
-        // Electron shell does: aether.chat's own pages get them silently, anything else gets the
+        // Electron shell does: Aether's own pages get them silently, anything else gets the
         // normal prompt. Windows' own privacy switch (Settings → Privacy → Microphone) still applies.
         .on_permission_request(|webview, kind| {
             use tauri::webview::{PermissionKind, PermissionResponse};
@@ -299,15 +299,15 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, splash_finish, splash_busy, set_close_to_tray, idle_seconds, running_processes, save_export, now_playing])
         .setup(|app| {
-            let open = MenuItem::with_id(app, "open", "Open aether.chat", true, None::<&str>)?;
+            let open = MenuItem::with_id(app, "open", "Open Aether", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Toggle mute", true, None::<&str>)?;
             let deafen = MenuItem::with_id(app, "deafen", "Toggle deafen", true, None::<&str>)?;
             let sep = PredefinedMenuItem::separator(app)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit aether.chat", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Quit Aether", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &mute, &deafen, &sep, &quit])?;
 
             let mut tray = TrayIconBuilder::with_id("main")
-                .tooltip("aether.chat")
+                .tooltip("Aether")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -375,7 +375,7 @@ pub fn run() {
             }
         })
         .build(tauri::generate_context!())
-        .expect("error while running aether.chat")
+        .expect("error while running Aether")
         .run(|_app, _event| {
             // macOS: clicking the Dock icon while the window is hidden in the tray brings it back.
             #[cfg(target_os = "macos")]

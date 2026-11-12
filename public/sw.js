@@ -1,4 +1,4 @@
-// aether.chat service worker: shows push notifications for DMs and mentions (web app only),
+// Aether service worker: shows push notifications for DMs and mentions (web app only),
 // and opens or focuses the app at that message when you tap one.
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
@@ -8,14 +8,14 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: 'aether.chat', body: event.data ? event.data.text() : '' };
+    data = { title: 'Aether', body: event.data ? event.data.text() : '' };
   }
   event.waitUntil(
     (async () => {
       // Already looking at the app? It plays its own sound and badge, so skip the banner.
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       if (windows.some((w) => w.visibilityState === 'visible' && w.focused)) return;
-      await self.registration.showNotification(data.title || 'aether.chat', {
+      await self.registration.showNotification(data.title || 'Aether', {
         body: data.body || '',
         tag: data.tag,
         renotify: true,

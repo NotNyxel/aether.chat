@@ -3,8 +3,8 @@ import { AddServerDialog } from './Invites';
 import { InboxButton } from './Inbox';
 import { QuickSwitcher, QuickSwitcherButton } from './QuickSwitcher';
 import { TitleBar, WindowFrame } from './TitleBar';
-import { ask } from './ConfirmDialog';
-import { ProfileExtras } from './ProfileExtras';
+import { NoteFields, ProfileActionButtons, useMutualTabs } from './ProfileParts';
+import { ProfilePeekLayer, useServerProfile } from './ProfilePeek';
 import { ReportDialog } from './ReportDialog';
 import { MeContext } from '../hooks/useMe';
 import { useEffect, useMemo } from 'react';
@@ -17,7 +17,7 @@ import { useNotifyResolver } from '../hooks/useNotifications';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { useUnreadSummary } from '../hooks/useMessageExtras';
 import { PresenceProvider } from '../hooks/usePresence';
-import { useBlocks, useConversationActions, useConversations, useFriendActions, useFriendships } from '../hooks/useSocialData';
+import { useConversations, useFriendships } from '../hooks/useSocialData';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, Server } from '../types/db';
@@ -42,63 +42,6 @@ import { EventsDialog } from './Events';
 import { CreateThreadDialog } from './Threads';
 import { ArrowLeftIcon as BackIcon } from './icons';
 
-function ProfileActions({ me, userId, onDone }: { me: string; userId: string; onDone: () => void }) {
-  const { data: friendships = [] } = useFriendships();
-  const { data: blocks = [] } = useBlocks();
-  const friend = useFriendActions();
-  const convo = useConversationActions();
-  const openHome = useUiStore((s) => s.openHome);
-  const { data: target } = useProfile(userId);
-  if (userId === me) return null;
-
-  const rel = friendships.find((f) => f.requester_id === userId || f.addressee_id === userId);
-  const blocked = blocks.some((b) => b.blocked_id === userId);
-  const error = friend.send.error ?? friend.accept.error ?? friend.block.error ?? convo.openDm.error;
-  const btn = 'flex-1 rounded-ae px-3 py-2 text-sm font-semibold';
-
-  return (
-    <div className="w-[340px] space-y-2 rounded-ae border border-ae-border bg-ae-elevated p-2">
-      <div className="flex gap-2">
-        {!blocked && (
-          <button
-            type="button"
-            className={`${btn} bg-ae-accent text-ae-on-accent`}
-            onClick={() =>
-              convo.openDm.mutate(userId, {
-                onSuccess: (id) => {
-                  openHome(id);
-                  onDone();
-                },
-              })
-            }
-          >
-            Message
-          </button>
-        )}
-        {!blocked && !rel && target && (
-          <button type="button" className={`${btn} bg-ae-success text-black`} onClick={() => friend.send.mutate(target.username)}>
-            Add Friend
-          </button>
-        )}
-        {rel?.status === 'pending' && rel.addressee_id === me && (
-          <button type="button" className={`${btn} bg-ae-success text-black`} onClick={() => friend.accept.mutate(userId)}>
-            Accept request
-          </button>
-        )}
-        {rel?.status === 'pending' && rel.requester_id === me && <span className={`${btn} bg-ae-surface text-center text-ae-muted`}>Request sent</span>}
-        <button
-          type="button"
-          className={`${btn} flex-none bg-ae-surface ${blocked ? 'text-ae-text' : 'text-ae-danger'}`}
-          onClick={async () => (blocked ? friend.unblock.mutate(userId) : (await ask('Block this user?')) && friend.block.mutate(userId))}
-        >
-          {blocked ? 'Unblock' : 'Block'}
-        </button>
-      </div>
-      {error && <p className="px-1 text-xs text-ae-danger">{error.message}</p>}
-    </div>
-  );
-}
-
 /** Moderation tools for a member, shown in their profile card while you're viewing the server. */
 function ServerMemberTools({ server, me, userId }: { server: Server; me: string; userId: string }) {
   const { data: members = [] } = useServerMembers(server.id);
@@ -106,7 +49,7 @@ function ServerMemberTools({ server, me, userId }: { server: Server; me: string;
   const member = members.find((m) => m.user_id === userId);
   if (!member) return null;
   return (
-    <div className="rounded-ae border border-ae-border bg-ae-elevated p-3">
+    <div className="rounded-ae bg-ae-sunken/60 p-3">
       <p className="mb-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">In {server.name}</p>
       {member.nickname && <p className="mb-1 text-sm">Nickname: {member.nickname}</p>}
       <MemberModeration server={server} member={member} rank={rank} compact />
@@ -115,30 +58,22 @@ function ServerMemberTools({ server, me, userId }: { server: Server; me: string;
 }
 
 function PopoverForUser({ me, userId, server, onClose }: { me: string; userId: string; server: Server | null; onClose: () => void }) {
-  const { data } = useProfile(userId);
-  const { data: members = [] } = useServerMembers(server?.id ?? null);
-  const member = server ? members.find((m) => m.user_id === userId) : undefined;
-  if (!data) return null;
-  // Inside a server, show their server profile (nickname, avatar, banner, bio) where they set one.
-  const profile = member
-    ? {
-        ...data,
-        display_name: member.nickname || data.display_name,
-        avatar_url: member.avatar_url ?? data.avatar_url,
-        banner_url: member.banner_url ?? data.banner_url,
-        bio: member.bio ?? data.bio,
-      }
-    : data;
+  const profile = useServerProfile(userId, server?.id ?? null);
+  const { tabs } = useMutualTabs(me, userId);
+  if (!profile) return null;
   return (
     <FullProfileModal
       profile={profile}
       onClose={onClose}
-      footer={
-        <>
-          <ProfileActions me={me} userId={userId} onDone={onClose} />
-          {server && <ServerMemberTools server={server} me={me} userId={userId} />}
-          <ProfileExtras me={me} userId={userId} serverId={server?.id ?? null} />
-        </>
+      actions={<ProfileActionButtons me={me} userId={userId} onDone={onClose} />}
+      extraTabs={tabs}
+      aboutExtra={
+        me !== userId ? (
+          <>
+            {server && <ServerMemberTools server={server} me={me} userId={userId} />}
+            <NoteFields me={me} userId={userId} />
+          </>
+        ) : undefined
       }
     />
   );
@@ -262,6 +197,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <IncomingCall userId={userId} silent={me?.presence_status === 'dnd'} />
       <ForwardDialog me={userId} />
       <Lightbox />
+      <ProfilePeekLayer me={userId} server={server} />
       {popoverUserId && <PopoverForUser me={userId} userId={popoverUserId} server={server} onClose={() => showProfile(null)} />}
       <ServerSettings servers={servers.data ?? []} userId={userId} />
       <CreateThreadDialog />

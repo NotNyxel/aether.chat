@@ -5,6 +5,13 @@ export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'vo
 
 export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit' | 'soundboard' | 'moderation' | 'automod' | 'community' | 'bot' | 'emoji';
 
+export interface PeekRect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
 export interface JumpTarget {
   scopeId: string;
   messageId: string;
@@ -29,6 +36,8 @@ interface UiState {
   settingsOpen: boolean;
   settingsTab: SettingsTab;
   profilePopoverUserId: string | null;
+  /** The small profile card shown next to whatever was clicked (a name, avatar, member row). */
+  peek: { userId: string; rect: PeekRect } | null;
   studioOpen: boolean;
   jumpTarget: JumpTarget | null;
   lightbox: LightboxImage | null;
@@ -56,6 +65,8 @@ interface UiState {
   openSettings: (tab?: SettingsTab) => void;
   closeSettings: () => void;
   showProfile: (userId: string | null) => void;
+  /** Open the small profile card next to an element (or the full profile if there's nothing to anchor to). */
+  peekProfile: (userId: string | null, anchor?: Element | { clientX: number; clientY: number } | null) => void;
   openStudio: () => void;
   closeStudio: () => void;
   openLightbox: (image: LightboxImage | null) => void;
@@ -73,6 +84,7 @@ export const useUiStore = create<UiState>()((set) => ({
   settingsOpen: false,
   settingsTab: 'profile',
   profilePopoverUserId: null,
+  peek: null,
   studioOpen: false,
   jumpTarget: null,
   lightbox: null,
@@ -103,7 +115,16 @@ export const useUiStore = create<UiState>()((set) => ({
   toggleMemberList: () => set((s) => ({ memberListOpen: !s.memberListOpen })),
   openSettings: (tab) => set((s) => ({ settingsOpen: true, settingsTab: tab ?? s.settingsTab })),
   closeSettings: () => set({ settingsOpen: false }),
-  showProfile: (profilePopoverUserId) => set({ profilePopoverUserId }),
+  showProfile: (profilePopoverUserId) => set({ profilePopoverUserId, peek: null }),
+  peekProfile: (userId, anchor) => {
+    if (!userId) return set({ peek: null });
+    if (!anchor) return set({ profilePopoverUserId: userId, peek: null });
+    const r =
+      anchor instanceof Element
+        ? anchor.getBoundingClientRect()
+        : { left: anchor.clientX, right: anchor.clientX, top: anchor.clientY, bottom: anchor.clientY };
+    set({ peek: { userId, rect: { left: r.left, right: r.right, top: r.top, bottom: r.bottom } } });
+  },
   openStudio: () => set({ studioOpen: true, settingsOpen: false }),
   closeStudio: () => set({ studioOpen: false }),
   openLightbox: (lightbox) => set({ lightbox }),

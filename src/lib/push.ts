@@ -29,7 +29,7 @@ export async function pushEnabled(): Promise<boolean> {
 
 /** Asks for permission, subscribes this device and saves it for the push function. */
 export async function enablePush(sb: SupabaseClient): Promise<void> {
-  if (!pushSupported) throw new Error('This browser does not support push notifications. On iPhone, add aether.chat to your Home Screen first.');
+  if (!pushSupported) throw new Error('This browser does not support push notifications. On iPhone, add Aether to your Home Screen first.');
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Notifications are blocked. Allow them in your browser settings.');
   const reg = await registration();

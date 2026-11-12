@@ -14,7 +14,7 @@ import { toast } from './Toaster';
 export type DangerLevel = 'good' | 'low' | 'medium' | 'high' | 'critical';
 
 export const LEVELS: { id: DangerLevel; label: string; color: string; blurb: string }[] = [
-  { id: 'good', label: 'Good', color: '#3ba55d', blurb: "You're in good standing. Thanks for helping keep aether.chat a good place." },
+  { id: 'good', label: 'Good', color: '#3ba55d', blurb: "You're in good standing. Thanks for helping keep Aether a good place." },
   { id: 'low', label: 'Low', color: '#c9b52c', blurb: "You have a warning on your account. Nothing is limited, but keep the rules in mind." },
   { id: 'medium', label: 'Medium', color: '#e8912d', blurb: 'Several warnings are active. More violations can lead to a ban.' },
   { id: 'high', label: 'High', color: '#e5484d', blurb: 'Your account is at risk. Another violation will likely lead to a ban.' },
@@ -167,7 +167,7 @@ function BannedScreen({ ban, appeal, onSignOut }: { ban: Ban; appeal: Appeal | n
           <p className="mt-1 text-sm text-ae-muted">
             {ban.expires_at ? (
               <>
-                You can use aether.chat again on <b className="text-ae-text">{new Date(ban.expires_at).toLocaleString()}</b> ({untilText(ban.expires_at)}).
+                You can use Aether again on <b className="text-ae-text">{new Date(ban.expires_at).toLocaleString()}</b> ({untilText(ban.expires_at)}).
               </>
             ) : (
               'This ban is permanent unless an appeal is accepted.'
@@ -247,7 +247,7 @@ function WarningNotice({ warnings, level }: { warnings: WarningRow[]; level: Dan
             <WarningIcon size={26} />
           </span>
           <h2 className="mt-3 text-xl font-extrabold">{warnings.length === 1 ? 'Your account received a warning' : `Your account received ${warnings.length} warnings`}</h2>
-          <p className="mt-1 text-sm text-ae-muted">An admin found activity on your account that breaks aether.chat&apos;s rules.</p>
+          <p className="mt-1 text-sm text-ae-muted">An admin found activity on your account that breaks Aether&apos;s rules.</p>
         </div>
         <ul className="ae-scroll mt-4 max-h-56 space-y-2 overflow-y-auto px-6">
           {warnings.map((w) => (
@@ -296,7 +296,7 @@ export function AccountStanding() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm text-ae-muted">How your account is doing against aether.chat&apos;s rules. Warnings count toward your standing until they expire.</p>
+        <p className="text-sm text-ae-muted">How your account is doing against Aether&apos;s rules. Warnings count toward your standing until they expire.</p>
       </div>
       <div className="rounded-[calc(var(--ae-radius)+4px)] border border-ae-border bg-ae-surface/30 p-5">
         <div className="mb-4 flex items-center gap-3">

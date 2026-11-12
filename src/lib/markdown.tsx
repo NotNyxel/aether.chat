@@ -7,7 +7,7 @@
  *            (syntax highlighted), paragraphs
  *   inline:  **bold**, *italic* / _italic_, __underline__, ~~strike~~, `code`, ||spoiler||,
  *            [label](https://url), bare and <suppressed> links, @mentions, @everyone / @here,
- *            <#channel>, <t:unix:style> timestamps, aether.chat message links (open in-app)
+ *            <#channel>, <t:unix:style> timestamps, Aether message links (open in-app)
  */
 import { openJoinDialog } from './joinBus';
 import { parseInviteCode } from './invites';
@@ -17,6 +17,7 @@ import { useUiStore } from '../stores/uiStore';
 import type { Channel, ServerRole } from '../types/db';
 import { parseMessageLink } from './messageLinks';
 import { CustomEmoji } from './customEmoji';
+import { Emoji, EMOJI_RE } from './twemoji';
 import { openExternal } from './platform';
 
 const CodeBlock = lazy(() => import('./CodeBlock'));
@@ -169,7 +170,7 @@ const INLINE_RULES: InlineRule[] = [
         </Link>
       );
     },
-  },
+  },  { re: EMOJI_RE, render: (m, k) => <Emoji key={k} emoji={m[0]} /> },
 ];
 
 /** Renders inline markup. Repeatedly takes the earliest match among all rules. */
@@ -309,6 +310,10 @@ export function renderMarkdown(source: string): ReactNode {
   return blocks;
 }
 
-export function Markdown({ source, className = '' }: { source: string; className?: string }) {
-  return <div className={`ae-md space-y-1 break-words ${className}`}>{renderMarkdown(source)}</div>;
+export function Markdown({ source, className = '', jumbo }: { source: string; className?: string; jumbo?: 'l' | 'm' }) {
+  return (
+    <div className={`ae-md space-y-1 break-words ${className}`} data-jumbo={jumbo}>
+      {renderMarkdown(source)}
+    </div>
+  );
 }

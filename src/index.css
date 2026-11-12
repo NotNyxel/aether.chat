@@ -506,3 +506,32 @@ body {
     transform: translateY(100%);
   }
 }
+
+/* ── Emoji (Twemoji images) ───────────────────────────────────────────────────────────── */
+.ae-emoji {
+  display: inline-block;
+  width: 1.375em;
+  height: 1.375em;
+  margin: 0 0.05em;
+  vertical-align: -0.3em;
+  object-fit: contain;
+  user-select: text;
+}
+.ae-emoji-text {
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+}
+.ae-emoji-big,
+.ae-md[data-jumbo='l'] .ae-emoji {
+  width: 3rem;
+  height: 3rem;
+  vertical-align: -0.2em;
+  margin: 0.1rem 0.08rem;
+}
+.ae-md[data-jumbo='m'] .ae-emoji {
+  width: 2rem;
+  height: 2rem;
+  margin: 0.06rem 0.06rem;
+}
+.ae-md[data-jumbo] p {
+  line-height: 1.15;
+}

@@ -94,6 +94,30 @@ export function Composer(props: ComposerProps) {
     if (props.replyTo) textRef.current?.focus();
   }, [props.replyTo]);
 
+  // Opening a chat puts the cursor in the box (not on phones, where it would pop the keyboard up).
+  useEffect(() => {
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+    const t = setTimeout(() => {
+      const active = document.activeElement as HTMLElement | null;
+      if (active && active !== document.body && active.closest('input, textarea, [contenteditable="true"], [role="dialog"]')) return;
+      textRef.current?.focus({ preventScroll: true });
+    }, 60);
+    return () => clearTimeout(t);
+  }, [scope.id]);
+
+  // Start typing anywhere in the chat and it goes into the box.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1 || e.defaultPrevented) return;
+      const t = e.target as HTMLElement | null;
+      if (t && t !== document.body && t.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="menu"]')) return;
+      if (document.querySelector('.ae-dialog, [role="dialog"]')) return;
+      textRef.current?.focus({ preventScroll: true });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const addFiles = (files: FileList | File[]) => {
     for (const file of Array.from(files).slice(0, 10)) {
       setUploading((n) => n + 1);

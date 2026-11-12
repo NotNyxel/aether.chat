@@ -119,7 +119,7 @@ async function main() {
   run('npx', ['tauri', 'build'], { env });
 
   const bundleDir = join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'nsis');
-  const installer = join(bundleDir, `aether.chat_${version}_x64-setup.exe`);
+  const installer = join(bundleDir, `Aether_${version}_x64-setup.exe`);
   const sigFile = `${installer}.sig`;
   if (!existsSync(installer) || !existsSync(sigFile)) throw new Error(`Build output missing in ${bundleDir}`);
 
@@ -129,8 +129,11 @@ async function main() {
   const setupConf = join(ROOT, 'installer', 'tauri.conf.json');
   writeFileSync(setupConf, readFileSync(setupConf, 'utf8').replace(/"version": "[^"]+"/, `"version": "${version}"`));
   run('cargo', ['build', '--release', '--manifest-path', `"${setupToml}"`], { env: { ...process.env, AETHER_INSTALLER: installer } });
-  const setupExe = join(bundleDir, 'aether.chat-Setup.exe');
+  const setupExe = join(bundleDir, 'Aether-Setup.exe');
   copyFileSync(join(ROOT, 'installer', 'target', 'release', 'aetherchat-setup.exe'), setupExe);
+  // Old download links (and the website before 1.6) point at the pre-rename file name.
+  const legacySetupExe = join(bundleDir, 'aether.chat-Setup.exe');
+  copyFileSync(setupExe, legacySetupExe);
 
   const url = `https://github.com/${owner}/${FEED_REPO}/releases/download/${tag}/${encodeURIComponent(basename(installer))}`;
   const latestJson = join(bundleDir, 'latest.json');
@@ -149,13 +152,13 @@ async function main() {
   );
 
   // Tag the source and publish both releases
-  if (!out('git', ['tag', '--list', tag])) run('git', ['tag', '-a', tag, '-m', `"aether.chat ${tag}"`]);
+  if (!out('git', ['tag', '--list', tag])) run('git', ['tag', '-a', tag, '-m', `"Aether ${tag}"`]);
   run('git', ['push', 'origin', 'HEAD', '--follow-tags']);
-  const download = `**Download:** [aether.chat-Setup.exe](https://github.com/${owner}/${FEED_REPO}/releases/latest/download/aether.chat-Setup.exe) (one click, no admin needed). Already installed? It updates itself.\n\n`;
+  const download = `**Download:** [Aether-Setup.exe](https://github.com/${owner}/${FEED_REPO}/releases/latest/download/Aether-Setup.exe) (one click, no admin needed). Already installed? It updates itself.\n\n`;
   writeFileSync(notesFile, download + notes);
-  const assets = [setupExe, installer, sigFile, latestJson];
-  publish(`${owner}/${SOURCE_REPO}`, tag, `aether.chat ${tag}`, notesFile, assets, { latest: true });
-  publish(`${owner}/${FEED_REPO}`, tag, `aether.chat ${tag}`, notesFile, assets, { latest: true });
+  const assets = [setupExe, legacySetupExe, installer, sigFile, latestJson];
+  publish(`${owner}/${SOURCE_REPO}`, tag, `Aether ${tag}`, notesFile, assets, { latest: true });
+  publish(`${owner}/${FEED_REPO}`, tag, `Aether ${tag}`, notesFile, assets, { latest: true });
 
   // Web app
   try {

@@ -1,5 +1,5 @@
 /**
- * Friends → "Search for someone" (find anyone on aether.chat and message them; strangers' first
+ * Friends → "Search for someone" (find anyone on Aether and message them; strangers' first
  * messages arrive as a request, limited until accepted) and → "Message requests" (accept, ignore,
  * block, or block and report as spam).
  */
@@ -35,7 +35,7 @@ export function SearchPeople() {
   const convo = useConversationActions();
   const friend = useFriendActions();
   const openHome = useUiStore((s) => s.openHome);
-  const showProfile = useUiStore((s) => s.showProfile);
+  const peekProfile = useUiStore((s) => s.peekProfile);
   const { data: limit = 3 } = useQuery({
     queryKey: ['app-config', 'message_request_limit'],
     staleTime: 5 * 60_000,
@@ -53,7 +53,7 @@ export function SearchPeople() {
       <div>
         <h2 className="text-lg font-bold">Search for someone</h2>
         <p className="text-sm text-ae-muted">
-          Find anyone on aether.chat by username or name. If you&apos;re not friends, your first {limit} message{limit === 1 ? '' : 's'} arrive as a message request
+          Find anyone on Aether by username or name. If you&apos;re not friends, your first {limit} message{limit === 1 ? '' : 's'} arrive as a message request
           until they accept.
         </p>
       </div>
@@ -81,7 +81,7 @@ export function SearchPeople() {
         <ul className="space-y-1">
           {results.data!.map((h) => (
             <li key={h.id} className="ae-enter group flex items-center gap-3 rounded-ae border border-transparent px-3 py-2 hover:border-ae-border hover:bg-ae-hover">
-              <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => showProfile(h.id)}>
+              <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={(e) => peekProfile(h.id, e.currentTarget)}>
                 <Avatar profile={{ username: h.username, display_name: h.display_name, avatar_url: h.avatar_url, avatar_frame: h.avatar_frame, accent_color: h.accent_color }} size={40} showFrame={false} />
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{h.display_name || h.username}</span>

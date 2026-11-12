@@ -1,5 +1,5 @@
 /**
- * Theme presets for aether.chat. Each preset is a complete token set that ThemeEngine writes
+ * Theme presets for Aether. Each preset is a complete token set that ThemeEngine writes
  * to `--ae-*` CSS custom properties on <html>. Tailwind utilities (`bg-ae-bg`, `text-ae-muted`,
  * and so on) are mapped to those variables in src/index.css, so swapping presets re-themes the
  * whole app without re-rendering React.

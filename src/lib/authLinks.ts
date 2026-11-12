@@ -2,7 +2,7 @@
  * Account email links (password reset, sign-up confirmation, email change).
  *
  * Desktop: Supabase redirects the link to aetherchat://auth#access_token=…&type=recovery, Windows
- * opens (or focuses) aether.chat, and we finish signing in here. Web: supabase-js reads the tokens
+ * opens (or focuses) Aether, and we finish signing in here. Web: supabase-js reads the tokens
  * from the page URL by itself (detectSessionInUrl), and we only need to know the link type.
  */
 import { openJoinDialog } from './joinBus';

@@ -215,7 +215,7 @@ export function ScreenShareDialog({ onStart, onClose }: { onStart: (o: ScreenSha
               <span className="block text-xs text-ae-muted">{nativeCaptureAvailable
                   ? tab === 'window'
                     ? "Only that app's sound."
-                    : "Your computer's sound, without aether.chat's own (so nobody hears themselves)."
+                    : "Your computer's sound, without Aether's own (so nobody hears themselves)."
                   : o.surface === 'window'
                     ? 'Browsers only share audio from a whole screen or a tab.'
                     : 'Include the sound from what you share.'}</span>

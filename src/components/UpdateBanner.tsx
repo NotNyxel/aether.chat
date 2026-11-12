@@ -2,7 +2,7 @@
  * Updates while the app is running (desktop only). Startup updates happen in the startup window
  * (splash.ts) before the app opens; this covers long sessions. Every few hours it checks the signed
  * feed, downloads a newer version in the background, then offers a one-click restart. If you ignore
- * it, the startup window installs it the next time aether.chat opens.
+ * it, the startup window installs it the next time Aether opens.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Update } from '@tauri-apps/plugin-updater';
@@ -88,7 +88,7 @@ export function UpdateBanner() {
             <div className="h-1.5 overflow-hidden rounded-full bg-ae-sunken">
               <div className="ae-skeleton h-full w-full" />
             </div>
-            <p className="mt-2 text-xs text-ae-muted">aether.chat will reopen in a few seconds.</p>
+            <p className="mt-2 text-xs text-ae-muted">Aether will reopen in a few seconds.</p>
           </>
         )}
         {state.kind === 'error' && (

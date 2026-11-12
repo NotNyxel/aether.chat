@@ -239,7 +239,7 @@ function AppearanceTab() {
 
       <Section
         title="Custom CSS"
-        description="Applies to the whole app, scoped so it cannot affect anything outside aether.chat. Override theme tokens with :scope { --ae-accent: #ff2fd6; }."
+        description="Applies to the whole app, scoped so it cannot affect anything outside Aether. Override theme tokens with :scope { --ae-accent: #ff2fd6; }."
       >
         <Toggle label="Enable custom CSS" checked={theme.customCssEnabled} onChange={(v) => setTheme({ customCssEnabled: v })} />
         <textarea
@@ -455,7 +455,7 @@ function VoiceTab() {
         )}
         <Toggle
           label="Automatic gain control"
-          hint="Usually best off; aether.chat's compressor already levels your voice."
+          hint="Usually best off; Aether's compressor already levels your voice."
           checked={audio.autoGainControl}
           onChange={(v) => setAudio({ autoGainControl: v })}
         />
@@ -529,7 +529,7 @@ function KeybindRow({ label, hint, combo, onChange }: { label: string; hint: str
   );
 }
 
-/** Web app: push notifications for DMs and mentions, even when aether.chat is closed. */
+/** Web app: push notifications for DMs and mentions, even when Aether is closed. */
 function PushSection() {
   const sb = useSupabase();
   const [on, setOn] = useState<boolean | null>(null);
@@ -552,7 +552,7 @@ function PushSection() {
     }
   };
   return (
-    <Section title="Push notifications" description="Get DMs and @mentions on this device even when aether.chat is closed. On iPhone and iPad, add aether.chat to your Home Screen first (Share → Add to Home Screen).">
+    <Section title="Push notifications" description="Get DMs and @mentions on this device even when Aether is closed. On iPhone and iPad, add Aether to your Home Screen first (Share → Add to Home Screen).">
       <Toggle label={busy ? 'Working…' : 'Push notifications on this device'} checked={!!on} onChange={(v) => !busy && void toggle(v)} />
     </Section>
   );
@@ -801,7 +801,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
           <button type="button" onClick={onSignOut} className="flex w-full items-center gap-2.5 rounded-ae px-3 py-2 text-left text-sm text-ae-danger hover:bg-ae-hover">
             <span className="w-5 text-center"><LogOutIcon size={15} className="ae-ico" /></span> Sign out
           </button>
-          <p className="mt-2 px-3 text-[11px] text-ae-muted">aether.chat v{__APP_VERSION__}</p>
+          <p className="mt-2 px-3 text-[11px] text-ae-muted">Aether v{__APP_VERSION__}</p>
         </div>
       </nav>
 

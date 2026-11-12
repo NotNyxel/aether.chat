@@ -1,6 +1,6 @@
 /**
  * Report a message or a user. Server messages go to that server's moderators (Server Settings →
- * Moderation). Reports about DMs or users outside a server are stored for the aether.chat operator.
+ * Moderation). Reports about DMs or users outside a server are stored for the Aether operator.
  */
 import { ShieldIcon } from './icons';
 import { useState } from 'react';

@@ -22,6 +22,7 @@ import { avatarDecoStyle } from '../lib/decoArt';
 import { effectDef, frameProps, loadNameFont, nameEffectAttrs, nameFontFamily, shapeDef, type Crop, type EffectDef, type Motion } from '../lib/cosmetics';
 import { cardFrameAttrs, cardVars } from '../lib/cardDecor';
 import { themeAttrs } from '../lib/cosmetics';
+import { EmojiText } from '../lib/twemoji';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Badges
@@ -29,7 +30,7 @@ import { themeAttrs } from '../lib/cosmetics';
 
 export const BADGE_CATALOG: Record<string, { label: string; Icon: LucideIcon; color: string }> = {
   founder: { label: 'Founder', Icon: CrownIcon, color: '#f5c542' },
-  staff: { label: 'aether.chat Staff', Icon: AdminIcon, color: '#7c5cff' },
+  staff: { label: 'Aether Staff', Icon: AdminIcon, color: '#7c5cff' },
   'early-supporter': { label: 'Early Supporter', Icon: HeartIcon, color: '#ff7ab6' },
   developer: { label: 'Developer', Icon: CodeIcon, color: '#00d4ff' },
   moderator: { label: 'Moderator', Icon: GavelIcon, color: '#2ecc71' },
@@ -354,7 +355,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
             </p>
             {customStatus && (
               <p className="mt-1 text-sm">
-                {profile.status_emoji && <span className="mr-1">{profile.status_emoji}</span>}
+                {profile.status_emoji && <span className="mr-1"><EmojiText text={profile.status_emoji} /></span>}
                 {customStatus}
               </p>
             )}

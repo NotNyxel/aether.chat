@@ -22,6 +22,7 @@ import { DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY } from '../lib/profileD
 import { cardFrameAttrs, cardVars } from '../lib/cardDecor';
 import { themeAttrs } from '../lib/cosmetics';
 import { cropStyle } from './ProfileCard';
+import { EmojiText } from '../lib/twemoji';
 
 const STATUS_OPTIONS: { id: PresenceStatus; hint?: string }[] = [
   { id: 'online' },
@@ -135,7 +136,7 @@ export function UserPopout({ userId, shownStatus, onClose, onEditStatus }: { use
               <span className="absolute -bottom-4 -left-3 h-1.5 w-1.5 rounded-full border border-ae-border bg-ae-elevated" />
               {custom || me.status_emoji ? (
                 <span className="line-clamp-2">
-                  {me.status_emoji && <span className="mr-1">{me.status_emoji}</span>}
+                  {me.status_emoji && <span className="mr-1"><EmojiText text={me.status_emoji} /></span>}
                   {custom}
                 </span>
               ) : (

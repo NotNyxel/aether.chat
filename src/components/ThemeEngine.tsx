@@ -1,5 +1,5 @@
 /**
- * ThemeEngine: aether.chat's dynamic theming and custom CSS system.
+ * ThemeEngine: Aether's dynamic theming and custom CSS system.
  *
  * 1. Token engine: resolves the active preset plus the accent override (or profile accent) into
  *    `--ae-*` custom properties on <html>. All Tailwind `ae-*` utilities read those variables, so a

@@ -1,5 +1,5 @@
 /**
- * The app's icon set: Lucide (ISC licence), re-exported under aether.chat's names so every icon in
+ * The app's icon set: Lucide (ISC licence), re-exported under Aether's names so every icon in
  * the app shares one stroke weight and style. Import from here, never use emoji as UI icons.
  */
 export {
@@ -183,5 +183,11 @@ export {
   Scale as ScaleIcon,
   ShieldX as BannedIcon,
   MousePointer2 as MousePointerIcon,
+  // ── added in 1.6 ──
+  PanelRight as SidePanelIcon,
+  SquareArrowOutUpRight as OpenFullIcon,
+  Shuffle as ShuffleIcon,
+  RotateCcw as ResetIcon,
+  Smartphone as PhoneDeviceIcon,
 } from 'lucide-react';
 export type { LucideProps as IconProps } from 'lucide-react';

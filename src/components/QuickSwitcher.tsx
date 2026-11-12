@@ -1,6 +1,6 @@
 /**
  * Search everything: Ctrl+K (or the search button in the title bar) jumps to a friend, DM, server
- * or channel, and finds people across aether.chat to message.
+ * or channel, and finds people across Aether to message.
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -170,7 +170,7 @@ export function QuickSwitcher({ userId, servers }: { userId: string; servers: Se
     { title: 'Groups', kinds: ['dm'] },
     { title: 'Servers', kinds: ['server'] },
     { title: 'Channels', kinds: ['channel'] },
-    { title: 'People on aether.chat', kinds: ['person'] },
+    { title: 'People on Aether', kinds: ['person'] },
   ];
   let idx = -1;
 
@@ -197,7 +197,7 @@ export function QuickSwitcher({ userId, servers }: { userId: string; servers: Se
         <div className="ae-scroll min-h-0 flex-1 overflow-y-auto p-2">
           {items.length === 0 && (
             <p className="px-3 py-8 text-center text-sm text-ae-muted">
-              {term.length < 2 ? 'Type to search your friends, servers and channels, or anyone on aether.chat.' : people.isFetching ? 'Searching…' : 'No results.'}
+              {term.length < 2 ? 'Type to search your friends, servers and channels, or anyone on Aether.' : people.isFetching ? 'Searching…' : 'No results.'}
             </p>
           )}
           {groups.map((g) => {

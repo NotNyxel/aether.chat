@@ -11,6 +11,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { buildMessageLink, extractEmbedUrls } from '../lib/messageLinks';
 import { Markdown } from '../lib/markdown';
+import { EmojiText, emojiSize } from '../lib/twemoji';
 import { useUiStore } from '../stores/uiStore';
 import type { Attachment, Message, PollVote } from '../types/db';
 import { EmojiPicker } from './EmojiPicker';
@@ -154,7 +155,7 @@ function ThreadChip({ parentId, threadId, onOpen }: { parentId: string; threadId
 function MessageItemImpl(props: MessageItemProps) {
   const { message, grouped, me, editing } = props;
   const { data: author } = useProfile(message.author_id);
-  const showProfile = useUiStore((s) => s.showProfile);
+  const peekProfile = useUiStore((s) => s.peekProfile);
   const goTo = useUiStore((s) => s.goTo);
   const openForward = useUiStore((s) => s.openForward);
   const openThread = useUiStore((s) => s.openThread);
@@ -187,7 +188,7 @@ function MessageItemImpl(props: MessageItemProps) {
     <li
       ref={rowRef}
       id={`msg-${message.id}`}
-      className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-4 pt-0.5 pb-px' : 'py-px'} ${mentioned && !mine ? 'ae-mentioned' : ''} ${(message as { pending?: boolean }).pending ? 'pointer-events-none opacity-60' : ''}`}
+      className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-4 pt-0.5 pb-px' : 'py-px'} ${mentioned && !mine ? 'ae-mentioned' : ''} ${(message as { pending?: boolean }).pending ? 'ae-msg-pending pointer-events-none' : ''}`}
       onMouseLeave={() => setPicker(false)}
       onContextMenu={(e) => {
         if (editing) return;
@@ -242,7 +243,7 @@ function MessageItemImpl(props: MessageItemProps) {
             <BotIcon size={20} />
           </span>
         ) : showHeader ? (
-          <button type="button" onClick={() => message.author_id && showProfile(message.author_id)} className={message.reply_to_id ? 'mt-5' : ''}>
+          <button type="button" onClick={(e) => message.author_id && peekProfile(message.author_id, e.currentTarget)} className={message.reply_to_id ? 'mt-5' : ''}>
             <Avatar profile={avatarProfile} size={40} showFrame={false} />
           </button>
         ) : (
@@ -276,7 +277,7 @@ function MessageItemImpl(props: MessageItemProps) {
             <button
               type="button"
               className="text-[15px] leading-[22px] font-semibold hover:underline"
-              onClick={() => message.author_id && showProfile(message.author_id)}
+              onClick={(e) => message.author_id && peekProfile(message.author_id, e.currentTarget)}
             >
               {bot ? <span className="text-ae-accent">{name}</span> : <StyledName profile={author} text={name} color={props.authorColor ?? author?.accent_color ?? undefined} />}
             </button>
@@ -325,7 +326,7 @@ function MessageItemImpl(props: MessageItemProps) {
               <p className="text-xs text-ae-muted">Enter to save · Esc to cancel</p>
             </div>
           ) : (
-            message.content && <Markdown source={message.content} className="text-[15px] leading-[1.375rem] text-ae-text/95" />
+            message.content && <Markdown source={message.content} jumbo={emojiSize(message.content)} className="text-[15px] leading-[1.375rem] text-ae-text/95" />
           )}
 
           {message.attachments.length > 0 && (
@@ -361,7 +362,7 @@ function MessageItemImpl(props: MessageItemProps) {
                     active ? 'border-ae-accent/70 bg-ae-accent/15 text-ae-accent' : 'border-transparent bg-ae-surface/70 text-ae-muted hover:border-ae-border'
                   }`}
                 >
-                  <span className="text-[15px] leading-none">{emoji}</span>
+                  <span className="text-[16px] leading-none"><EmojiText text={emoji} /></span>
                   <span>{users.length}</span>
                 </button>
               );

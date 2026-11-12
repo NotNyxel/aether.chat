@@ -42,7 +42,9 @@ import { EventsDialog } from './Events';
 import { CreateThreadDialog } from './Threads';
 import { ArrowLeftIcon as BackIcon } from './icons';
 import { ThemeStudio } from './ThemeStudio';
+import { AndroidUpdate } from './AndroidUpdate';
 import { ThemeEffectLayer } from './ThemeEffectLayer';
+import { MobileHome, MobileInbox, MobileServersEmpty, MobileTabBar, MobileYou } from './MobileNav';
 
 /** Moderation tools for a member, shown in their profile card while you're viewing the server. */
 function ServerMemberTools({ server, me, userId }: { server: Server; me: string; userId: string }) {
@@ -93,6 +95,9 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
   const popoverUserId = useUiStore((s) => s.profilePopoverUserId);
   const showProfile = useUiStore((s) => s.showProfile);
   const mobilePane = useUiStore((s) => s.mobilePane);
+  const mobileTab = useUiStore((s) => s.mobileTab);
+  const setMobileTab = useUiStore((s) => s.setMobileTab);
+  const selectServer = useUiStore((s) => s.selectServer);
   const setMobilePane = useUiStore((s) => s.setMobilePane);
 
   const servers = useServers(userId);
@@ -166,7 +171,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
     >
     <div className="flex h-full flex-col text-ae-text">
     <AnnouncementBar />
-    <div className="ae-shell flex min-h-0 flex-1" data-pane={mobilePane}>
+    <div className="ae-shell flex min-h-0 flex-1" data-pane={mobilePane} data-tab={mobileTab} data-view={server ? 'server' : 'home'}>
       <ServerRail userId={userId} servers={servers.data ?? []} activeId={server?.id ?? null} homeBadge={homeBadge} />
 
       {server ? (
@@ -193,7 +198,30 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
         )}
       </main>
 
+      <section className="ae-tabview">
+        {mobileTab === 'home' ? (
+          <MobileHome userId={userId} />
+        ) : mobileTab === 'inbox' ? (
+          <MobileInbox userId={userId} servers={servers.data ?? []} />
+        ) : mobileTab === 'you' ? (
+          <MobileYou userId={userId} />
+        ) : (
+          !server && <MobileServersEmpty />
+        )}
+      </section>
     </div>
+    {mobilePane === 'nav' && (
+      <MobileTabBar
+        userId={userId}
+        tab={mobileTab}
+        homeBadge={homeBadge}
+        inboxBadge={serverMentions}
+        onTab={(t) => {
+          setMobileTab(t);
+          if (t === 'servers' && !server && (servers.data ?? []).length) selectServer((servers.data ?? []).find((s) => s.id === storedServerId)?.id ?? servers.data![0]!.id);
+        }}
+      />
+    )}
       <SettingsPanel userId={userId} onSignOut={onSignOut} />
       <ProfileStudioLayer userId={userId} />
       <IncomingCall userId={userId} silent={me?.presence_status === 'dnd'} />
@@ -201,6 +229,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <Lightbox />
       <ProfilePeekLayer me={userId} server={server} />
       <ThemeStudio />
+      <AndroidUpdate />
       <ThemeEffectLayer />
       {popoverUserId && <PopoverForUser me={userId} userId={popoverUserId} server={server} onClose={() => showProfile(null)} />}
       <ServerSettings servers={servers.data ?? []} userId={userId} />

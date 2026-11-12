@@ -17,6 +17,7 @@ import { Dialog } from './Dialog';
 import { Avatar } from './ProfileCard';
 import { inputCls } from './SettingsPanel';
 import { TagPill, ThreadPanel, timeAgo } from './Threads';
+import { MobileBack } from './MobileNav';
 
 function PostAuthor({ userId }: { userId: string | null }) {
   const { data: p } = useProfile(userId);
@@ -217,7 +218,8 @@ export function ForumView({ forum, server, userId, channels }: { forum: Channel;
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
       <section className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ae-border px-4">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ae-border px-4 ae-chat-header">
+        <MobileBack />
           <ChannelIcon channel={forum} size={18} />
           <h1 className="font-semibold">{forum.name}</h1>
           {forum.topic && (

@@ -3,6 +3,24 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.6.2] - 2026-11-12
+
+**A new look for phones and the web app**
+
+- **Phones** (web app and Android) get their own layout instead of a squeezed desktop one:
+  - a **bottom tab bar**: Messages, Servers, Notifications and You;
+  - **Messages:** a big title, search, Friends and Requests buttons, friends who are online, and roomy chat rows
+    with the time and an unread marker;
+  - **Servers:** the server list and channels;
+  - **Notifications:** your mentions and unreads, full screen;
+  - **You:** your profile card, Edit profile, status, Customize your theme and settings;
+  - chats open full screen with **one** header (back arrow, name, call buttons), and the tab bar steps aside;
+  - bigger touch targets and tighter message sides.
+- **Web app on a computer:** floating rounded panels with space between them, and a cleaner top bar.
+- The desktop app keeps its layout.
+- **Android:** the app now checks for updates by itself and offers them (from 1.6.3 on, when the next Android
+  build is published).
+
 ## [1.6.1] - 2026-11-12
 
 **Customize your theme**

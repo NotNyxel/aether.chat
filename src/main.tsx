@@ -12,6 +12,9 @@ import '@fontsource/nunito/800.css';
 import '@fontsource/pacifico/400.css';
 import '@fontsource/playfair-display/700.css';
 import '@fontsource/press-start-2p/400.css';
+import { isTauri } from './lib/platform';
+
+document.documentElement.dataset.aeWeb = String(!isTauri);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

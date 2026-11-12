@@ -15,6 +15,7 @@ import { useCall } from './CallContext';
 import { CheckIcon, CloseIcon, InboxIcon, MessageIcon, PhoneIcon, SearchIcon, UsersIcon } from './icons';
 import { Avatar } from './ProfileCard';
 import { plateProps } from '../lib/cosmetics';
+import { MobileBack } from './MobileNav';
 
 type Tab = 'online' | 'all' | 'pending' | 'blocked' | 'add' | 'search';
 
@@ -117,7 +118,8 @@ function AddFriend() {
 export function MessageRequestsView({ userId }: { userId: string }) {
   return (
     <section className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-ae-border px-4">
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-ae-border px-4 ae-chat-header">
+        <MobileBack />
         <InboxIcon size={20} className="text-ae-muted" />
         <h1 className="font-semibold">Message requests</h1>
       </header>
@@ -189,7 +191,8 @@ export function FriendsView({ userId }: { userId: string }) {
 
   return (
     <section className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-ae-border px-4">
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-ae-border px-4 ae-chat-header">
+        <MobileBack />
         <UsersIcon size={20} className="text-ae-muted" />
         <h1 className="font-semibold">Friends</h1>
         <div className="mx-2 h-6 w-px bg-ae-border" />

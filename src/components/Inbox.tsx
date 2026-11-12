@@ -100,7 +100,7 @@ export function InboxButton({ userId, servers }: { userId: string; servers: Serv
   );
 }
 
-function InboxPanel({ userId, servers, onClose }: { userId: string; servers: Server[]; onClose: () => void }) {
+export function InboxPanel({ userId, servers, onClose, inline = false }: { userId: string; servers: Server[]; onClose: () => void; inline?: boolean }) {
   const sb = useSupabase();
   const [tab, setTab] = useState<'mentions' | 'unreads'>('mentions');
   const goTo = useUiStore((s) => s.goTo);
@@ -112,6 +112,7 @@ function InboxPanel({ userId, servers, onClose }: { userId: string; servers: Ser
 
   useEscape(onClose);
   useEffect(() => {
+    if (inline) return;
     const close = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node) && !(e.target as HTMLElement).closest?.('[data-inbox-toggle]')) onClose();
     };
@@ -180,7 +181,7 @@ function InboxPanel({ userId, servers, onClose }: { userId: string; servers: Ser
   return (
     <div
       ref={ref}
-      className="ae-pop fixed top-10 right-3 z-[75] flex max-h-[min(640px,calc(100vh-56px))] w-[440px] flex-col rounded-ae border border-ae-border bg-ae-elevated shadow-2xl"
+      className={inline ? 'flex h-full w-full flex-col' : 'ae-pop fixed top-10 right-3 z-[75] flex max-h-[min(640px,calc(100vh-56px))] w-[440px] flex-col rounded-ae border border-ae-border bg-ae-elevated shadow-2xl'}
       role="dialog"
       aria-label="Inbox"
     >

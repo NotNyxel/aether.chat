@@ -54,6 +54,9 @@ interface UiState {
   eventsServerId: string | null;
   /** Phones show one pane at a time: the server/DM lists, or the open channel. */
   mobilePane: 'nav' | 'main';
+  /** Phones: which bottom tab is showing. */
+  mobileTab: 'home' | 'servers' | 'inbox' | 'you';
+  setMobileTab: (tab: 'home' | 'servers' | 'inbox' | 'you') => void;
   setMobilePane: (pane: 'nav' | 'main') => void;
   openThread: (threadId: string | null) => void;
   openThreadDraft: (draft: { parentId: string; messageId: string | null } | null) => void;
@@ -101,6 +104,8 @@ export const useUiStore = create<UiState>()((set) => ({
   threadDraft: null,
   eventsServerId: null,
   mobilePane: 'nav',
+  mobileTab: 'home',
+  setMobileTab: (mobileTab) => set({ mobileTab, mobilePane: 'nav' }),
   setMobilePane: (mobilePane) => set({ mobilePane }),
   openThread: (threadId) => set({ threadId }),
   openThreadDraft: (threadDraft) => set({ threadDraft }),

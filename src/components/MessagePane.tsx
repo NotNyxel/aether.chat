@@ -29,6 +29,7 @@ import type { Channel, Message, MessageScope, PollVote } from '../types/db';
 import { Composer } from './Composer';
 import { DisplayName, MessageItem } from './MessageItem';
 import { PinsPanel, SearchPanel } from './MessagePanels';
+import { MobileBack } from './MobileNav';
 
 const GROUP_WINDOW_MS = 5 * 60_000;
 
@@ -247,7 +248,8 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
 
   return (
     <section className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ae-border px-4">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ae-border px-4 ae-chat-header">
+        <MobileBack />
         {header}
         <div className="ml-3 flex shrink-0 items-center gap-2">
           <NotificationBell scope={scope} />
@@ -260,6 +262,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             <PinIcon size={15} className="ae-ico" />
           </button>
           <form
+            className="ae-desktop-only"
             onSubmit={(e) => {
               e.preventDefault();
               const value = new FormData(e.currentTarget).get('q')?.toString().trim() ?? '';

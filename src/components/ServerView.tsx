@@ -19,6 +19,7 @@ import { MessagePane } from './MessagePane';
 import { Avatar, StyledName } from './ProfileCard';
 import { VoiceRoom } from './VoiceRoom';
 import { plateProps } from '../lib/cosmetics';
+import { MobileBack } from './MobileNav';
 
 function MemberRow({ userId, nickname, owner, offline, color, timedOut, me, serverId, avatarOverride }: {
   me: string;
@@ -290,7 +291,8 @@ export function ServerView({ server, channel, channels, userId }: { server: Serv
   const here = room?.kind === 'channel' && room.id === channel.id && voice.status !== 'idle';
   return (
     <section className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ae-border px-4">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ae-border px-4 ae-chat-header">
+        <MobileBack />
         <ChannelGlyph type={channel.type} size={18} />
         <h1 className="font-semibold">{channel.name}</h1>
       </header>

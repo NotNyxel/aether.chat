@@ -21,3 +21,4 @@ export const BUILT_IN_BACKEND: BackendConfig = {
   url: 'https://pyjvnbjsjtbogrmoimwf.supabase.co',
   anonKey: 'sb_publishable_aW2Si2NQXIXREmYjBuFxhw_9112kqk4',
 };
+export const RELEASES_REPO = 'NotNyxel/aether.chat-releases';

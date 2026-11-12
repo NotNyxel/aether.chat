@@ -171,7 +171,7 @@ export function UserPanel({ userId }: { userId: string }) {
   return (
     <>
       <VoiceDock />
-      <footer className="relative flex items-center gap-1 bg-ae-sunken/60 px-2 py-2">
+      <footer className="ae-userpanel relative flex items-center gap-1 bg-ae-sunken/60 px-2 py-2">
         <button
           type="button"
           data-user-panel

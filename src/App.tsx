@@ -19,6 +19,7 @@ import { listenForPushClicks } from './lib/push';
 import { trackAccounts } from './lib/accounts';
 import { isTauri } from './lib/platform';
 import { resolveBackendConfig, SupabaseProvider, useSupabase } from './lib/supabase';
+import { installTouchControls } from './lib/touch';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,6 +120,7 @@ function AuthGate() {
 const backend = resolveBackendConfig();
 
 listenForPushClicks();
+installTouchControls();
 
 // Web: /inv/CODE opens the join dialog (after signing in, if needed).
 if (!isTauri) {

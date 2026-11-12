@@ -476,3 +476,33 @@ body {
     display: none !important;
   }
 }
+
+/* ── Touch: long press opens our menu, not the system's callout or text selection ──────── */
+@media (pointer: coarse) {
+  body {
+    -webkit-touch-callout: none;
+  }
+  .ae-msg,
+  .ae-plate,
+  nav button,
+  aside button,
+  [role='button'] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input,
+  textarea,
+  [contenteditable='true'] {
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+.ae-sheet {
+  animation: ae-sheet-up 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes ae-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}

@@ -40,16 +40,18 @@ export function ContextMenuLayer() {
   const { x, y, items } = useMenu();
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y });
+  // Phones get a bottom sheet with big rows instead of a tiny floating menu.
+  const sheet = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse) and (max-width: 767px)').matches;
 
   useLayoutEffect(() => {
-    if (!items || !ref.current) return;
+    if (!items || !ref.current || sheet) return;
     const r = ref.current.getBoundingClientRect();
     setPos({
       left: Math.max(8, Math.min(x, window.innerWidth - r.width - 8)),
       top: Math.max(8, Math.min(y, window.innerHeight - r.height - 8)),
     });
     ref.current.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
-  }, [items, x, y]);
+  }, [items, x, y, sheet]);
 
   useEffect(() => {
     if (!items) return;
@@ -70,7 +72,7 @@ export function ContextMenuLayer() {
     window.addEventListener('contextmenu', close, true);
     window.addEventListener('keydown', key);
     window.addEventListener('blur', close);
-    window.addEventListener('scroll', close, true);
+    if (!sheet) window.addEventListener('scroll', close, true);
     return () => {
       window.removeEventListener('mousedown', close);
       window.removeEventListener('contextmenu', close, true);
@@ -78,9 +80,44 @@ export function ContextMenuLayer() {
       window.removeEventListener('blur', close);
       window.removeEventListener('scroll', close, true);
     };
-  }, [items]);
+  }, [items, sheet]);
 
   if (!items) return null;
+  if (sheet)
+    return (
+      <div className="ae-backdrop fixed inset-0 z-[85] bg-black/50" onMouseDown={() => closeContextMenu()} onTouchEnd={(e) => e.target === e.currentTarget && closeContextMenu()}>
+        <div
+          ref={ref}
+          role="menu"
+          className="ae-sheet absolute inset-x-0 bottom-0 max-h-[75vh] overflow-y-auto rounded-t-2xl border-t border-ae-border bg-ae-elevated px-2 pt-2 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl"
+          onMouseDown={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-ae-border" />
+          {(items as (MenuItem | 'divider')[]).map((it, i) =>
+            it === 'divider' ? (
+              <div key={`d${i}`} className="my-1 h-px bg-ae-border" />
+            ) : (
+              <button
+                key={`${it.label}${i}`}
+                type="button"
+                role="menuitem"
+                disabled={it.disabled}
+                onClick={() => {
+                  closeContextMenu();
+                  it.onClick?.();
+                }}
+                className={`flex w-full items-center gap-3 rounded-ae px-3 py-3 text-left text-[15px] active:bg-ae-hover disabled:opacity-40 ${it.danger ? 'text-ae-danger' : ''}`}
+              >
+                {it.icon && <span className="grid w-5 place-items-center opacity-80">{it.icon}</span>}
+                <span className="flex-1">{it.label}</span>
+                {it.hint && <span className="text-xs opacity-60">{it.hint}</span>}
+              </button>
+            ),
+          )}
+        </div>
+      </div>
+    );
   return (
     <div
       ref={ref}

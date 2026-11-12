@@ -132,7 +132,10 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ✅ Web Push notifications, server discovery, webhooks, custom server emoji
 - ✅ Android APK
 
-## Batch 7: Community & integrations → 1.5
+## 1.6.0 (next big update)
+- ⬜ iPhone/iPad: unsigned .ipa on every release for sideloading (SideStore, AltStore, Sideloadly)
+
+## Batch 7: Community & integrations → 1.6
 - ⬜ Server discovery (opt-in public directory, categories, search)
 - ⬜ Server templates, welcome screen, rules screening
 - ⬜ Incoming webhooks (Edge Function endpoint per channel)

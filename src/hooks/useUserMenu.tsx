@@ -8,6 +8,7 @@ import { toast } from '../components/Toaster';
 import { useUiStore } from '../stores/uiStore';
 import type { Friendship, UserBlock, UserProfile } from '../types/db';
 import { useConversationActions, useFriendActions } from './useSocialData';
+import { AtIcon, BlockIcon, CheckIcon, CopyIcon, FlagIcon, MessageIcon, UserIcon, UserPlusIcon, UserXIcon } from '../components/icons';
 
 export function useUserMenu(me: string) {
   const qc = useQueryClient();
@@ -24,42 +25,42 @@ export function useUserMenu(me: string) {
       const self = userId === me;
       const err = (x: Error) => toast.error(x.message);
       openContextMenu(e, [
-        { label: 'Profile', icon: '👤', onClick: () => showProfile(userId) },
+        { label: 'Profile', icon: <UserIcon size={15} />, onClick: () => showProfile(userId) },
         !self && !blocked && {
           label: 'Message',
-          icon: '💬',
+          icon: <MessageIcon size={15} />,
           onClick: () => convo.openDm.mutate(userId, { onSuccess: (id) => openHome(id), onError: err }),
         },
         ...extra,
         'divider',
         !self && !blocked && !rel && profile && {
           label: 'Add friend',
-          icon: '➕',
+          icon: <UserPlusIcon size={15} />,
           onClick: () => friend.send.mutate(profile.username, { onSuccess: () => toast.success('Friend request sent.'), onError: err }),
         },
         !self && rel?.status === 'pending' && rel.addressee_id === me && {
           label: 'Accept friend request',
-          icon: '✓',
+          icon: <CheckIcon size={15} />,
           onClick: () => friend.accept.mutate(userId, { onError: err }),
         },
         !self && rel?.status === 'accepted' && {
           label: 'Remove friend',
-          icon: '➖',
+          icon: <UserXIcon size={15} />,
           danger: true,
           onClick: async () => (await ask('Remove this friend?')) && friend.remove.mutate(userId, { onError: err }),
         },
         'divider',
         profile && {
           label: 'Copy username',
-          icon: '@',
+          icon: <AtIcon size={15} />,
           onClick: () => void navigator.clipboard.writeText(profile.username).then(() => toast('Username copied', '@')),
         },
-        { label: 'Copy user ID', icon: '#', onClick: () => void navigator.clipboard.writeText(userId).then(() => toast('ID copied', '#')) },
+        { label: 'Copy user ID', icon: <CopyIcon size={15} />, onClick: () => void navigator.clipboard.writeText(userId).then(() => toast('ID copied', '#')) },
         'divider',
-        !self && { label: 'Report', icon: '⚑', danger: true, onClick: () => openReport({ userId, serverId }) },
+        !self && { label: 'Report', icon: <FlagIcon size={15} />, danger: true, onClick: () => openReport({ userId, serverId }) },
         !self && {
           label: blocked ? 'Unblock' : 'Block',
-          icon: '⛔',
+          icon: <BlockIcon size={15} />,
           danger: !blocked,
           onClick: async () =>
             blocked

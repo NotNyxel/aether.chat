@@ -1017,5 +1017,22 @@ await expectOk('custom emoji: managers add, everyone can see', async () => {
 });
 await expectError('members cannot add emoji without Manage Expressions', () => as(C, `insert into public.server_emojis (server_id, name, url) values ($1, 'nope', 'https://x.example/e.png')`, [discSrv]));
 
+console.log('\nGroup DMs (1.5.1)');
+const squad = (await db.query(`insert into public.conversations (type, name, owner_id) values ('group', 'Squad', '${A}') returning id`)).rows[0].id;
+await db.exec(`insert into public.conversation_members (conversation_id, user_id) values ('${squad}', '${A}'), ('${squad}', '${B}'), ('${squad}', '${C}')`);
+await expectError('members cannot remove others', () => as(B, `select public.remove_group_member($1, '${C}')`, [squad]), 'Only the group owner');
+await expectOk('the owner removes a member', async () => {
+  await as(A, `select public.remove_group_member($1, '${C}')`, [squad]);
+  const n = (await db.query(`select count(*)::int n from public.conversation_members where conversation_id = $1`, [squad])).rows[0].n;
+  if (n !== 2) throw new Error(String(n));
+});
+await expectError('ownership only goes to members', () => as(A, `select public.transfer_group_owner($1, '${C}')`, [squad]), 'not in this group');
+await expectOk('the owner hands the group over', async () => {
+  await as(A, `select public.transfer_group_owner($1, '${B}')`, [squad]);
+  const o = (await db.query(`select owner_id from public.conversations where id = $1`, [squad])).rows[0].owner_id;
+  if (o !== B) throw new Error(o);
+});
+await expectError('the old owner can no longer remove people', () => as(A, `select public.remove_group_member($1, '${B}')`, [squad]), 'Only the group owner');
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

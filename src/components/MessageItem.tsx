@@ -7,7 +7,7 @@ import { openContextMenu } from './ContextMenu';
 import { openReport } from './ReportDialog';
 import { toast } from './Toaster';
 import { isArchived, useAnnouncementActions, useThreads } from '../hooks/useThreads';
-import { memo, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { buildMessageLink, extractEmbedUrls } from '../lib/messageLinks';
 import { Markdown } from '../lib/markdown';
@@ -174,8 +174,18 @@ function MessageItemImpl(props: MessageItemProps) {
   const embeds = editing ? [] : extractEmbedUrls(message.content);
   const inviteCodes = editing ? [] : inviteCodesIn(message.content);
 
+  const rowRef = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    const reply = () => props.onReply(message);
+    el.addEventListener('aether-swipe-reply', reply);
+    return () => el.removeEventListener('aether-swipe-reply', reply);
+  });
+
   return (
     <li
+      ref={rowRef}
       id={`msg-${message.id}`}
       className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-4 pt-0.5 pb-px' : 'py-px'} ${mentioned && !mine ? 'ae-mentioned' : ''} ${(message as { pending?: boolean }).pending ? 'pointer-events-none opacity-60' : ''}`}
       onMouseLeave={() => setPicker(false)}

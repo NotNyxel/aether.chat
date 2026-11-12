@@ -3,6 +3,21 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.5.1] - 2026-11-12
+
+**Touch controls and group DM management**
+
+- **Touch controls on phones and tablets** (web app and Android):
+  - **press and hold** a message, person, channel or server to open its menu, as a bottom sheet with big
+    buttons;
+  - **swipe a message left** to reply to it;
+  - **swipe in from the left edge** to go back.
+  - Holding no longer pops up the system's copy/select bubble.
+- **Group DMs:** right-click (or press and hold) a member in the member list. The group owner can **Make group
+  owner** or **Remove from group**, and anyone can **Leave group** from their own name.
+- Menus use proper icons instead of emoji.
+- Database: `supabase/migrations/014_groups.sql`.
+
 ## [1.5.0] - 2026-11-12
 
 **Avatar decorations and illustrated frames; one entry per style**

@@ -9,19 +9,68 @@ import type { Conversation } from '../types/db';
 import { useCall } from './CallContext';
 import { ConversationAvatar, otherMemberIds, useConversationTitle } from './ConversationBits';
 import { GroupDialog } from './GroupDialog';
-import { CameraIcon, CrownIcon, PhoneIcon, UserPlusIcon, UsersIcon } from './icons';
+import { CameraIcon, CrownIcon, LogOutIcon, PhoneIcon, UserPlusIcon, UsersIcon, UserXIcon } from './icons';
 import { MessagePane } from './MessagePane';
 import { Avatar } from './ProfileCard';
 import { VoiceRoom } from './VoiceRoom';
+import { useUserMenu } from '../hooks/useUserMenu';
+import { useSupabase } from '../lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from './Toaster';
 
-function MemberRow({ userId, owner }: { userId: string; owner: boolean }) {
+function MemberRow({ userId, owner, conv, me }: { userId: string; owner: boolean; conv: Conversation; me: string }) {
   const { data: p } = useProfile(userId);
   const status = usePresenceOf(userId);
   const showProfile = useUiStore((s) => s.showProfile);
+  const openHome = useUiStore((s) => s.openHome);
+  const userMenu = useUserMenu(me);
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  const iOwn = conv.owner_id === me;
+  const name = p?.display_name || p?.username || 'them';
+  const run = async (fn: string, args: Record<string, string>, ok: string) => {
+    const { error } = await sb.rpc(fn, args);
+    if (error) return toast.error(error.message);
+    toast.success(ok);
+    void qc.invalidateQueries({ queryKey: ['conversations'] });
+  };
+  const menu = (e: React.MouseEvent) =>
+    userMenu(e, userId, [
+      iOwn && userId !== me && {
+        label: 'Make group owner',
+        icon: <CrownIcon size={15} />,
+        onClick: async () => {
+          if (await ask(`Make ${name} the owner of this group? You'll stay in it as a member.`, { confirmLabel: 'Transfer' }))
+            await run('transfer_group_owner', { p_conversation_id: conv.id, p_user_id: userId }, `${name} now owns the group.`);
+        },
+      },
+      iOwn && userId !== me && {
+        label: 'Remove from group',
+        icon: <UserXIcon size={15} />,
+        danger: true,
+        onClick: async () => {
+          if (await ask(`Remove ${name} from the group?`, { danger: true, confirmLabel: 'Remove' }))
+            await run('remove_group_member', { p_conversation_id: conv.id, p_user_id: userId }, `${name} was removed.`);
+        },
+      },
+      userId === me && {
+        label: 'Leave group',
+        icon: <LogOutIcon size={15} />,
+        danger: true,
+        onClick: async () => {
+          if (!(await ask('Leave this group? You can only come back if someone adds you again.', { danger: true, confirmLabel: 'Leave' }))) return;
+          const { error } = await sb.rpc('leave_conversation', { p_conversation_id: conv.id });
+          if (error) return toast.error(error.message);
+          void qc.invalidateQueries({ queryKey: ['conversations'] });
+          openHome('friends');
+        },
+      },
+    ]);
   return (
     <li>
       <button
         type="button"
+        onContextMenu={menu}
         onClick={() => showProfile(userId)}
         className={`flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left hover:bg-ae-hover ${status === 'offline' ? 'opacity-50' : ''}`}
       >
@@ -154,7 +203,7 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
         <p className="mb-2 px-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Members — {conv.conversation_members.length}</p>
         <ul className="space-y-0.5">
           {conv.conversation_members.map((m) => (
-            <MemberRow key={m.user_id} userId={m.user_id} owner={m.user_id === conv.owner_id} />
+            <MemberRow key={m.user_id} userId={m.user_id} owner={m.user_id === conv.owner_id} conv={conv} me={userId} />
           ))}
         </ul>
       </aside>

@@ -24,7 +24,7 @@ jobs:
       matrix:
         include:
           - name: macos
-            runner: macos-latest
+            runner: macos-15-intel
             target: universal-apple-darwin
             args: --target universal-apple-darwin
           - name: linux
@@ -167,7 +167,7 @@ jobs:
   # the person's own Apple ID). Apple's paid developer account isn't needed.
   ios:
     if: inputs.platforms == 'all' || inputs.platforms == 'ios'
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4

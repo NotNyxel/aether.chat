@@ -350,7 +350,7 @@ export function InviteDialog({ server, me, onClose }: { server: Server; me: stri
             </select>
           </span>
           <button type="button" className="flex items-center gap-1 hover:text-ae-text" onClick={() => copy('web')}>
-            <GlobeIcon size={13} /> {copied === 'web' ? 'Web link copied' : 'Copy a web link (opens the app from any browser)'}
+            <GlobeIcon size={13} /> {copied === 'web' ? 'Web link copied' : 'Copy a web link (opens in any browser or the app)'}
           </button>
         </div>
         <p className="flex items-center gap-1.5 pt-1 text-xs text-ae-muted">

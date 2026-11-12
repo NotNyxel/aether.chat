@@ -8,11 +8,13 @@ import { ConfirmLayer } from './components/ConfirmDialog';
 import { ContextMenuLayer } from './components/ContextMenu';
 import { NativeUiShim } from './components/NativeUiShim';
 import { MainLayout } from './components/MainLayout';
+import { ModerationGate } from './components/Moderation';
 import { toast, Toaster } from './components/Toaster';
 import { TooltipLayer } from './components/TooltipLayer';
 import { WindowFrame } from './components/TitleBar';
 import { UpdateBanner } from './components/UpdateBanner';
 import { listenForAuthLinks } from './lib/authLinks';
+import { openJoinDialog } from './lib/joinBus';
 import { trackAccounts } from './lib/accounts';
 import { isTauri } from './lib/platform';
 import { resolveBackendConfig, SupabaseProvider, useSupabase } from './lib/supabase';
@@ -106,10 +108,23 @@ function AuthGate() {
       </WindowFrame>
     );
 
-  return <MainLayout key={session.user.id} userId={session.user.id} onSignOut={signOut} />;
+  return (
+    <ModerationGate key={session.user.id} onSignOut={signOut} splash={<WindowFrame><Splash /></WindowFrame>} frame={(n) => <WindowFrame>{n}</WindowFrame>}>
+      <MainLayout userId={session.user.id} onSignOut={signOut} />
+    </ModerationGate>
+  );
 }
 
 const backend = resolveBackendConfig();
+
+// Web: /inv/CODE opens the join dialog (after signing in, if needed).
+if (!isTauri) {
+  const m = /^\/inv\/([A-Za-z0-9_-]{2,64})\/?$/.exec(window.location.pathname);
+  if (m) {
+    openJoinDialog(m[1]!);
+    history.replaceState(null, '', '/');
+  }
+}
 
 export function App() {
   return (

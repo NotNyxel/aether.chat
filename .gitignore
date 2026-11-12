@@ -18,3 +18,10 @@ Thumbs.db
 
 # Supabase CLI scratch
 supabase/.temp/
+
+# Setup bootstrapper build output
+installer/target/
+installer/gen/
+
+# Vercel
+.vercel/

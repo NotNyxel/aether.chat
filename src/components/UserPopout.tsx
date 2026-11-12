@@ -17,6 +17,7 @@ import { ActivitySections } from './ActivityCards';
 import { CheckIcon, ChevronRightIcon, CopyIcon, EditIcon, IdCardIcon, PlusIcon, SwitchIcon, UserIcon } from './icons';
 import { Avatar, BadgeRow, ProfileEffectLayer, StyledName } from './ProfileCard';
 import { toast } from './Toaster';
+import { useEscape } from '../lib/escape';
 
 const STATUS_OPTIONS: { id: PresenceStatus; hint?: string }[] = [
   { id: 'online' },
@@ -64,17 +65,15 @@ export function UserPopout({ userId, shownStatus, onClose, onEditStatus }: { use
     if (me) rememberProfile(me);
   }, [me]);
 
+  useEscape(onClose);
   useEffect(() => {
     const close = (e: MouseEvent) => {
       const t = e.target as HTMLElement;
       if (!ref.current?.contains(t) && !t.closest('[data-user-panel]')) onClose();
     };
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('mousedown', close);
-    window.addEventListener('keydown', key);
     return () => {
       window.removeEventListener('mousedown', close);
-      window.removeEventListener('keydown', key);
     };
   }, [onClose]);
 

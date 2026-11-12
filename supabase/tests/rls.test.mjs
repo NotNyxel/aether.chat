@@ -16,7 +16,8 @@ const db = new PGlite({ extensions: { citext } });
 const STUBS = `
 create role anon nologin; create role authenticated nologin; create role service_role nologin;
 create schema auth;
-create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb, email text, last_sign_in_at timestamptz);
+create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid);
+create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb, email text, last_sign_in_at timestamptz, email_confirmed_at timestamptz);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;
 create schema extensions; grant usage on schema extensions to authenticated, anon;
@@ -859,6 +860,83 @@ await expectError('unknown invite codes give a friendly error', () => as(B, `sel
 
 await expectOk('presence status column is writable', () => as(C, `update public.users set presence_status = 'dnd' where id = '${C}'`));
 await expectError('badge_ids still not writable', () => as(C, `update public.users set badge_ids = '["staff"]' where id = '${C}'`));
+
+console.log('\nPlatform moderation (1.1)');
+const G = '77777777-7777-7777-7777-777777777777';
+await db.exec(`insert into auth.users (id, raw_user_meta_data) values ('${G}', '{"username":"gina"}')`);
+await expectError('non-admins cannot warn', () => as(B, `select public.admin_warn_user('${D}', 'spam', 'x', 1)`), 'Admins only');
+await expectError('admins cannot warn themselves', () => as(A, `select public.admin_warn_user('${A}', 'spam', 'x', 1)`), 'own account');
+await expectOk('a warning raises the danger level and shows up for the user', async () => {
+  await as(A, `select public.admin_warn_user('${D}', 'harassment', 'Be nice', 3, 90)`);
+  const m = (await as(D, `select public.my_moderation() m`)).rows[0].m;
+  if (m.level !== 'medium' || m.points !== 3 || m.unacknowledged.length !== 1 || m.ban) throw new Error(JSON.stringify(m));
+  await as(D, `select public.acknowledge_warnings()`);
+  const m2 = (await as(D, `select public.my_moderation() m`)).rows[0].m;
+  if (m2.unacknowledged.length !== 0) throw new Error('not acknowledged');
+});
+await expectOk('revoking a warning and pinning a level', async () => {
+  const id = (await as(A, `select public.admin_warn_user('${D}', 'spam', null, 4, null) id`)).rows[0].id;
+  let lvl = (await as(A, `select public.admin_user_detail('${D}') ->> 'level' l`)).rows[0].l;
+  if (lvl !== 'high') throw new Error(lvl);
+  await as(A, `select public.admin_set_warning_state($1, 'revoke')`, [id]);
+  await as(A, `select public.admin_set_standing('${D}', 'low', 'watching')`);
+  lvl = (await as(A, `select public.admin_user_detail('${D}') ->> 'level' l`)).rows[0].l;
+  if (lvl !== 'low') throw new Error(lvl);
+  await as(A, `select public.admin_set_standing('${D}', null, null)`);
+  await as(A, `select public.admin_set_warning_state($1, 'delete')`, [id]);
+});
+await expectError('users cannot read the warnings table directly', () => as(D, `select * from public.user_warnings`), 'permission denied');
+await expectOk('a timed ban locks the account out of everything', async () => {
+  await as(A, `select public.admin_ban_user('${D}', 'Spamming invites', 24)`);
+  const n = (await as(D, `select count(*)::int n from public.users`)).rows[0].n;
+  if (n !== 0) throw new Error(`banned user still reads ${n} users`);
+  const m = (await as(D, `select public.my_moderation() m`)).rows[0].m;
+  if (!m.ban || !m.ban.expires_at) throw new Error(JSON.stringify(m));
+});
+await expectError('a banned user cannot write through definer functions', () => as(D, `select public.send_friend_request('alice')`), 'banned');
+await expectError('a banned user cannot write directly', () => as(D, `update public.users set display_name = 'x' where id = '${D}' returning id`).then((r) => { if (!r.rows.length) throw new Error('no rows updated'); }));
+await expectOk('a banned user can appeal once', () => as(D, `select public.submit_ban_appeal('I am sorry, it will not happen again.')`));
+await expectError('only one open appeal at a time', () => as(D, `select public.submit_ban_appeal('Please, again, I am really sorry.')`), 'already');
+await expectOk('admins accept the appeal and the ban is lifted', async () => {
+  const list = (await as(A, `select public.admin_list_appeals('open') l`)).rows[0].l;
+  const ap = list.find((a) => a.user_id === D);
+  if (!ap) throw new Error('appeal not listed');
+  await as(A, `select public.admin_review_appeal($1, true, 'Welcome back')`, [ap.id]);
+  const n = (await as(D, `select count(*)::int n from public.users`)).rows[0].n;
+  if (n === 0) throw new Error('still banned');
+});
+await expectOk('permanent ban and pardon', async () => {
+  await as(A, `select public.admin_ban_user('${D}', 'Ban evasion', null)`);
+  if (!(await as(A, `select public.is_banned('${D}') b`)).rows[0].b) throw new Error('not banned');
+  await as(A, `select public.admin_unban_user('${D}', 'Pardoned')`);
+  if ((await as(A, `select public.is_banned('${D}') b`)).rows[0].b) throw new Error('still banned');
+});
+await expectError('admins cannot ban other admins', async () => {
+  await as(A, `select public.admin_set_admin('${C}', true)`);
+  try { await as(A, `select public.admin_ban_user('${C}', 'x', 1)`); } finally { await as(A, `select public.admin_set_admin('${C}', false)`); }
+}, 'Remove their admin');
+await expectOk('admins edit profiles; taken usernames are refused', async () => {
+  await as(A, `select public.admin_update_profile('${G}', 'gina_renamed', 'Gina', 'hello', true, true)`);
+  const r = (await as(A, `select username::text u, display_name from public.users where id = '${G}'`)).rows[0];
+  if (r.u !== 'gina_renamed' || r.display_name !== 'Gina') throw new Error(JSON.stringify(r));
+  let refused = false;
+  try { await as(A, `select public.admin_update_profile('${G}', 'BOB', null, null)`); } catch (e) { refused = e.message.includes('taken'); }
+  if (!refused) throw new Error('duplicate username accepted');
+});
+await expectOk('user detail, audit log and search filters', async () => {
+  const d = (await as(A, `select public.admin_user_detail('${D}') d`)).rows[0].d;
+  if (d.bans.length < 2 || d.warnings.length < 1 || d.audit.length < 3) throw new Error(JSON.stringify({ b: d.bans.length, w: d.warnings.length, a: d.audit.length }));
+  const log = (await as(A, `select public.admin_audit_list(50) l`)).rows[0].l;
+  if (!log.some((l) => l.action === 'ban')) throw new Error('no ban in audit');
+  const warned = (await as(A, `select username from public.admin_search_users('is:warned')`)).rows.map((r) => r.username);
+  if (!warned.includes('dave')) throw new Error(JSON.stringify(warned));
+});
+await expectOk('admins delete accounts', async () => {
+  await as(A, `select public.admin_delete_user('${G}', 'Test account')`);
+  const n = (await as(A, `select count(*)::int n from public.users where id = '${G}'`)).rows[0].n;
+  if (n !== 0) throw new Error('still there');
+});
+await expectError('non-admins cannot delete accounts', () => as(B, `select public.admin_delete_user('${D}', 'x')`), 'Admins only');
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

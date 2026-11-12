@@ -28,6 +28,7 @@ import { DisplayName, formatTime } from './MessageItem';
 import { Avatar } from './ProfileCard';
 import { SoundboardTab } from './SoundboardSettings';
 import { ColorField, Field, inputCls, Section, Toggle } from './SettingsPanel';
+import { useEscape } from '../lib/escape';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Shared
@@ -854,12 +855,7 @@ export function ServerSettings({ servers, userId }: { servers: Server[]; userId:
   const open = useUiStore((s) => s.openServerSettings);
   const server = servers.find((s) => s.id === target?.serverId) ?? null;
 
-  useEffect(() => {
-    if (!target) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && open(null);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [target, open]);
+  useEscape(() => open(null), !!target);
 
   if (!target || !server) return null;
   return <ServerSettingsInner server={server} userId={userId} tab={target.tab} />;

@@ -12,7 +12,7 @@ async function win() {
   return getCurrentWindow();
 }
 
-export function TitleBar({ children, title = 'aether.chat' }: { children?: ReactNode; title?: ReactNode }) {
+export function TitleBar({ children, title = 'aether.chat', lead }: { children?: ReactNode; title?: ReactNode; lead?: ReactNode }) {
   const [maximized, setMaximized] = useState(false);
   useEffect(() => {
     if (!isTauri) return;
@@ -26,7 +26,8 @@ export function TitleBar({ children, title = 'aether.chat' }: { children?: React
 
   const btn = 'grid h-8 w-11 place-items-center text-ae-muted transition-colors hover:bg-ae-hover hover:text-ae-text';
   return (
-    <header data-tauri-drag-region className="relative z-[70] flex h-8 shrink-0 items-center gap-2 bg-ae-sunken pl-3 text-xs select-none">
+    <header data-tauri-drag-region className="ae-titlebar relative z-[70] flex h-8 shrink-0 items-center gap-2 bg-ae-sunken pl-3 text-xs select-none">
+      {lead}
       <img data-tauri-drag-region src="/icon.svg" alt="" className="h-4 w-4" draggable={false} />
       <span data-tauri-drag-region className="font-semibold tracking-wide text-ae-muted">
         {title}

@@ -11,17 +11,20 @@
 import { AccountTab, PrivacyTab } from './SettingsAccount';
 import { ProfileEditor } from './ProfileEditor';
 import { AdminTab } from './AdminPanel';
+import { AccountStanding } from './Moderation';
 import { useProfile } from '../hooks/useChatData';
 import { useEffect, useState, type ReactNode } from 'react';
+import { isTauri } from '../lib/platform';
 import { listAudioDevices, type BandwidthProfile, type ScreenFrameRate, type ScreenResolution } from '../hooks/useVoiceEngine';
 import { comboFromEvent, formatCombo } from '../lib/keybinds';
 import { ALL_SOUNDS, playSound, SOUND_INFO } from '../lib/sounds';
 import { useSettingsStore, type Keybinds } from '../stores/settingsStore';
 import { useUiStore, type SettingsTab } from '../stores/uiStore';
 import { isHexColor, PRESET_ORDER, THEME_PRESETS } from '../theme/presets';
-import { AdminIcon, AppWindowIcon, BellIcon, CloseIcon, GameIcon, IdCardIcon, KeyboardIcon, LogOutIcon, NetworkIcon, PaletteIcon, ShieldIcon, StageIcon, UserIcon } from './icons';
+import { AdminIcon, AppWindowIcon, ArrowLeftIcon as BackIcon, BellIcon, CloseIcon, GameIcon, GaugeIcon, IdCardIcon, KeyboardIcon, LogOutIcon, NetworkIcon, PaletteIcon, ShieldIcon, StageIcon, UserIcon } from './icons';
 import { ActivityTab, BackgroundShortcutsSection, DesktopNotificationsSection, WindowsTab } from './SettingsDesktop';
 import { useTheme } from './ThemeEngine';
+import { useEscape } from '../lib/escape';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Shared form primitives
@@ -702,6 +705,7 @@ const TAB_GROUPS: { title: string; tabs: { id: SettingsTab; label: string; icon:
       { id: 'account', label: 'My Account', icon: <UserIcon size={15} /> },
       { id: 'profile', label: 'Profiles', icon: <IdCardIcon size={15} /> },
       { id: 'privacy', label: 'Privacy & Safety', icon: <ShieldIcon size={15} /> },
+      { id: 'standing', label: 'Account Standing', icon: <GaugeIcon size={15} /> },
     ],
   },
   {
@@ -726,19 +730,15 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
   const openSettings = useUiStore((s) => s.openSettings);
   const close = useUiStore((s) => s.closeSettings);
   const { data: me } = useProfile(userId);
-  const groups = me?.is_admin ? [...TAB_GROUPS, ADMIN_GROUP] : TAB_GROUPS;
+  const groups = (me?.is_admin ? [...TAB_GROUPS, ADMIN_GROUP] : TAB_GROUPS).map((g) => ({ ...g, tabs: g.tabs.filter((t) => isTauri || t.id !== 'windows') }));
+  const [mobileTab, setMobileTab] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, close]);
+  useEscape(() => close(), !!open);
 
   if (!open) return null;
 
   return (
-    <div className="ae-zoom-in fixed inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Settings">
+    <div className="ae-zoom-in ae-settings fixed inset-0 z-50 flex bg-ae-bg" data-pane={mobileTab ? 'main' : 'nav'} role="dialog" aria-modal="true" aria-label="Settings">
       <nav className="ae-panel ae-scroll flex w-64 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-ae-border p-4">
         {groups.map((g) => (
           <div key={g.title} className="mb-3">
@@ -747,7 +747,10 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
               <button
                 key={t.id}
                 type="button"
-                onClick={() => openSettings(t.id)}
+                onClick={() => {
+                  openSettings(t.id);
+                  setMobileTab(true);
+                }}
                 className={`flex w-full items-center gap-2.5 rounded-ae px-3 py-2 text-left text-sm transition-colors ${
                   tab === t.id ? 'bg-ae-surface font-semibold text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'
                 }`}
@@ -768,6 +771,9 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
 
       <main className="ae-scroll relative flex-1 overflow-y-auto">
         <div key={tab} className="ae-enter mx-auto max-w-5xl p-8">
+          <button type="button" className="ae-mobile-only mb-3 flex items-center gap-1 text-sm text-ae-muted" onClick={() => setMobileTab(false)}>
+            <BackIcon size={16} /> Settings
+          </button>
           <h2 className="mb-6 text-2xl font-bold tracking-tight">{TABS.find((t) => t.id === tab)?.label}</h2>
           {tab === 'account' && <AccountTab userId={userId} onSignOut={onSignOut} />}
           {tab === 'privacy' && <PrivacyTab userId={userId} />}
@@ -779,6 +785,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
           {tab === 'bandwidth' && <BandwidthTab />}
           {tab === 'activity' && <ActivityTab userId={userId} />}
           {tab === 'windows' && <WindowsTab />}
+          {tab === 'standing' && <AccountStanding />}
           {tab === 'admin' && me?.is_admin && <AdminTab userId={userId} />}
         </div>
         <button

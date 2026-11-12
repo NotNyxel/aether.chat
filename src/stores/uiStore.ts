@@ -1,7 +1,7 @@
 /** Ephemeral UI state: Home vs server view, selections, panels, dialogs, jump targets, lightbox. */
 import { create } from 'zustand';
 
-export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows' | 'admin';
+export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows' | 'standing' | 'admin';
 
 export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit' | 'soundboard' | 'moderation' | 'automod';
 
@@ -40,6 +40,9 @@ interface UiState {
   /** "Create thread" dialog: from a message, or a new standalone thread. */
   threadDraft: { parentId: string; messageId: string | null } | null;
   eventsServerId: string | null;
+  /** Phones show one pane at a time: the server/DM lists, or the open channel. */
+  mobilePane: 'nav' | 'main';
+  setMobilePane: (pane: 'nav' | 'main') => void;
   openThread: (threadId: string | null) => void;
   openThreadDraft: (draft: { parentId: string; messageId: string | null } | null) => void;
   openEvents: (serverId: string | null) => void;
@@ -79,19 +82,22 @@ export const useUiStore = create<UiState>()((set) => ({
   threadId: null,
   threadDraft: null,
   eventsServerId: null,
+  mobilePane: 'nav',
+  setMobilePane: (mobilePane) => set({ mobilePane }),
   openThread: (threadId) => set({ threadId }),
   openThreadDraft: (threadDraft) => set({ threadDraft }),
   openEvents: (eventsServerId) => set({ eventsServerId }),
-  openHome: (target) => set((s) => ({ view: 'home', homeTarget: target ?? s.homeTarget, threadId: null })),
-  selectServer: (serverId) => set((s) => ({ serverId, view: serverId ? 'server' : 'home', threadId: serverId === s.serverId ? s.threadId : null })),
+  openHome: (target) => set((s) => ({ view: 'home', homeTarget: target ?? s.homeTarget, threadId: null, mobilePane: target ? 'main' : 'nav' })),
+  selectServer: (serverId) => set((s) => ({ serverId, view: serverId ? 'server' : 'home', threadId: serverId === s.serverId ? s.threadId : null, mobilePane: 'nav' })),
   selectChannel: (serverId, channelId) =>
-    set((s) => ({ channelByServer: { ...s.channelByServer, [serverId]: channelId }, threadId: null })),
+    set((s) => ({ channelByServer: { ...s.channelByServer, [serverId]: channelId }, threadId: null, mobilePane: 'main' })),
   goTo: ({ serverId, scopeId, messageId }) =>
     set((s) => ({
       ...(serverId
         ? { view: 'server' as const, serverId, channelByServer: { ...s.channelByServer, [serverId]: scopeId } }
         : { view: 'home' as const, homeTarget: scopeId }),
       jumpTarget: messageId ? { scopeId, messageId, nonce: Date.now() } : s.jumpTarget,
+      mobilePane: 'main' as const,
     })),
   clearJump: () => set({ jumpTarget: null }),
   toggleMemberList: () => set((s) => ({ memberListOpen: !s.memberListOpen })),

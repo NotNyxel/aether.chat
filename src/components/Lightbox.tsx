@@ -1,19 +1,14 @@
 /** Full-screen image viewer. Esc or click outside closes; "Open original" opens the browser. */
-import { useEffect } from 'react';
 import { openExternal } from '../lib/platform';
 import { useUiStore } from '../stores/uiStore';
 import { CloseIcon } from './icons';
+import { useEscape } from '../lib/escape';
 
 export function Lightbox() {
   const image = useUiStore((s) => s.lightbox);
   const close = useUiStore((s) => s.openLightbox);
 
-  useEffect(() => {
-    if (!image) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close(null);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [image, close]);
+  useEscape(() => close(null), !!image);
 
   if (!image) return null;
   return (

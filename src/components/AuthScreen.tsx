@@ -3,7 +3,9 @@
  * "choose a new password" step that follow a reset link.
  */
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { APP_NAME } from '../config';
+import { APP_NAME, DOWNLOAD_URL } from '../config';
+import { isTauri, openExternal } from '../lib/platform';
+import { DownloadIcon } from './icons';
 import { authRedirectUrl } from '../lib/authLinks';
 import { useSupabase } from '../lib/supabase';
 
@@ -23,6 +25,11 @@ function Shell({ title, subtitle, children }: { title: string; subtitle: ReactNo
         </header>
         {children}
       </div>
+      {!isTauri && (
+        <button type="button" onClick={() => void openExternal(DOWNLOAD_URL)} className="ae-desktop-only absolute bottom-5 flex items-center gap-1.5 rounded-full border border-ae-border bg-ae-elevated/70 px-4 py-2 text-xs text-ae-muted backdrop-blur hover:text-ae-text">
+          <DownloadIcon size={14} /> Get the Windows app: faster, with game status and global shortcuts
+        </button>
+      )}
     </div>
   );
 }

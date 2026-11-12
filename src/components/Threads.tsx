@@ -13,6 +13,7 @@ import { Dialog } from './Dialog';
 import { ArchiveIcon, CloseIcon, EditIcon, ForumIcon, LockIcon, ShieldIcon, ThreadIcon, TrashIcon, UnarchiveIcon, UnlockIcon } from './icons';
 import { MessagePane } from './MessagePane';
 import { inputCls, Toggle } from './SettingsPanel';
+import { useEscape } from '../lib/escape';
 
 export function timeAgo(iso: string | null): string {
   if (!iso) return '';
@@ -63,14 +64,7 @@ export function ThreadPanel({ threadId, server, userId, channels, wide = false }
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState('');
   const parent = channels.find((c) => c.id === thread?.thread_parent_id);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || document.querySelector('[role="dialog"],[role="alertdialog"],[role="menu"]')) return;
-      openThread(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [openThread]);
+  useEscape(() => openThread(null), !!thread);
   const memberIds = useMemo(() => members.map((m) => m.user_id).filter((id) => id !== userId), [members, userId]);
 
   if (!thread) {

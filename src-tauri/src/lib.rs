@@ -11,8 +11,52 @@ use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 
 /// When true, closing the main window hides it to the tray instead of quitting.
 static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(true);
+/// Set once the startup window has handed over to the main window.
+static SPLASH_DONE: AtomicBool = AtomicBool::new(false);
+/// Set while the startup window is downloading an update (turns off the startup failsafe).
+static SPLASH_BUSY: AtomicBool = AtomicBool::new(false);
+/// Launched at Windows sign-in: start in the tray, never pop up a window.
+static AUTOSTART: AtomicBool = AtomicBool::new(false);
+
+/// Closes the startup window and reveals the main one (unless we were launched at sign-in).
+fn finish_splash(app: &AppHandle) {
+    if SPLASH_DONE.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    if !AUTOSTART.load(Ordering::Relaxed) {
+        show_main(app);
+    }
+    if let Some(splash) = app.get_webview_window("splash") {
+        let _ = splash.close();
+    }
+}
+
+/// The startup window is done (no update, offline, or it was skipped).
+#[tauri::command]
+fn splash_finish(app: AppHandle) {
+    finish_splash(&app);
+}
+
+/// The startup window started downloading an update: don't let the failsafe cut it off.
+#[tauri::command]
+fn splash_busy() {
+    SPLASH_BUSY.store(true, Ordering::Relaxed);
+}
 
 fn show_main(app: &AppHandle) {
+    // A second launch or a tray click while an update is installing: keep showing the startup window.
+    if !SPLASH_DONE.load(Ordering::SeqCst) {
+        if SPLASH_BUSY.load(Ordering::Relaxed) {
+            if let Some(s) = app.get_webview_window("splash") {
+                let _ = s.show();
+                let _ = s.set_focus();
+            }
+            return;
+        }
+        AUTOSTART.store(false, Ordering::Relaxed);
+        finish_splash(app);
+        return;
+    }
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.unminimize();
         let _ = w.show();
@@ -211,7 +255,7 @@ pub fn run() {
                 _ => PermissionResponse::Default,
             }
         })
-        .invoke_handler(tauri::generate_handler![set_close_to_tray, idle_seconds, running_processes, save_export, now_playing])
+        .invoke_handler(tauri::generate_handler![splash_finish, splash_busy, set_close_to_tray, idle_seconds, running_processes, save_export, now_playing])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open aether.chat", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Toggle mute", true, None::<&str>)?;
@@ -253,16 +297,35 @@ pub fn run() {
                 let _ = app.deep_link().register_all();
             }
 
-            // Launched at sign-in by autostart: start quietly in the tray.
+            // Launched at sign-in by autostart: start quietly in the tray. The startup window still
+            // checks for updates, just invisibly.
             if std::env::args().any(|a| a == "--autostart") {
-                if let Some(w) = app.get_webview_window("main") {
-                    let _ = w.hide();
+                AUTOSTART.store(true, Ordering::Relaxed);
+                if let Some(s) = app.get_webview_window("splash") {
+                    let _ = s.hide();
                 }
             }
+
+            // Failsafe: if the startup window hasn't handed over in 15 s (and isn't downloading an
+            // update), open the app anyway so a stuck check can never keep anyone out.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(15));
+                if !SPLASH_BUSY.load(Ordering::Relaxed) {
+                    finish_splash(&handle);
+                }
+            });
             Ok(())
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
+                // Closing the startup window yourself means "just open the app".
+                if window.label() == "splash" && !SPLASH_DONE.load(Ordering::SeqCst) {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    finish_splash(window.app_handle());
+                    return;
+                }
                 if window.label() == "main" && CLOSE_TO_TRAY.load(Ordering::Relaxed) {
                     api.prevent_close();
                     let _ = window.hide();

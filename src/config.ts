@@ -10,6 +10,11 @@ import type { BackendConfig } from './lib/supabase';
 
 export const APP_NAME = 'aether.chat';
 
+/** The web app (Vercel). Invite web links point here: WEB_APP_URL/inv/CODE. */
+export const WEB_APP_URL = 'https://aether-chat-beta.vercel.app';
+/** Always the newest Windows installer. */
+export const DOWNLOAD_URL = 'https://github.com/NotNyxel/aether.chat-releases/releases/latest/download/aether.chat-Setup.exe';
+
 export const BUILT_IN_BACKEND: BackendConfig = {
   url: 'https://pyjvnbjsjtbogrmoimwf.supabase.co',
   anonKey: 'sb_publishable_aW2Si2NQXIXREmYjBuFxhw_9112kqk4',

@@ -12,10 +12,14 @@
  * The updater downloads https://github.com/<owner>/aether.chat-releases/releases/latest/download/latest.json,
  * so the public feed must always hold the newest signed build as its "latest" release.
  *
- * Requirements: GitHub CLI (`gh`) logged in, `.secrets/updater.key` + `.secrets/updater.key.password`.
+ * Each release also builds aether.chat Setup (installer/), the one-click installer people download
+ * (it carries the signed NSIS installer inside), and deploys the web app to Vercel.
+ *
+ * Requirements: GitHub CLI (`gh`) logged in, `.secrets/updater.key` + `.secrets/updater.key.password`,
+ * and for the web app a one-time `npx vercel login` (skipped with a warning otherwise).
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -119,6 +123,15 @@ async function main() {
   const sigFile = `${installer}.sig`;
   if (!existsSync(installer) || !existsSync(sigFile)) throw new Error(`Build output missing in ${bundleDir}`);
 
+  // One-click Setup (embeds the signed installer). Same version as the app.
+  const setupToml = join(ROOT, 'installer', 'Cargo.toml');
+  writeFileSync(setupToml, readFileSync(setupToml, 'utf8').replace(/^version = "[^"]+"/m, `version = "${version}"`));
+  const setupConf = join(ROOT, 'installer', 'tauri.conf.json');
+  writeFileSync(setupConf, readFileSync(setupConf, 'utf8').replace(/"version": "[^"]+"/, `"version": "${version}"`));
+  run('cargo', ['build', '--release', '--manifest-path', `"${setupToml}"`], { env: { ...process.env, AETHER_INSTALLER: installer } });
+  const setupExe = join(bundleDir, 'aether.chat-Setup.exe');
+  copyFileSync(join(ROOT, 'installer', 'target', 'release', 'aetherchat-setup.exe'), setupExe);
+
   const url = `https://github.com/${owner}/${FEED_REPO}/releases/download/${tag}/${encodeURIComponent(basename(installer))}`;
   const latestJson = join(bundleDir, 'latest.json');
   writeFileSync(
@@ -138,9 +151,18 @@ async function main() {
   // Tag the source and publish both releases
   if (!out('git', ['tag', '--list', tag])) run('git', ['tag', '-a', tag, '-m', `"aether.chat ${tag}"`]);
   run('git', ['push', 'origin', 'HEAD', '--follow-tags']);
-  writeFileSync(notesFile, notes);
-  publish(`${owner}/${SOURCE_REPO}`, tag, `aether.chat ${tag}`, notesFile, [installer, sigFile, latestJson], { latest: true });
-  publish(`${owner}/${FEED_REPO}`, tag, `aether.chat ${tag}`, notesFile, [installer, sigFile, latestJson], { latest: true });
+  const download = `**Download:** [aether.chat-Setup.exe](https://github.com/${owner}/${FEED_REPO}/releases/latest/download/aether.chat-Setup.exe) (one click, no admin needed). Already installed? It updates itself.\n\n`;
+  writeFileSync(notesFile, download + notes);
+  const assets = [setupExe, installer, sigFile, latestJson];
+  publish(`${owner}/${SOURCE_REPO}`, tag, `aether.chat ${tag}`, notesFile, assets, { latest: true });
+  publish(`${owner}/${FEED_REPO}`, tag, `aether.chat ${tag}`, notesFile, assets, { latest: true });
+
+  // Web app
+  try {
+    run('node', [join(ROOT, 'scripts', 'deploy-web.mjs')]);
+  } catch (err) {
+    console.warn(`\nWeb deploy skipped: ${err.message}\nRun \`npx vercel login\` once, then \`npm run deploy:web\`.`);
+  }
 
   console.log(`\nReleased ${tag}\n  feed: https://github.com/${owner}/${FEED_REPO}/releases/tag/${tag}`);
 }

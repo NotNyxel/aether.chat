@@ -15,6 +15,7 @@ import type { Channel, Conversation, Message, Server, UnreadRow } from '../types
 import { ConversationAvatar, useConversationTitle } from './ConversationBits';
 import { CheckIcon, CloseIcon, HashIcon, InboxIcon, SparklesIcon } from './icons';
 import { Avatar } from './ProfileCard';
+import { useEscape } from '../lib/escape';
 
 type ChannelInfo = Pick<Channel, 'id' | 'name' | 'server_id'>;
 
@@ -109,16 +110,14 @@ function InboxPanel({ userId, servers, onClose }: { userId: string; servers: Ser
   const { resolve } = useNotifyResolver();
   const ref = useRef<HTMLDivElement>(null);
 
+  useEscape(onClose);
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node) && !(e.target as HTMLElement).closest?.('[data-inbox-toggle]')) onClose();
     };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('mousedown', close);
-    window.addEventListener('keydown', esc);
     return () => {
       window.removeEventListener('mousedown', close);
-      window.removeEventListener('keydown', esc);
     };
   }, [onClose]);
 

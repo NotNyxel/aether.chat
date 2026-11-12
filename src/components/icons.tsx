@@ -178,5 +178,9 @@ export {
   ShieldCheck as AdminIcon,
   Repeat as RepeatIcon,
   GripVertical as GripIcon,
+  History as HistoryIcon,
+  Gauge as GaugeIcon,
+  Scale as ScaleIcon,
+  ShieldX as BannedIcon,
 } from 'lucide-react';
 export type { LucideProps as IconProps } from 'lucide-react';

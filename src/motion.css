@@ -721,40 +721,63 @@ img {
   -webkit-user-drag: none;
 }
 
-/* ═══ Text boxes (1.0): one style everywhere ═══ */
-.ae-input {
-  display: block;
-  background: color-mix(in srgb, var(--ae-bg-sunken) 85%, var(--ae-surface));
-  color: var(--ae-text);
-  border: 1px solid color-mix(in srgb, var(--ae-border) 70%, transparent);
-  border-radius: calc(var(--ae-radius) + 2px);
-  padding: 9px 12px;
-  font-size: 14px;
-  line-height: 1.4;
-  outline: none;
-  transition:
-    border-color 140ms ease,
-    background-color 140ms ease,
-    box-shadow 180ms ease;
-}
-.ae-input::placeholder {
-  color: color-mix(in srgb, var(--ae-text-muted) 75%, transparent);
-}
-.ae-input:hover:not(:focus):not(:disabled) {
-  border-color: color-mix(in srgb, var(--ae-text-muted) 45%, transparent);
-}
-.ae-input:focus {
-  border-color: var(--ae-accent);
-  background: var(--ae-bg-sunken);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ae-accent) 20%, transparent);
-}
-.ae-input:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-textarea.ae-input {
-  resize: vertical;
-  min-height: 2.5rem;
+/* ═══ Text boxes: one style everywhere ═══
+   In the components layer, so utilities on a field (pl-10, h-12, w-24, text-base…) win over it. */
+@layer components {
+  .ae-input {
+    display: block;
+    background: color-mix(in srgb, var(--ae-bg-sunken) 85%, var(--ae-surface));
+    color: var(--ae-text);
+    border: 1px solid color-mix(in srgb, var(--ae-border) 70%, transparent);
+    border-radius: calc(var(--ae-radius) + 2px);
+    padding: 9px 12px;
+    font-size: 14px;
+    line-height: 1.4;
+    outline: none;
+    transition:
+      border-color 140ms ease,
+      background-color 140ms ease,
+      box-shadow 180ms ease;
+  }
+  .ae-input::placeholder {
+    color: color-mix(in srgb, var(--ae-text-muted) 75%, transparent);
+  }
+  .ae-input:hover:not(:focus):not(:disabled) {
+    border-color: color-mix(in srgb, var(--ae-text-muted) 45%, transparent);
+  }
+  .ae-input:focus {
+    border-color: var(--ae-accent);
+    background: var(--ae-bg-sunken);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ae-accent) 20%, transparent);
+  }
+  .ae-input:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  textarea.ae-input {
+    resize: vertical;
+    min-height: 2.5rem;
+  }
+  /* A field with an icon inside: <div class="ae-field"><Icon/><input class="ae-input"/></div> */
+  .ae-field {
+    position: relative;
+  }
+  .ae-field > svg {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    translate: 0 -50%;
+    pointer-events: none;
+    color: var(--ae-text-muted);
+    transition: color 140ms ease;
+  }
+  .ae-field > .ae-input {
+    padding-left: 36px;
+    width: 100%;
+  }
+  .ae-field:focus-within > svg {
+    color: var(--ae-accent);
+  }
 }
 
 /* Selects, colour and date inputs: our popovers replace the browser's, so style the closed state */

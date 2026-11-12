@@ -14,6 +14,7 @@ import { useProfiles } from './ConversationBits';
 import { CheckIcon, CloseIcon, UserIcon } from './icons';
 import { useRank } from './ServerSettings';
 import { Field, inputCls, Section, Toggle } from './SettingsPanel';
+import { useEscape } from '../lib/escape';
 
 const SLOWMODES = [0, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 21600];
 const fmtSlow = (s: number) => (s === 0 ? 'Off' : s < 60 ? `${s}s` : s < 3600 ? `${s / 60}m` : `${s / 3600}h`);
@@ -374,12 +375,7 @@ export function ChannelSettings({ servers, channels, userId }: { servers: Server
   const channel = channels.find((c) => c.id === channelId) ?? null;
   const server = servers.find((s) => s.id === channel?.server_id) ?? null;
 
-  useEffect(() => {
-    if (!channelId) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close(null);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [channelId, close]);
+  useEscape(() => close(null), !!channelId);
 
   if (!channel || !server) return null;
   return <ChannelSettingsInner channel={channel} server={server} userId={userId} onClose={() => close(null)} />;

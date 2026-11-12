@@ -16,5 +16,7 @@ export default defineConfig({
     target: 'chrome120',
     sourcemap: false,
     chunkSizeWarningLimit: 800,
+    // splash.html is the desktop startup window (update check before the app opens).
+    rollupOptions: { input: { main: 'index.html', splash: 'splash.html' } },
   },
 });

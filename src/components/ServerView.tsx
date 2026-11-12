@@ -96,7 +96,7 @@ function MemberList({ server, me }: { server: Server; me: string }) {
   }, [members, presence, styles]);
 
   return (
-    <aside className="ae-scroll w-60 shrink-0 overflow-y-auto border-l border-ae-border p-3">
+    <aside className="ae-memberlist ae-scroll w-60 shrink-0 overflow-y-auto border-l border-ae-border p-3">
       {groups.map((g) => (
         <div key={`${g.title}:${g.position}`} className="mb-4">
           <p className="mb-1 px-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">

@@ -150,7 +150,7 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
 
   const aside =
     conv.type === 'group' && showMembers ? (
-      <aside className="ae-scroll w-60 shrink-0 overflow-y-auto border-l border-ae-border p-3">
+      <aside className="ae-memberlist ae-scroll w-60 shrink-0 overflow-y-auto border-l border-ae-border p-3">
         <p className="mb-2 px-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Members — {conv.conversation_members.length}</p>
         <ul className="space-y-0.5">
           {conv.conversation_members.map((m) => (

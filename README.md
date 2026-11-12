@@ -27,13 +27,15 @@
 
 ## Install
 
-1. Download the latest `aether.chat_<version>_x64-setup.exe` from the
-   [Releases page](https://github.com/NotNyxel/aether.chat-releases/releases/latest).
-2. Run it. It installs for your Windows user only, so no admin prompt.
+1. Download **[aether.chat-Setup.exe](https://github.com/NotNyxel/aether.chat-releases/releases/latest/download/aether.chat-Setup.exe)**.
+2. Run it. It installs in one click, for your Windows user only (no admin prompt), and opens aether.chat.
 3. Sign up with a username, email and password.
 
-That's it. There's nothing to configure. The app keeps itself up to date: when a new version is out you'll see an
-**Update available** card in the bottom-right corner. One click installs it and restarts.
+That's it. There's nothing to configure. The app keeps itself up to date: every time it starts, it checks for a
+new version and installs it before opening.
+
+**No install?** Use the web app at **[aether-chat-beta.vercel.app](https://aether-chat-beta.vercel.app)** in any browser,
+on PC or phone.
 
 > Requires Windows 10/11 with the Microsoft Edge WebView2 runtime (preinstalled on Windows 11 and up-to-date Windows 10).
 
@@ -136,10 +138,12 @@ deafen, streams starting and stopping, incoming and outgoing calls, and calls en
 and previews live in **Settings → Notifications & Sounds**. Do Not Disturb silences messages and ringing.
 
 ### ⚙️ App
-- **Automatic, signed updates** from GitHub Releases.
+- **Automatic, signed updates** from GitHub Releases, installed at startup before the app opens.
+- **One-click installer** (aether.chat Setup) and a **web app** with a phone layout.
 - **No default browser UI:** custom title bar, menus, pickers, media players and dialogs; Twemoji for emoji.
 - **40 themes.**
-- **Admin panel** for app admins: stats, users, badges, app settings and report review.
+- **Admin panel** for app admins: stats, users, badges, app settings, report review, warnings with danger
+  levels, timed and permanent bans with appeals, account editing and deletion, and an audit log.
 - **Tiny footprint:** about a 1.3 MB installer, using the system WebView2 instead of bundling Chromium.
 - **Settings:** profile editor, appearance, audio and video devices, notifications, keybinds, bandwidth, activity
   privacy, Windows (tray, startup, idle).
@@ -226,9 +230,10 @@ Migrations live in `supabase/`. Run them in order in the Supabase SQL editor:
 | `migrations/004_server_management.sql` | New permissions, timeouts, `@role` mentions, NSFW channels, channel and role reordering, kick and nickname RPCs, custom invite codes, audit log |
 | `migrations/009_final.sql` | App admins and `app_config`, people search, DMs to anyone as limited message requests, nameplates, profile frames and widgets, admin RPCs |
 | `migrations/010_invites.sql` | Case-insensitive invite codes, friendly join errors, `invite_details()` previews |
+| `migrations/011_moderation.sql` | Platform bans (enforced on every table) and appeals, warnings and danger levels, admin account editing and deletion, admin audit log |
 | `migrations/003_messaging.sql` | Polls and votes, pins, full-text search index, mentions and `@everyone`, forwards, per-channel unread state, `unread_summary()` |
 
-Edge Functions live in `supabase/functions/`: `link-preview` (SSRF-safe Open Graph fetcher) and `game-art` (Steam artwork lookup). Both are for signed-in users only.
+Edge Functions live in `supabase/functions/`: `link-preview` (SSRF-safe Open Graph fetcher), `game-art` (Steam artwork lookup) and `admin-user` (admins change another account's email or password; uses the service role, which never leaves the server). All are for signed-in users only.
 
 **Making someone an admin:** the first admin is set in Supabase (`update public.users set is_admin = true where username = '…';`). After that, admins can grant or remove admin from Settings → Admin Panel.
 
@@ -258,7 +263,10 @@ To release:
 2. Add a section to `CHANGELOG.md`. It becomes the release notes and the text in the in-app update card.
 3. Commit, then run `node scripts/release.mjs`.
 
-The script builds and signs the installer, writes `latest.json`, tags the commit and publishes to both repos. The
+The script builds and signs the installer, builds **aether.chat Setup** (`installer/`, a small Tauri app that
+embeds the signed installer and runs it silently), writes `latest.json`, tags the commit, publishes to both repos
+and deploys the web app (`npm run deploy:web`, Vercel; sign in once with `npx vercel login`). Only `dist/` is
+uploaded to Vercel. The
 signing key lives in `.secrets/` (git-ignored). **Back it up.** If it's lost, existing installs can never update again.
 
 ---

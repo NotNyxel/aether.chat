@@ -167,8 +167,10 @@ export function NativeUiShim() {
     return () => document.removeEventListener('contextmenu', onContext);
   }, [openLightbox]);
 
-  // Browser shortcuts that would open built-in UI.
+  // Browser shortcuts that would open built-in UI (desktop app only; in a browser tab they're the
+  // browser's, and people expect them to work).
   useEffect(() => {
+    if (!isTauri) return;
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;

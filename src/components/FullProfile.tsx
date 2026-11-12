@@ -3,7 +3,7 @@
  * board. Used for viewing someone's profile and as the live preview in Profile Studio. It lays
  * itself out as one column when narrow and two columns when there's room (container query).
  */
-import { useEffect, type CSSProperties, type ReactNode } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 import { activeCustomStatus } from '../hooks/useDesktop';
 import { Markdown } from '../lib/markdown';
 import { openExternal } from '../lib/platform';
@@ -14,6 +14,7 @@ import { ActivitySections, WidgetBoard } from './ActivityCards';
 import { CalendarIcon, LinkIcon, WidgetIcon } from './icons';
 import { Avatar, BadgeRow, ProfileEffectLayer, StyledName } from './ProfileCard';
 import { ScopedCss } from './ThemeEngine';
+import { useEscape } from '../lib/escape';
 
 function Label({ children }: { children: ReactNode }) {
   return <h3 className="mb-1.5 text-[11px] font-bold tracking-wide text-ae-muted uppercase">{children}</h3>;
@@ -141,11 +142,7 @@ export function FullProfile({ profile, actions, boardEmpty, className = '' }: { 
 
 /** Someone's full profile in a modal. Click outside or press Esc to close. */
 export function FullProfileModal({ profile, onClose, footer }: { profile: UserProfile; onClose: () => void; footer?: ReactNode }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscape(() => onClose(), true);
   return (
     <div className="ae-backdrop fixed inset-0 z-40 grid place-items-center bg-black/60 p-4" onMouseDown={onClose}>
       <div onMouseDown={(e) => e.stopPropagation()} className="ae-dialog ae-scroll max-h-[calc(100vh-32px)] w-full max-w-[880px] space-y-3 overflow-y-auto">

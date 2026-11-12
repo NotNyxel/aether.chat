@@ -20,7 +20,9 @@ const token = readFileSync(join(ROOT, '.secrets', 'supabase.token'), 'utf8').tri
 const url = `https://api.supabase.com/v1/projects/${PROJECT_REF}/config/auth`;
 const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-const REDIRECTS = ['aetherchat://auth', 'http://localhost:1420', 'http://localhost:1420/**'];
+// The web app's address comes from src/config.ts (WEB_APP_URL).
+const WEB_APP_URL = /WEB_APP_URL = '([^']+)'/.exec(readFileSync(join(ROOT, 'src', 'config.ts'), 'utf8'))?.[1];
+const REDIRECTS = ['aetherchat://auth', 'http://localhost:1420', 'http://localhost:1420/**', ...(WEB_APP_URL ? [WEB_APP_URL, `${WEB_APP_URL}/**`] : [])];
 const KEYS = ['site_url', 'uri_allow_list', 'mailer_autoconfirm', 'mailer_secure_email_change_enabled', 'smtp_host', 'rate_limit_email_sent',
   'mfa_totp_enroll_enabled', 'mfa_totp_verify_enabled', 'security_update_password_require_reauthentication'];
 

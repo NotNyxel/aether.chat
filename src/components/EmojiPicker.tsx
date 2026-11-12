@@ -2,6 +2,7 @@ import { ClockIcon } from './icons';
 /** Emoji picker: search, category tabs, recents. Closes on outside click or Escape. */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EMOJI_GROUPS, getRecentEmoji, pushRecentEmoji, searchEmoji, useEmojiData, type EmojiEntry } from '../lib/emoji';
+import { useEscape } from '../lib/escape';
 
 interface EmojiPickerProps {
   onPick: (emoji: string) => void;
@@ -18,16 +19,14 @@ export function EmojiPicker({ onPick, onClose, className = 'bottom-full right-0 
   const scrollRef = useRef<HTMLDivElement>(null);
   const recents = useMemo(() => getRecentEmoji(), []);
 
+  useEscape(onClose);
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       if (!panelRef.current?.contains(e.target as Node)) onClose();
     };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('mousedown', onDown);
-    window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('mousedown', onDown);
-      window.removeEventListener('keydown', onKey);
     };
   }, [onClose]);
 

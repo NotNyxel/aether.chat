@@ -50,6 +50,7 @@ import {
 import { AVATAR_FRAMES } from '../theme/presets';
 import { ColorField } from './SettingsPanel';
 import { toast } from './Toaster';
+import { useEscape } from '../lib/escape';
 
 function Tile({ icon, label, value, onClick, children }: { icon: ReactNode; label: string; value?: string; onClick: () => void; children?: ReactNode }) {
   return (
@@ -260,13 +261,7 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
     onClose();
   };
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !picker && !document.querySelector('.ae-backdrop')) void close();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
+  useEscape(() => void close());
 
   if (!profile || !draft) return <div className="ae-skeleton m-8 h-[60vh]" />;
 

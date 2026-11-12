@@ -40,6 +40,7 @@ import { ProfileStudioLayer } from './ProfileStudio';
 import { AnnouncementBar } from './AdminPanel';
 import { EventsDialog } from './Events';
 import { CreateThreadDialog } from './Threads';
+import { ArrowLeftIcon as BackIcon } from './icons';
 
 function ProfileActions({ me, userId, onDone }: { me: string; userId: string; onDone: () => void }) {
   const { data: friendships = [] } = useFriendships();
@@ -154,6 +155,8 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
   const channelByServer = useUiStore((s) => s.channelByServer);
   const popoverUserId = useUiStore((s) => s.profilePopoverUserId);
   const showProfile = useUiStore((s) => s.showProfile);
+  const mobilePane = useUiStore((s) => s.mobilePane);
+  const setMobilePane = useUiStore((s) => s.setMobilePane);
 
   const servers = useServers(userId);
   const { data: conversations = [] } = useConversations();
@@ -209,7 +212,16 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
   return (
     <WindowFrame
       bar={
-        <TitleBar title={server ? server.name : conversation ? 'Direct messages' : 'Friends'}>
+        <TitleBar
+          title={server ? server.name : conversation ? 'Direct messages' : 'Friends'}
+          lead={
+            mobilePane === 'main' && (
+              <button type="button" aria-label="Back" className="ae-mobile-only -ml-1 grid h-9 w-9 place-items-center rounded-full text-ae-muted hover:bg-ae-hover" onClick={() => setMobilePane('nav')}>
+                <BackIcon size={20} />
+              </button>
+            )
+          }
+        >
           <QuickSwitcherButton />
           <InboxButton userId={userId} servers={servers.data ?? []} />
         </TitleBar>
@@ -217,7 +229,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
     >
     <div className="flex h-full flex-col text-ae-text">
     <AnnouncementBar />
-    <div className="flex min-h-0 flex-1">
+    <div className="ae-shell flex min-h-0 flex-1" data-pane={mobilePane}>
       <ServerRail userId={userId} servers={servers.data ?? []} activeId={server?.id ?? null} homeBadge={homeBadge} />
 
       {server ? (

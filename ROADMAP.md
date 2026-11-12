@@ -105,7 +105,15 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ✅ Cleaner composer and message layout
 - ✅ Admin panel (stats, users, admins, badges, app settings, reports)
 
-## Batch 7: Community & integrations → 1.1
+## 1.1.0 ✅
+- ✅ Startup window: checks, downloads and installs updates before the app opens
+- ✅ aether.chat Setup: our own one-click installer
+- ✅ Web app on Vercel, with a phone layout and web invite links
+- ✅ Text box fixes, a single Escape key stack, browser shortcuts on the web
+- ✅ Platform moderation: warnings and danger levels, timed and permanent bans with appeals, account editing and
+  deletion, Account Standing, admin audit log
+
+## Batch 7: Community & integrations → 1.2
 - ⬜ Server discovery (opt-in public directory, categories, search)
 - ⬜ Server templates, welcome screen, rules screening
 - ⬜ Incoming webhooks (Edge Function endpoint per channel)
@@ -120,7 +128,7 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ⬜ Compact mode, font scaling, chat density, more themes, theme sharing
 - ⬜ Localization (i18n)
 - ⬜ macOS and Linux builds; responsive layout for small windows
-- ⬜ Web build hosted for free (GitHub Pages or Cloudflare Pages)
+- ✅ Web build hosted for free (Vercel), with a phone layout
 
 ---
 

@@ -16,6 +16,7 @@ import { useUiStore } from '../stores/uiStore';
 import { Avatar, ProfileCard, StyledName } from './ProfileCard';
 import { ColorField, Field, inputCls, Section } from './SettingsPanel';
 import { toast } from './Toaster';
+import { useEscape } from '../lib/escape';
 
 export const EDITABLE_KEYS: (keyof EditableProfile)[] = [
   'username', 'display_name', 'custom_status', 'status_emoji', 'bio', 'avatar_url', 'avatar_frame', 'banner_url', 'primary_color',
@@ -129,11 +130,7 @@ export function Picker<T extends string>({ title, options, current, base, apply,
   const shown = hovered ?? selected;
   const preview = { ...base, ...apply(shown) } as UserProfile;
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscape(() => onClose(), true);
 
   return (
     <div className="ae-backdrop fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onMouseDown={onClose}>

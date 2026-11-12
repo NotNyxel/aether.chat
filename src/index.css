@@ -60,9 +60,18 @@ body {
 .ae-scroll {
 }
 
-:focus-visible {
-  outline: 2px solid var(--ae-accent);
-  outline-offset: 2px;
+/* Layered so a utility (outline-none, ring-*) on an element can override it. Text fields show
+   focus with their own border and glow instead of an offset outline. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--ae-accent);
+    outline-offset: 2px;
+  }
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):focus-visible,
+  textarea:focus-visible,
+  [contenteditable]:focus-visible {
+    outline: none;
+  }
 }
 
 /* ── Avatars and animated frames ──────────────────────────────────────────────────────── */
@@ -371,4 +380,67 @@ input[type='range'] {
 }
 input[type='checkbox'] {
   accent-color: var(--ae-accent);
+}
+
+/* ── Phones (web app): one pane at a time ─────────────────────────────────────────────── */
+.ae-mobile-only {
+  display: none !important;
+}
+@media (max-width: 767px) {
+  .ae-mobile-only {
+    display: flex !important;
+  }
+  .ae-desktop-only {
+    display: none !important;
+  }
+  /* Taller, touch-friendly top bar */
+  .ae-titlebar {
+    height: 48px;
+    padding-top: env(safe-area-inset-top);
+    box-sizing: content-box;
+    font-size: 14px;
+  }
+  /* Main shell: rail + list, or the open channel */
+  .ae-shell[data-pane='nav'] > main {
+    display: none;
+  }
+  .ae-shell[data-pane='nav'] > aside {
+    flex: 1 1 auto;
+    width: auto;
+    border-right: 0;
+  }
+  .ae-shell[data-pane='main'] > nav,
+  .ae-shell[data-pane='main'] > aside {
+    display: none;
+  }
+  .ae-memberlist {
+    display: none;
+  }
+  /* Settings: the tab list, or the open tab */
+  .ae-settings[data-pane='main'] > nav {
+    display: none;
+  }
+  .ae-settings[data-pane='nav'] > main {
+    display: none;
+  }
+  .ae-settings > nav {
+    width: 100%;
+    border-right: 0;
+  }
+  .ae-settings > main > div {
+    padding: 16px;
+  }
+  /* Dialogs use the whole screen width */
+  .ae-dialog {
+    max-width: calc(100vw - 16px);
+  }
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* 16px text stops iOS from zooming into focused fields */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }

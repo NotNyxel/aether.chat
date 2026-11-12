@@ -16,6 +16,7 @@ import type { LucideIcon } from 'lucide-react';
 import { AdminIcon, BadgeIcon, BrushIcon, BugIcon, CodeIcon, CrownIcon, FlaskIcon, GavelIcon, GemIcon, HeadsetIcon, HeartIcon, LinkIcon, PauseIcon, PlayIcon, RocketIcon, TrophyIcon, ZapIcon } from './icons';
 import { ActivitySections } from './ActivityCards';
 import { ScopedCss } from './ThemeEngine';
+import { useEscape } from '../lib/escape';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Badges
@@ -371,11 +372,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
 
 /** Centered modal wrapper for viewing someone's profile. Click the backdrop or press Esc to close. */
 export function ProfilePopover({ profile, onClose, footer }: { profile: UserProfile; onClose: () => void; footer?: ReactNode }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscape(() => onClose(), true);
 
   return (
     <div className="ae-backdrop fixed inset-0 z-40 grid place-items-center bg-black/50" onMouseDown={onClose}>

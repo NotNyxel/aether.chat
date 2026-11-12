@@ -4,10 +4,12 @@
  * Admins can also be granted straight in Supabase: `update public.users set is_admin = true where username = '…'`.
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useSupabase } from '../lib/supabase';
-import { ask } from './ConfirmDialog';
-import { AdminIcon, CheckIcon, CloseIcon, DashboardIcon, FlagIcon, MegaphoneIcon, MessageIcon, ReportsIcon, SearchIcon, ServerIcon, SlidersIcon, UsersIcon, LiveIcon, UserPlusIcon } from './icons';
+import { AdminUserManager, AuditList } from './AdminUserManager';
+import { ask, promptText } from './ConfirmDialog';
+import { LevelChip } from './Moderation';
+import { AdminIcon, AuditIcon, BannedIcon, CheckIcon, CloseIcon, DashboardIcon, FlagIcon, GavelIcon, MegaphoneIcon, MessageIcon, ReportsIcon, ScaleIcon, SearchIcon, ServerIcon, SlidersIcon, UsersIcon, LiveIcon, WarningIcon } from './icons';
 import { BADGE_CATALOG, BadgeRow } from './ProfileCard';
 import { Section, Toggle } from './SettingsPanel';
 import { toast } from './Toaster';
@@ -21,6 +23,9 @@ interface Stats {
   voice_now: number;
   open_reports: number;
   admins: number;
+  banned: number;
+  open_appeals: number;
+  active_warnings: number;
 }
 interface AdminUser {
   id: string;
@@ -34,7 +39,22 @@ interface AdminUser {
   last_sign_in_at: string | null;
   servers: number;
   messages: number;
+  banned: boolean;
+  level: string;
 }
+interface AppealRow {
+  id: string;
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  message: string;
+  status: 'open' | 'accepted' | 'denied';
+  response: string | null;
+  created_at: string;
+  ban: { reason: string; created_at: string; expires_at: string | null; lifted_at: string | null };
+}
+type AdminSection = 'overview' | 'users' | 'appeals' | 'reports' | 'settings' | 'audit';
 interface ReportRow {
   id: string;
   reporter_id: string | null;
@@ -51,9 +71,15 @@ function rpcError(e: { message: string } | null) {
   if (e) throw new Error(e.message);
 }
 
-function Stat({ icon, label, value, sub }: { icon: ReactNode; label: string; value: number | undefined; sub?: string }) {
+function Stat({ icon, label, value, sub, onClick }: { icon: ReactNode; label: string; value: number | undefined; sub?: string; onClick?: () => void }) {
   return (
-    <div className="rounded-ae border border-ae-border bg-ae-surface/40 p-3">
+    <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(e) => onClick && e.key === 'Enter' && onClick()}
+      className={`rounded-ae border border-ae-border bg-ae-surface/40 p-3 ${onClick ? 'ae-lift cursor-pointer hover:border-ae-accent/50' : ''}`}
+    >
       <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-ae-muted uppercase">
         {icon}
         {label}
@@ -64,7 +90,7 @@ function Stat({ icon, label, value, sub }: { icon: ReactNode; label: string; val
   );
 }
 
-function Overview() {
+function Overview({ goto }: { goto: (t: AdminSection, q?: string) => void }) {
   const sb = useSupabase();
   const { data: s } = useQuery({
     queryKey: ['admin', 'stats'],
@@ -81,13 +107,16 @@ function Overview() {
       <Stat icon={<ServerIcon size={12} />} label="Servers" value={s?.servers} />
       <Stat icon={<MessageIcon size={12} />} label="Messages" value={s?.messages} sub={s ? `${s.messages_24h.toLocaleString()} in 24 h` : undefined} />
       <Stat icon={<LiveIcon size={12} />} label="In voice now" value={s?.voice_now} />
-      <Stat icon={<FlagIcon size={12} />} label="Open reports" value={s?.open_reports} />
-      <Stat icon={<AdminIcon size={12} />} label="Admins" value={s?.admins} />
+      <Stat icon={<FlagIcon size={12} />} label="Open reports" value={s?.open_reports} onClick={() => goto('reports')} />
+      <Stat icon={<ScaleIcon size={12} />} label="Open appeals" value={s?.open_appeals} onClick={() => goto('appeals')} />
+      <Stat icon={<BannedIcon size={12} />} label="Banned now" value={s?.banned} onClick={() => goto('users', 'is:banned')} />
+      <Stat icon={<WarningIcon size={12} />} label="Active warnings" value={s?.active_warnings} onClick={() => goto('users', 'is:warned')} />
+      <Stat icon={<AdminIcon size={12} />} label="Admins" value={s?.admins} onClick={() => goto('users', 'is:admin')} />
     </div>
   );
 }
 
-function UserRow({ u, me, onChanged }: { u: AdminUser; me: string; onChanged: () => void }) {
+function UserRow({ u, me, onChanged, onOpen }: { u: AdminUser; me: string; onChanged: () => void; onOpen: () => void }) {
   const sb = useSupabase();
   const [editing, setEditing] = useState(false);
   const [badges, setBadges] = useState<string[]>(u.badge_ids ?? []);
@@ -112,16 +141,20 @@ function UserRow({ u, me, onChanged }: { u: AdminUser; me: string; onChanged: ()
   return (
     <li className="rounded-ae border border-ae-border bg-ae-surface/30 p-3">
       <div className="flex items-center gap-3">
+        <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 rounded-ae text-left">
         {u.avatar_url ? <img src={u.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" /> : <span className="grid h-10 w-10 place-items-center rounded-full bg-ae-sunken font-bold">{u.username[0]?.toUpperCase()}</span>}
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 truncate text-sm font-semibold">
             {u.display_name || u.username} <span className="font-normal text-ae-muted">@{u.username}</span>
             {u.is_admin && <span className="rounded bg-ae-accent/20 px-1.5 text-[10px] font-bold text-ae-accent uppercase">Admin</span>}
+            {u.banned && <span className="rounded bg-ae-danger/20 px-1.5 text-[10px] font-bold text-ae-danger uppercase">Banned</span>}
+            {u.level && u.level !== 'good' && <LevelChip level={u.level} />}
           </p>
           <p className="truncate text-xs text-ae-muted">
             {u.email ?? 'no email'} · joined {date(u.created_at)} · last sign-in {date(u.last_sign_in_at)} · {u.servers} servers · {u.messages.toLocaleString()} messages
           </p>
         </div>
+        </button>
         <BadgeRow badgeIds={u.badge_ids ?? []} size={22} />
         <button type="button" className="rounded-ae px-2.5 py-1.5 text-xs hover:bg-ae-hover" onClick={() => setEditing((v) => !v)}>
           Badges
@@ -131,8 +164,8 @@ function UserRow({ u, me, onChanged }: { u: AdminUser; me: string; onChanged: ()
             {u.is_admin ? 'Remove admin' : 'Make admin'}
           </button>
         )}
-        <button type="button" className="rounded-ae px-2.5 py-1.5 text-xs hover:bg-ae-hover" data-tip="Copy user ID" onClick={() => void navigator.clipboard.writeText(u.id).then(() => toast.success('User ID copied.'))}>
-          ID
+        <button type="button" className="ae-press flex items-center gap-1 rounded-ae bg-ae-surface px-2.5 py-1.5 text-xs font-semibold hover:bg-ae-hover" onClick={onOpen}>
+          <GavelIcon size={13} /> Manage
         </button>
       </div>
       {editing && (
@@ -167,48 +200,165 @@ function UserRow({ u, me, onChanged }: { u: AdminUser; me: string; onChanged: ()
   );
 }
 
-function Users({ me }: { me: string }) {
+function Users({ me, initial }: { me: string; initial: string }) {
   const sb = useSupabase();
-  const [q, setQ] = useState('');
-  const [term, setTerm] = useState('');
+  const [q, setQ] = useState(initial);
+  const [term, setTerm] = useState(initial);
+  const [open, setOpen] = useState<string | null>(null);
+  useEffect(() => {
+    const t = setTimeout(() => setTerm(q.trim()), 250);
+    return () => clearTimeout(t);
+  }, [q]);
   const { data = [], isFetching, refetch } = useQuery({
     queryKey: ['admin', 'users', term],
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await sb.rpc('admin_search_users', { p_query: term });
       rpcError(error);
       return data as AdminUser[];
     },
   });
+  const filters = [
+    { id: '', label: 'Everyone' },
+    { id: 'is:banned', label: 'Banned' },
+    { id: 'is:warned', label: 'Warned' },
+    { id: 'is:admin', label: 'Admins' },
+  ];
   return (
     <div className="space-y-3">
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setTerm(q.trim());
-        }}
-      >
-        <div className="relative flex-1">
-          <SearchIcon size={15} className="absolute top-1/2 left-3 -translate-y-1/2 text-ae-muted" />
-          <input className="ae-input w-full !pl-9" placeholder="Username, display name, email or user ID" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <button type="submit" className="ae-press rounded-ae bg-ae-accent px-4 text-sm font-semibold text-ae-on-accent">
-          Search
-        </button>
-      </form>
+      <div className="ae-field">
+        <SearchIcon size={15} />
+        <input className="ae-input" placeholder="Search by username, display name, email or user ID" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      <div className="flex items-center gap-1.5">
+        {filters.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setQ(f.id)}
+            className={`rounded-full border px-3 py-1 text-xs ${term === f.id ? 'border-ae-accent bg-ae-accent/15 font-semibold' : 'border-ae-border text-ae-muted hover:bg-ae-hover hover:text-ae-text'}`}
+          >
+            {f.label}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-ae-muted">{isFetching ? 'Searching…' : `${data.length}${data.length === 50 ? '+' : ''} shown`}</span>
+      </div>
       {isFetching && data.length === 0 ? (
         <div className="ae-skeleton h-16" />
       ) : data.length === 0 ? (
-        <p className="text-sm text-ae-muted">No users found.</p>
+        <p className="py-8 text-center text-sm text-ae-muted">No users found.</p>
       ) : (
         <ul className="space-y-1.5">
           {data.map((u) => (
-            <UserRow key={u.id} u={u} me={me} onChanged={() => void refetch()} />
+            <UserRow key={u.id} u={u} me={me} onChanged={() => void refetch()} onOpen={() => setOpen(u.id)} />
           ))}
         </ul>
       )}
+      {open && <AdminUserManager userId={open} onClose={() => setOpen(null)} />}
     </div>
   );
+}
+
+function Appeals() {
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState<'open' | 'all'>('open');
+  const [open, setOpen] = useState<string | null>(null);
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['admin', 'appeals', filter],
+    queryFn: async () => {
+      const { data, error } = await sb.rpc('admin_list_appeals', { p_status: filter });
+      rpcError(error);
+      return data as AppealRow[];
+    },
+  });
+  const review = async (a: AppealRow, accept: boolean) => {
+    const response = await promptText(accept ? `Accept @${a.username}'s appeal and lift the ban?` : `Deny @${a.username}'s appeal?`, {
+      title: accept ? 'Accept appeal' : 'Deny appeal',
+      placeholder: 'Message to the user (optional)',
+      confirmLabel: accept ? 'Accept and unban' : 'Deny',
+      danger: !accept,
+      multiline: true,
+      maxLength: 1000,
+    });
+    if (response === null) return;
+    const { error } = await sb.rpc('admin_review_appeal', { p_appeal_id: a.id, p_accept: accept, p_response: response });
+    if (error) return toast.error(error.message);
+    toast.success(accept ? `@${a.username} is unbanned.` : 'Appeal denied.');
+    void qc.invalidateQueries({ queryKey: ['admin'] });
+  };
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1">
+        {(['open', 'all'] as const).map((f) => (
+          <button key={f} type="button" onClick={() => setFilter(f)} className={`rounded-ae px-3 py-1.5 text-sm ${filter === f ? 'bg-ae-surface font-semibold' : 'text-ae-muted hover:bg-ae-hover'}`}>
+            {f === 'open' ? 'Waiting' : 'All'}
+          </button>
+        ))}
+      </div>
+      {isLoading ? (
+        <div className="ae-skeleton h-20" />
+      ) : data.length === 0 ? (
+        <p className="flex items-center gap-2 py-6 text-sm text-ae-muted">
+          <CheckIcon size={15} /> No appeals to review.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {data.map((a) => (
+            <li key={a.id} className="rounded-ae border border-ae-border bg-ae-surface/30 p-4">
+              <div className="flex items-center gap-3">
+                {a.avatar_url ? (
+                  <img src={a.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" />
+                ) : (
+                  <span className="grid h-9 w-9 place-items-center rounded-full bg-ae-sunken font-bold">{a.username[0]?.toUpperCase()}</span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">
+                    {a.display_name || a.username} <span className="font-normal text-ae-muted">@{a.username}</span>
+                  </p>
+                  <p className="truncate text-xs text-ae-muted">
+                    {a.ban.expires_at ? `Suspended until ${new Date(a.ban.expires_at).toLocaleString()}` : 'Permanent ban'} · “{a.ban.reason}”
+                  </p>
+                </div>
+                <span className="text-xs text-ae-muted capitalize">{a.status}</span>
+              </div>
+              <p className="mt-3 rounded-ae bg-ae-sunken/60 px-3 py-2 text-sm whitespace-pre-wrap">{a.message}</p>
+              {a.response && <p className="mt-1 text-xs text-ae-muted">Response: {a.response}</p>}
+              <div className="mt-3 flex gap-2">
+                {a.status === 'open' && (
+                  <>
+                    <button type="button" className="ae-press flex items-center gap-1 rounded-ae bg-ae-success/20 px-3 py-1.5 text-xs font-semibold text-ae-success" onClick={() => void review(a, true)}>
+                      <CheckIcon size={13} /> Accept & unban
+                    </button>
+                    <button type="button" className="ae-press flex items-center gap-1 rounded-ae px-3 py-1.5 text-xs text-ae-muted hover:bg-ae-hover" onClick={() => void review(a, false)}>
+                      <CloseIcon size={13} /> Deny
+                    </button>
+                  </>
+                )}
+                <button type="button" className="ml-auto rounded-ae px-3 py-1.5 text-xs text-ae-accent hover:bg-ae-hover" onClick={() => setOpen(a.user_id)}>
+                  Open file
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {open && <AdminUserManager userId={open} onClose={() => setOpen(null)} />}
+    </div>
+  );
+}
+
+function AuditLog() {
+  const sb = useSupabase();
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['admin', 'audit'],
+    queryFn: async () => {
+      const { data, error } = await sb.rpc('admin_audit_list', { p_limit: 150 });
+      rpcError(error);
+      return data as { action: string; details: Record<string, unknown>; created_at: string; by: string | null; target_name: string | null }[];
+    },
+  });
+  return isLoading ? <div className="ae-skeleton h-32" /> : <AuditList rows={data} showTarget />;
 }
 
 function useConfig() {
@@ -344,22 +494,84 @@ function Reports() {
 }
 
 export function AdminTab({ userId }: { userId: string }) {
+  const [section, setSection] = useState<AdminSection>('overview');
+  const [userQuery, setUserQuery] = useState('');
+  const sb = useSupabase();
+  const { data: s } = useQuery({
+    queryKey: ['admin', 'stats'],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await sb.rpc('admin_stats');
+      rpcError(error);
+      return data as Stats;
+    },
+  });
+  const goto = (t: AdminSection, q?: string) => {
+    if (q !== undefined) setUserQuery(q);
+    setSection(t);
+  };
+  const tabs: { id: AdminSection; label: string; icon: ReactNode; count?: number }[] = [
+    { id: 'overview', label: 'Overview', icon: <DashboardIcon size={14} /> },
+    { id: 'users', label: 'Users', icon: <UsersIcon size={14} /> },
+    { id: 'appeals', label: 'Appeals', icon: <ScaleIcon size={14} />, count: s?.open_appeals },
+    { id: 'reports', label: 'Reports', icon: <ReportsIcon size={14} />, count: s?.open_reports },
+    { id: 'settings', label: 'App settings', icon: <SlidersIcon size={14} /> },
+    { id: 'audit', label: 'Audit log', icon: <AuditIcon size={14} /> },
+  ];
   return (
-    <div className="space-y-8">
-      <Section title="Overview">
-        <Overview />
-      </Section>
-      <Section title="Users" description="Find anyone, award badges and grant admin access. Admins can also be set in Supabase (users.is_admin).">
-        <Users me={userId} />
-      </Section>
-      <Section title="App settings">
-        <Config />
-      </Section>
-      <Section title="Reports" description="Reports from DMs and message requests. Server reports go to each server's moderators.">
-        <Reports />
-      </Section>
+    <div className="space-y-6">
+      <div>
+        <p className="flex items-center gap-1.5 text-sm text-ae-muted">
+          <AdminIcon size={15} className="text-ae-accent" /> Only admins see this. Every action is checked on the server and written to the audit log.</p>
+      </div>
+      <div className="flex flex-wrap gap-1 rounded-[calc(var(--ae-radius)+4px)] border border-ae-border bg-ae-sunken/50 p-1">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => goto(t.id, t.id === 'users' ? '' : undefined)}
+            className={`flex items-center gap-1.5 rounded-ae px-3 py-1.5 text-sm ${section === t.id ? 'bg-ae-surface font-semibold text-ae-text shadow-sm' : 'text-ae-muted hover:text-ae-text'}`}
+          >
+            {t.icon}
+            {t.label}
+            {!!t.count && <span className="rounded-full bg-ae-danger px-1.5 text-[10px] font-bold text-white">{t.count}</span>}
+          </button>
+        ))}
+      </div>
+      <div key={section} className="ae-enter">
+        {section === 'overview' && (
+          <Section title="Overview" description="Live numbers. Click a tile to jump to it.">
+            <Overview goto={goto} />
+          </Section>
+        )}
+        {section === 'users' && (
+          <Section title="Users" description="Search anyone, then open their file to warn, ban, edit or delete. Admins can also be set in Supabase (users.is_admin).">
+            <Users key={userQuery} me={userId} initial={userQuery} />
+          </Section>
+        )}
+        {section === 'appeals' && (
+          <Section title="Ban appeals" description="Accepting an appeal lifts the ban right away.">
+            <Appeals />
+          </Section>
+        )}
+        {section === 'reports' && (
+          <Section title="Reports" description="Reports from DMs and message requests. Server reports go to each server's moderators.">
+            <Reports />
+          </Section>
+        )}
+        {section === 'settings' && (
+          <Section title="App settings">
+            <Config />
+          </Section>
+        )}
+        {section === 'audit' && (
+          <Section title="Audit log" description="The last 150 admin actions.">
+            <AuditLog />
+          </Section>
+        )}
+      </div>
       <p className="flex items-center gap-1.5 text-xs text-ae-muted">
-        <SlidersIcon size={12} /> <DashboardIcon size={12} /> <ReportsIcon size={12} /> <UserPlusIcon size={12} /> Only admins can see this tab.
+        <MessageIcon size={12} /> <LiveIcon size={12} /> <ServerIcon size={12} /> Changes apply to everyone immediately.
       </p>
     </div>
   );

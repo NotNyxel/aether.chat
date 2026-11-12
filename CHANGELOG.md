@@ -3,6 +3,42 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.1.0] - 2026-11-12
+
+**Updates on launch, a new installer, moderation tools and the web app**
+
+- **Updates before the app opens:** aether.chat now starts with a small startup window that checks for an
+  update, downloads and installs it silently, and restarts into the new version. No more update cards or clicks.
+  If you're offline it opens straight away. Long sessions still download updates in the background and offer a
+  one-click restart.
+- **New installer: aether.chat Setup.** One click, no wizard pages and no admin prompt. It shows its own
+  animated window while it installs, then opens aether.chat. Download `aether.chat-Setup.exe`.
+- **aether.chat on the web:** use it in any browser at **aether-chat-beta.vercel.app**, on PC or phone. On phones it
+  shows one screen at a time with a back button, and you can add it to your home screen.
+  Invite links now open there (`aether-chat-beta.vercel.app/inv/CODE`), so they work for people without the app.
+  Older GitHub Pages invite links keep working.
+- **Text boxes fixed everywhere:**
+  - icons no longer overlap what you type (Search for someone, the admin search and others);
+  - fields keep their intended size and padding;
+  - no stray focus outlines.
+- **Escape closes only the window on top**, not the settings page or dialog underneath it.
+- **In the browser, normal shortcuts work** (reload, new tab, find).
+- **Admin Panel, rebuilt:** Overview, Users, Appeals, Reports, App settings and Audit log tabs. Each user has a
+  moderation file:
+  - **Warnings and danger levels:** warn for a rule (spam, harassment, hate, scams and more) with a severity.
+    Points add up to a danger level (Good, Low, Medium, High, Critical). Warnings expire after a set time.
+    Edit, revoke, restore or delete any warning, or pin a level by hand with a private note.
+  - **Bans:** for 1 hour, 1 day, 3 days, 1 week, 30 days, any number of days, or permanently, with a reason.
+    Banned accounts can still sign in, but only see their ban and an appeal form. Admins accept (pardon) or deny
+    appeals, and can lift any ban.
+  - **Edit account data:** username, display name, bio, remove avatar or banner, change email or password, and
+    sign out everywhere.
+  - **Delete accounts.**
+  - **History:** every admin action is in the audit log.
+- **Account Standing** (Settings): see your danger level and active warnings. New warnings show a one-time
+  notice.
+- Database: `supabase/migrations/011_moderation.sql`. New Edge Function: `admin-user`.
+
 ## [1.0.0] - 2026-11-12
 
 **The Final Batch: aether.chat 1.0**

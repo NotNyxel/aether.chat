@@ -202,6 +202,13 @@ jobs:
       - name: Build (unsigned)
         run: |
           npm run build
+          # Build the Rust side ourselves and put it where the Xcode project links it from, then turn
+          # off the Xcode step that expects "tauri ios build" to be running (it would also try to sign).
+          (cd src-tauri && cargo build --release --lib --target aarch64-apple-ios)
+          mkdir -p src-tauri/gen/apple/Externals/arm64/release
+          cp src-tauri/target/aarch64-apple-ios/release/libaetherchat_lib.a src-tauri/gen/apple/Externals/arm64/release/libapp.a
+          perl -pi -e 's/shellScript = ".*xcode-script.*";/shellScript = "true";/' src-tauri/gen/apple/*.xcodeproj/project.pbxproj
+          grep -c 'shellScript = "true"' src-tauri/gen/apple/*.xcodeproj/project.pbxproj
           cd src-tauri/gen/apple
           SCHEME=$(xcodebuild -list -json | python3 -c "import json,sys; print([s for s in json.load(sys.stdin)['project']['schemes'] if s.endswith('_iOS')][0])")
           xcodebuild -scheme "$SCHEME" -configuration release -sdk iphoneos -destination 'generic/platform=iOS'             -derivedDataPath build ARCHS=arm64 CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build

@@ -18,6 +18,7 @@ import type {
   ServerRole,
 } from '../types/db';
 import { unwrap } from './useChatData';
+import { liveChannel } from '../lib/live';
 
 // ── Reads ──────────────────────────────────────────────────────────────────────────────────
 
@@ -50,8 +51,8 @@ export function useServerLive(serverId: string | null) {
     if (!serverId) return;
     const filter = `server_id=eq.${serverId}`;
     const invalidate = (key: unknown[]) => () => void qc.invalidateQueries({ queryKey: key });
-    const ch = sb
-      .channel(`server-live:${serverId}`)
+    const stop = liveChannel(sb, `server-live:${serverId}`, (c) =>
+      c
       .on('postgres_changes', { event: '*', schema: 'public', table: 'server_roles', filter }, () => {
         void qc.invalidateQueries({ queryKey: ['roles', serverId] });
         void qc.invalidateQueries({ queryKey: ['server-permissions', serverId] });
@@ -63,10 +64,13 @@ export function useServerLive(serverId: string | null) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'server_members', filter }, invalidate(['server-members', serverId]))
       // Deletes can't be filtered; refresh when anything is removed.
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'member_roles' }, invalidate(['member-roles', serverId]))
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'server_members' }, invalidate(['server-members', serverId]))
-      .subscribe();
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'server_members' }, invalidate(['server-members', serverId])),
+      () => {
+        for (const k of [['roles', serverId], ['member-roles', serverId], ['server-members', serverId], ['server-permissions', serverId]]) void qc.invalidateQueries({ queryKey: k });
+      },
+    );
     return () => {
-      void sb.removeChannel(ch);
+      stop();
     };
   }, [qc, sb, serverId]);
 }

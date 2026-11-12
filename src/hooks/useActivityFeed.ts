@@ -15,6 +15,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, Conversation, MemberRole, Message, NotificationSetting, PresenceStatus, Server, UnreadRow, UserProfile } from '../types/db';
 import { resolveNotify } from './useNotifications';
+import { liveChannel } from '../lib/live';
 
 type SupabaseLike = ReturnType<typeof useSupabase>;
 
@@ -76,8 +77,8 @@ export function useActivityFeed(userId: string, viewingScopeId: string | null, s
 
   useEffect(() => {
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-    const ch = sb
-      .channel(`activity:${userId}`)
+    const stop = liveChannel(sb, `activity:${userId}`, (c) =>
+      c
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const m = payload.new as Message;
         const scopeId = m.channel_id ?? m.conversation_id;
@@ -137,11 +138,15 @@ export function useActivityFeed(userId: string, viewingScopeId: string | null, s
             useUiStore.getState().goTo({ serverId: isDm ? null : serverId, scopeId, messageId: m.id }),
           );
         })();
-      })
-      .subscribe();
+      }),
+      () => {
+        // Back from sleep / background / offline: refresh unread badges, DMs, the inbox and servers.
+        for (const k of [['unread'], ['conversations'], ['friendships'], ['servers'], ['mentions']]) void qc.invalidateQueries({ queryKey: k });
+      },
+    );
     return () => {
       if (refreshTimer) clearTimeout(refreshTimer);
-      void sb.removeChannel(ch);
+      stop();
     };
   }, [qc, sb, userId]);
 }

@@ -3,6 +3,8 @@
 //! default browser, installs signed updates published to GitHub Releases, and exposes a few
 //! small OS helpers the web layer can't reach (idle time, running games).
 
+mod capture;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
@@ -255,7 +257,7 @@ pub fn run() {
                 _ => PermissionResponse::Default,
             }
         })
-        .invoke_handler(tauri::generate_handler![splash_finish, splash_busy, set_close_to_tray, idle_seconds, running_processes, save_export, now_playing])
+        .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, splash_finish, splash_busy, set_close_to_tray, idle_seconds, running_processes, save_export, now_playing])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open aether.chat", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Toggle mute", true, None::<&str>)?;

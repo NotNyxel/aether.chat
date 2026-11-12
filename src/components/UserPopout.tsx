@@ -18,6 +18,7 @@ import { CheckIcon, ChevronRightIcon, CopyIcon, EditIcon, IdCardIcon, PlusIcon, 
 import { Avatar, BadgeRow, ProfileEffectLayer, StyledName } from './ProfileCard';
 import { toast } from './Toaster';
 import { useEscape } from '../lib/escape';
+import { DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY } from '../lib/profileDecor';
 
 const STATUS_OPTIONS: { id: PresenceStatus; hint?: string }[] = [
   { id: 'online' },
@@ -80,8 +81,8 @@ export function UserPopout({ userId, shownStatus, onClose, onEditStatus }: { use
   if (!me) return null;
   const status = me.presence_status ?? 'online';
   const custom = activeCustomStatus(me);
-  const primary = isHexColor(me.primary_color) ? me.primary_color : 'var(--ae-surface)';
-  const accent = isHexColor(me.accent_color) ? me.accent_color : 'var(--ae-accent)';
+  const primary = isHexColor(me.primary_color) ? me.primary_color : DEFAULT_PROFILE_PRIMARY;
+  const accent = isHexColor(me.accent_color) ? me.accent_color : DEFAULT_PROFILE_ACCENT;
 
   return (
     <div

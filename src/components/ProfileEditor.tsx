@@ -11,7 +11,7 @@ import { AVATAR_FRAMES, isHexColor } from '../theme/presets';
 import type { AvatarShape, CardStyle, EditableProfile, NameEffect, NameFont, ProfileEffect, ProfileLink, UserProfile } from '../types/db';
 import { Dialog } from './Dialog';
 import { CheckIcon, ChevronRightIcon, CloseIcon, FrameIcon, IdCardIcon, LinkIcon, NameplateIcon, PaletteIcon, ShapeIcon, SparklesIcon } from './icons';
-import { CARD_FRAMES, NAMEPLATES } from '../lib/profileDecor';
+import { CARD_FRAMES, DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY, NAMEPLATES } from '../lib/profileDecor';
 import { useUiStore } from '../stores/uiStore';
 import { Avatar, ProfileCard, StyledName } from './ProfileCard';
 import { ColorField, Field, inputCls, Section } from './SettingsPanel';
@@ -402,8 +402,8 @@ function MainProfile({ userId }: { userId: string }) {
             />
             <CustomizeRow icon={<PaletteIcon size={18} />} title="Profile colours" value="Banner and accent colours" onChange={() => setPicker('colors')}>
               <span className="flex">
-                <span className="h-6 w-6 rounded-full border-2 border-ae-elevated" style={{ background: draft.primary_color ?? 'var(--ae-surface)' }} />
-                <span className="-ml-2 h-6 w-6 rounded-full border-2 border-ae-elevated" style={{ background: draft.accent_color ?? 'var(--ae-accent)' }} />
+                <span className="h-6 w-6 rounded-full border-2 border-ae-elevated" style={{ background: draft.primary_color ?? DEFAULT_PROFILE_PRIMARY }} />
+                <span className="-ml-2 h-6 w-6 rounded-full border-2 border-ae-elevated" style={{ background: draft.accent_color ?? DEFAULT_PROFILE_ACCENT }} />
               </span>
             </CustomizeRow>
           </div>
@@ -548,7 +548,7 @@ function MainProfile({ userId }: { userId: string }) {
           base={merged}
           apply={(id) => (id === 'current' ? {} : { primary_color: id.split('|')[0]!, accent_color: id.split('|')[1]! })}
           renderTile={(p) => (
-            <div className="h-20 rounded-ae" style={{ background: `linear-gradient(135deg, ${p.primary_color ?? 'var(--ae-surface)'}, ${p.accent_color ?? 'var(--ae-accent)'})` }} />
+            <div className="h-20 rounded-ae" style={{ background: `linear-gradient(135deg, ${p.primary_color ?? DEFAULT_PROFILE_PRIMARY}, ${p.accent_color ?? DEFAULT_PROFILE_ACCENT})` }} />
           )}
           extra={() => (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">

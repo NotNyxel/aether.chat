@@ -3,6 +3,27 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.3.0] - 2026-11-12
+
+**Our own screen sharing, live sync everywhere, and a profile fix**
+
+- **Screen sharing without the Windows chooser (desktop app):** "Share your screen" now shows every screen and
+  app window with live thumbnails, right inside aether.chat. The old "Choose what to share with
+  tauri.localhost" box is gone for good. aether.chat captures natively through Windows Graphics Capture, with:
+  - your resolution and frame rate (24, 30, 60 or custom);
+  - an optional mouse pointer;
+  - **audio:** when sharing a screen, your computer's sound without aether.chat's own (so nobody hears
+    themselves); when sharing an app, only that app's sound.
+
+  If the shared window closes, the share ends by itself.
+- **Live sync between devices:** chats, DMs, reactions, polls, voice channels and server changes now reconnect
+  by themselves and catch up after a gap, whenever your iPad, phone or laptop wakes, regains focus or comes back
+  online. Before, a connection dropped by sleep or backgrounding stayed quiet until you reloaded.
+- **Fixed: other people's profiles showing your colours.** If someone hadn't picked their own profile colours,
+  their name effect, card and decorations used *your* theme on your screen. Profiles now look the same to
+  everyone.
+- Phones and browsers that can't share a screen now say so instead of failing.
+
 ## [1.2.0] - 2026-11-12
 
 **Server bot, better screen sharing, server settings and layout fixes**

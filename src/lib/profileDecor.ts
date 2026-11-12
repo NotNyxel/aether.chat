@@ -52,3 +52,11 @@ export const WIDGET_TYPES: { type: ProfileWidget['type']; label: string; hint: s
   { type: 'about', label: 'Card', hint: 'A titled card with anything you like.' },
   { type: 'quote', label: 'Quote', hint: 'Words to live by.' },
 ];
+
+/**
+ * Colours a profile uses when its owner hasn't picked any. Fixed values, never the viewer's theme,
+ * so everyone sees the same profile (the app accent follows *your* profile accent, so using it
+ * here would paint other people's profiles in your colours).
+ */
+export const DEFAULT_PROFILE_PRIMARY = '#2a2440';
+export const DEFAULT_PROFILE_ACCENT = '#7c5cff';

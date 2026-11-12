@@ -7,6 +7,7 @@ import { useCallback, useEffect } from 'react';
 import { useSupabase } from '../lib/supabase';
 import type { Attachment, Message, MessageScope, PollVote, UnreadRow } from '../types/db';
 import { unwrap } from './useChatData';
+import { liveChannel } from '../lib/live';
 
 const scopeColumn = (scope: MessageScope) => (scope.kind === 'channel' ? 'channel_id' : 'conversation_id');
 
@@ -48,15 +49,16 @@ export function usePollVotes(scope: MessageScope) {
 
   useEffect(() => {
     const key = ['poll-votes', scope.id];
-    const ch = sb
-      .channel(`poll-votes:${scope.id}`)
+    const stop = liveChannel(sb, `poll-votes:${scope.id}`, (c) =>
+      c
       .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes', filter: `scope_id=eq.${scope.id}` }, () =>
         void qc.invalidateQueries({ queryKey: key }),
       )
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'poll_votes' }, () => void qc.invalidateQueries({ queryKey: key }))
-      .subscribe();
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'poll_votes' }, () => void qc.invalidateQueries({ queryKey: key })),
+      () => void qc.invalidateQueries({ queryKey: key }),
+    );
     return () => {
-      void sb.removeChannel(ch);
+      stop();
     };
   }, [qc, sb, scope.id]);
 

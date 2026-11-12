@@ -17,6 +17,8 @@ import { useCallActions } from '../hooks/useSocialData';
 import { useVoiceStates } from '../hooks/useVoiceStates';
 import { useVoiceEngine, type ScreenShareOptions, type VoiceEngine } from '../hooks/useVoiceEngine';
 import { ScreenShareDialog } from './ScreenShareDialog';
+import { toast } from './Toaster';
+import { nativeCaptureAvailable } from '../lib/nativeCapture';
 import { loopSound, playSound } from '../lib/sounds';
 import { useSupabase } from '../lib/supabase';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -238,6 +240,7 @@ export function CallProvider({ userId, children }: { userId: string; children: R
   const [shareDialog, setShareDialog] = useState(false);
   const toggleScreenShare = useCallback(() => {
     if (voice.isSharingScreen) stopScreenShare();
+    else if (!nativeCaptureAvailable && !navigator.mediaDevices?.getDisplayMedia) toast.error("This device can't share its screen. Try the desktop app or a computer browser.");
     else setShareDialog(true);
   }, [voice.isSharingScreen, stopScreenShare]);
   const startShare = useCallback(

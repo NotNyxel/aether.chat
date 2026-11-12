@@ -34,6 +34,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Peer, type MediaConnection, type PeerOptions } from 'peerjs';
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { createDenoiser, type Denoiser } from '../lib/denoise';
+import { nativeCaptureAvailable, startNativeCapture } from '../lib/nativeCapture';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Public types and constants
@@ -129,6 +130,10 @@ export interface ScreenShareOptions {
   surface?: ScreenSurface;
   /** 'detail' keeps text sharp, 'motion' keeps games and video smooth. */
   content?: ScreenContent;
+  /** Windows app: a source from our own picker ("screen:1", "window:…"), captured natively. */
+  nativeSource?: string;
+  /** Show the mouse pointer in a native capture. */
+  cursor?: boolean;
 }
 
 export const DEFAULT_SCREEN_SHARE: ScreenShareOptions = {
@@ -1358,7 +1363,16 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
       const native = options.resolution === 'source';
       const session = sessionRef.current;
 
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      const stream = options.nativeSource && nativeCaptureAvailable
+        ? await startNativeCapture({
+            source: options.nativeSource,
+            maxWidth: width,
+            maxHeight: height,
+            fps: options.frameRate,
+            audio: options.includeAudio,
+            cursor: options.cursor ?? true,
+          })
+        : await navigator.mediaDevices.getDisplayMedia({
         video: {
           ...(native ? {} : { width: { ideal: width, max: width }, height: { ideal: height, max: height } }),
           frameRate: { ideal: options.frameRate, max: options.frameRate },

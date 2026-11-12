@@ -7,7 +7,7 @@ import { type CSSProperties, type ReactNode } from 'react';
 import { activeCustomStatus } from '../hooks/useDesktop';
 import { Markdown } from '../lib/markdown';
 import { openExternal } from '../lib/platform';
-import type { ProfileWidget } from '../lib/profileDecor';
+import { DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY, type ProfileWidget } from '../lib/profileDecor';
 import { isHexColor } from '../theme/presets';
 import type { UserProfile } from '../types/db';
 import { ActivitySections, WidgetBoard } from './ActivityCards';
@@ -22,8 +22,8 @@ function Label({ children }: { children: ReactNode }) {
 
 export function FullProfile({ profile, actions, boardEmpty, className = '' }: { profile: UserProfile; actions?: ReactNode; boardEmpty?: ReactNode; className?: string }) {
   const scopeId = `fp-${profile.id.replace(/[^a-z0-9-]/gi, '')}`;
-  const primary = isHexColor(profile.primary_color) ? profile.primary_color : 'var(--ae-surface)';
-  const accent = isHexColor(profile.accent_color) ? profile.accent_color : 'var(--ae-accent)';
+  const primary = isHexColor(profile.primary_color) ? profile.primary_color : DEFAULT_PROFILE_PRIMARY;
+  const accent = isHexColor(profile.accent_color) ? profile.accent_color : DEFAULT_PROFILE_ACCENT;
   const status = activeCustomStatus(profile);
   const widgets = (profile.profile_widgets ?? []) as ProfileWidget[];
   const since = new Date(profile.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });

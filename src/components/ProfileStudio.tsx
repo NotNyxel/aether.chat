@@ -4,7 +4,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useProfile, useUpdateProfile } from '../hooks/useChatData';
-import { CARD_FRAMES, NAMEPLATES, WIDGET_TYPES, type ProfileWidget } from '../lib/profileDecor';
+import { CARD_FRAMES, DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY, NAMEPLATES, WIDGET_TYPES, type ProfileWidget } from '../lib/profileDecor';
 import { GameArtIcon } from '../lib/activityArt';
 import { useUiStore } from '../stores/uiStore';
 import type { EditableProfile, UserProfile } from '../types/db';
@@ -328,7 +328,7 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
                 <Avatar profile={merged} size={44} showFrame={false} />
               </Tile>
               <Tile icon={<PaletteIcon size={14} />} label="Banner colours" value="Banner and accent" onClick={() => setPicker('colors')}>
-                <span className="h-12 w-full rounded-md" style={{ background: `linear-gradient(135deg, ${draft.primary_color ?? 'var(--ae-surface)'}, ${draft.accent_color ?? 'var(--ae-accent)'})` }} />
+                <span className="h-12 w-full rounded-md" style={{ background: `linear-gradient(135deg, ${draft.primary_color ?? DEFAULT_PROFILE_PRIMARY}, ${draft.accent_color ?? DEFAULT_PROFILE_ACCENT})` }} />
               </Tile>
               <Tile icon={<EffectIcon size={14} />} label="Profile effect" value={label(EFFECTS, draft.profile_effect, 'none')} onClick={() => setPicker('effect')}>
                 <MiniCard profile={merged} />
@@ -449,7 +449,7 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
           current="current"
           base={merged}
           apply={(id) => (id === 'current' ? {} : { primary_color: id.split('|')[0]!, accent_color: id.split('|')[1]! })}
-          renderTile={(p) => <div className="h-20 rounded-ae" style={{ background: `linear-gradient(135deg, ${p.primary_color ?? 'var(--ae-surface)'}, ${p.accent_color ?? 'var(--ae-accent)'})` }} />}
+          renderTile={(p) => <div className="h-20 rounded-ae" style={{ background: `linear-gradient(135deg, ${p.primary_color ?? DEFAULT_PROFILE_PRIMARY}, ${p.accent_color ?? DEFAULT_PROFILE_ACCENT})` }} />}
           extra={() => (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <ColorField label="Banner colour" value={draft.primary_color} onChange={(v) => set({ primary_color: v })} />

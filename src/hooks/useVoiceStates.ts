@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSupabase } from '../lib/supabase';
 import type { VoiceState } from '../types/db';
 import { unwrap } from './useChatData';
+import { liveChannel } from '../lib/live';
 
 export const VOICE_STALE_MS = 90_000;
 
@@ -29,8 +30,8 @@ export function useVoiceStates(serverId: string | null) {
 
   useEffect(() => {
     if (!serverId) return;
-    const ch = sb
-      .channel(`voice-states:${serverId}:${Math.random().toString(36).slice(2, 8)}`)
+    const stop = liveChannel(sb, `voice-states:${serverId}:${Math.random().toString(36).slice(2, 8)}`, (c) =>
+      c
       .on('postgres_changes', { event: '*', schema: 'public', table: 'voice_states', filter: `server_id=eq.${serverId}` }, (payload) => {
         qc.setQueryData<VoiceState[]>(['voice-states', serverId], (rows = []) => {
           if (payload.eventType === 'DELETE') return rows.filter((r) => r.user_id !== (payload.old as { user_id?: string }).user_id);
@@ -42,9 +43,10 @@ export function useVoiceStates(serverId: string | null) {
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'voice_states' }, (payload) => {
         const id = (payload.old as { user_id?: string }).user_id;
         if (id) qc.setQueryData<VoiceState[]>(['voice-states', serverId], (rows = []) => rows.filter((r) => r.user_id !== id));
-      })
-      .subscribe();
-    return () => void sb.removeChannel(ch);
+      }),
+      () => void qc.invalidateQueries({ queryKey: ['voice-states', serverId] }),
+    );
+    return stop;
   }, [qc, sb, serverId]);
 
   // Re-evaluate staleness periodically even when nothing changes.

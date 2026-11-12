@@ -3,12 +3,13 @@
  * any custom value), what to optimise for and whether to include audio, then Go Live. The system
  * then asks for the exact screen or window. Choices are remembered as your defaults.
  */
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { listCaptureSources, nativeCaptureAvailable, type CaptureSource } from '../lib/nativeCapture';
 import type { ScreenContent, ScreenResolution, ScreenShareOptions, ScreenSurface } from '../hooks/useVoiceEngine';
 import { useEscape } from '../lib/escape';
 import { isTauri } from '../lib/platform';
 import { useSettingsStore } from '../stores/settingsStore';
-import { AppWindowIcon, CloseIcon, GlobeIcon, LiveIcon, MonitorIcon, VolumeIcon } from './icons';
+import { AppWindowIcon, CloseIcon, GlobeIcon, LiveIcon, MonitorIcon, MousePointerIcon, VolumeIcon } from './icons';
 
 const SURFACES: { id: ScreenSurface; label: string; hint: string; icon: ReactNode; web?: boolean }[] = [
   { id: 'monitor', label: 'Entire screen', hint: 'Everything on one display', icon: <MonitorIcon size={22} /> },
@@ -33,29 +34,49 @@ export function ScreenShareDialog({ onStart, onClose }: { onStart: (o: ScreenSha
   const setScreen = useSettingsStore((s) => s.setScreen);
   const [o, setO] = useState<ScreenShareOptions>({ surface: 'monitor', content: 'auto', ...saved });
   const [custom, setCustom] = useState(!FPS.includes(saved.frameRate));
+  // Windows app: our own source picker with live thumbnails.
+  const [sources, setSources] = useState<CaptureSource[] | null>(null);
+  const [tab, setTab] = useState<'screen' | 'window'>('screen');
+  const [picked, setPicked] = useState<string | null>(null);
+  const [cursor, setCursor] = useState(true);
+  useEffect(() => {
+    if (!nativeCaptureAvailable) return;
+    let alive = true;
+    // Names first (instant), thumbnails right after.
+    void listCaptureSources(false).then((list) => {
+      if (!alive) return;
+      setSources((cur) => cur ?? list);
+      setPicked((cur) => cur ?? list.find((x) => x.kind === 'screen')?.id ?? null);
+    });
+    void listCaptureSources(true).then((list) => alive && setSources(list));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const set = (patch: Partial<ScreenShareOptions>) => setO((cur) => ({ ...cur, ...patch }));
   useEscape(onClose);
 
-  const go = () => {
+  const go = (source = picked) => {
     const frameRate = Math.round(Math.min(120, Math.max(5, Number(o.frameRate) || 30)));
     const final = { ...o, frameRate };
-    setScreen(final);
-    onStart(final);
+    setScreen(final); // remembered defaults (not the source itself)
+    onStart(nativeCaptureAvailable && source ? { ...final, nativeSource: source, cursor } : final);
   };
+  const shown = (sources ?? []).filter((x) => x.kind === tab);
   const seg = (on: boolean) =>
     `ae-press rounded-ae border px-3 py-2 text-left transition-colors ${on ? 'border-ae-accent bg-ae-accent/12 text-ae-text' : 'border-ae-border text-ae-muted hover:bg-ae-hover hover:text-ae-text'}`;
   const label = 'mb-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase';
 
   return (
     <div className="ae-backdrop fixed inset-0 z-[60] grid place-items-center bg-black/65 p-4" onMouseDown={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Share your screen" className="ae-dialog ae-scroll max-h-[calc(100vh-32px)] w-full max-w-lg overflow-y-auto rounded-[calc(var(--ae-radius)+6px)] border border-ae-border bg-ae-elevated shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Share your screen" className="ae-dialog ae-scroll max-h-[calc(100vh-32px)] w-full max-w-xl overflow-y-auto rounded-[calc(var(--ae-radius)+6px)] border border-ae-border bg-ae-elevated shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
         <header className="flex items-start gap-3 px-6 pt-6">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ae-accent/15 text-ae-accent">
             <LiveIcon size={20} />
           </span>
           <div className="flex-1">
             <h2 className="text-lg font-bold">Share your screen</h2>
-            <p className="text-sm text-ae-muted">Pick how it looks. Next you choose the exact screen or window.</p>
+            <p className="text-sm text-ae-muted">{nativeCaptureAvailable ? 'Pick a screen or an app, and how it should look.' : 'Pick how it looks. Next you choose the exact screen or window.'}</p>
           </div>
           <button type="button" aria-label="Close" onClick={onClose} className="-mt-1 -mr-2 grid h-8 w-8 place-items-center rounded-full text-ae-muted hover:bg-ae-hover hover:text-ae-text">
             <CloseIcon size={16} />
@@ -63,6 +84,52 @@ export function ScreenShareDialog({ onStart, onClose }: { onStart: (o: ScreenSha
         </header>
 
         <div className="space-y-5 px-6 py-5">
+          {nativeCaptureAvailable ? (
+            <div>
+              <div className="mb-2 flex items-center gap-1">
+                {(['screen', 'window'] as const).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setTab(k)}
+                    className={`flex items-center gap-1.5 rounded-ae px-3 py-1.5 text-sm ${tab === k ? 'bg-ae-surface font-semibold text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'}`}
+                  >
+                    {k === 'screen' ? <MonitorIcon size={15} /> : <AppWindowIcon size={15} />}
+                    {k === 'screen' ? 'Screens' : 'Applications'}
+                    <span className="text-xs text-ae-muted">{(sources ?? []).filter((x) => x.kind === k).length || ''}</span>
+                  </button>
+                ))}
+                <button type="button" className="ml-auto text-xs text-ae-muted hover:text-ae-text" onClick={() => void listCaptureSources(true).then(setSources)}>
+                  Refresh
+                </button>
+              </div>
+              <div className="ae-scroll grid max-h-64 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
+                {!sources && [0, 1, 2].map((i) => <div key={i} className="ae-skeleton aspect-video rounded-ae" />)}
+                {sources && shown.length === 0 && <p className="col-span-full py-6 text-center text-sm text-ae-muted">Nothing to share here.</p>}
+                {shown.map((src) => (
+                  <button
+                    key={src.id}
+                    type="button"
+                    onClick={() => setPicked(src.id)}
+                    onDoubleClick={() => go(src.id)}
+                    className={`ae-press group overflow-hidden rounded-ae border-2 text-left transition-colors ${picked === src.id ? 'border-ae-accent' : 'border-transparent hover:border-ae-border'}`}
+                  >
+                    <div className="grid aspect-video place-items-center bg-ae-sunken">
+                      {src.thumbnail ? (
+                        <img src={src.thumbnail} alt="" className="h-full w-full object-contain" draggable={false} />
+                      ) : (
+                        <span className="text-ae-muted">{src.kind === 'screen' ? <MonitorIcon size={26} /> : <AppWindowIcon size={26} />}</span>
+                      )}
+                    </div>
+                    <div className={`px-2 py-1.5 ${picked === src.id ? 'bg-ae-accent/12' : 'bg-ae-surface/40'}`}>
+                      <p className="truncate text-xs font-semibold">{src.name}</p>
+                      <p className="truncate text-[11px] text-ae-muted">{src.kind === 'screen' ? `${src.width}×${src.height}` : (src.app ?? 'App')}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
           <div>
             <p className={label}>What to share</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -75,6 +142,7 @@ export function ScreenShareDialog({ onStart, onClose }: { onStart: (o: ScreenSha
               ))}
             </div>
           </div>
+          )}
 
           <div>
             <p className={label}>Resolution</p>
@@ -133,11 +201,24 @@ export function ScreenShareDialog({ onStart, onClose }: { onStart: (o: ScreenSha
             </div>
           </div>
 
+          {nativeCaptureAvailable && (
+            <label className="flex cursor-pointer items-center gap-3 rounded-ae border border-ae-border px-3 py-2.5">
+              <MousePointerIcon size={18} className="text-ae-muted" />
+              <span className="flex-1 text-sm font-semibold">Show my mouse pointer</span>
+              <input type="checkbox" className="h-4 w-4" checked={cursor} onChange={(e) => setCursor(e.target.checked)} />
+            </label>
+          )}
           <label className="flex cursor-pointer items-center gap-3 rounded-ae border border-ae-border px-3 py-2.5">
             <VolumeIcon size={18} className="text-ae-muted" />
             <span className="flex-1">
               <span className="block text-sm font-semibold">Share audio</span>
-              <span className="block text-xs text-ae-muted">{o.surface === 'window' ? 'Windows only shares audio from a whole screen or a browser tab.' : 'Include the sound from what you share.'}</span>
+              <span className="block text-xs text-ae-muted">{nativeCaptureAvailable
+                  ? tab === 'window'
+                    ? "Only that app's sound."
+                    : "Your computer's sound, without aether.chat's own (so nobody hears themselves)."
+                  : o.surface === 'window'
+                    ? 'Browsers only share audio from a whole screen or a tab.'
+                    : 'Include the sound from what you share.'}</span>
             </span>
             <input type="checkbox" className="h-4 w-4" checked={o.includeAudio} onChange={(e) => set({ includeAudio: e.target.checked })} />
           </label>
@@ -147,7 +228,7 @@ export function ScreenShareDialog({ onStart, onClose }: { onStart: (o: ScreenSha
           <button type="button" onClick={onClose} className="rounded-ae px-4 py-2 text-sm hover:bg-ae-hover">
             Cancel
           </button>
-          <button type="button" onClick={go} className="ae-press flex items-center gap-1.5 rounded-ae bg-ae-accent px-5 py-2 text-sm font-semibold text-ae-on-accent">
+          <button type="button" onClick={() => go()} disabled={nativeCaptureAvailable && !picked} className="ae-press flex disabled:opacity-40 items-center gap-1.5 rounded-ae bg-ae-accent px-5 py-2 text-sm font-semibold text-ae-on-accent">
             <LiveIcon size={15} /> Go Live
           </button>
         </footer>

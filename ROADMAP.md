@@ -120,7 +120,12 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ✅ Admin: create users, adjustable group DM size
 - ✅ Layout and mobile web fixes
 
-## Batch 7: Community & integrations → 1.3
+## 1.3.0 ✅
+- ✅ Native screen capture with our own source picker (no WebView2 chooser), per-app and system audio
+- ✅ Self-healing Realtime: reconnect and catch up after sleep, background or network changes
+- ✅ Profiles render with their own colours for every viewer
+
+## Batch 7: Community & integrations → 1.4
 - ⬜ Server discovery (opt-in public directory, categories, search)
 - ⬜ Server templates, welcome screen, rules screening
 - ⬜ Incoming webhooks (Edge Function endpoint per channel)

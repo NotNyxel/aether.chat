@@ -17,6 +17,7 @@ import { AdminIcon, BadgeIcon, BrushIcon, BugIcon, CodeIcon, CrownIcon, FlaskIco
 import { ActivitySections } from './ActivityCards';
 import { ScopedCss } from './ThemeEngine';
 import { useEscape } from '../lib/escape';
+import { DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY } from '../lib/profileDecor';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Badges
@@ -89,7 +90,7 @@ export function Avatar({ profile, size = 40, speaking = false, showFrame = true 
   const frame = showFrame && profile?.avatar_frame ? profile.avatar_frame : 'none';
   const style = {
     '--avatar-size': `${size}px`,
-    ...(isHexColor(profile?.accent_color) ? { '--frame-color': profile.accent_color } : {}),
+    '--frame-color': isHexColor(profile?.accent_color) ? profile.accent_color : DEFAULT_PROFILE_ACCENT,
   } as CSSProperties;
 
   useEffect(() => setBroken(false), [profile?.avatar_url]);
@@ -124,8 +125,8 @@ type NameProfile = Partial<Pick<UserProfile, 'display_name' | 'username' | 'name
  * unless the user picked a colour effect, which wins, like Discord's gradient role names.
  */
 export function StyledName({ profile, text, color, className = '' }: { profile: NameProfile | null | undefined; text?: string; color?: string | null; className?: string }) {
-  const a = isHexColor(profile?.name_color_a) ? profile!.name_color_a! : isHexColor(profile?.accent_color) ? profile!.accent_color! : 'var(--ae-accent)';
-  const b = isHexColor(profile?.name_color_b) ? profile!.name_color_b! : 'var(--ae-text)';
+  const a = isHexColor(profile?.name_color_a) ? profile!.name_color_a! : isHexColor(profile?.accent_color) ? profile!.accent_color! : DEFAULT_PROFILE_ACCENT;
+  const b = isHexColor(profile?.name_color_b) ? profile!.name_color_b! : `color-mix(in srgb, ${a} 30%, #ffffff)`;
   const effect = profile?.name_effect ?? 'none';
   return (
     <span
@@ -272,8 +273,8 @@ interface ProfileCardProps {
 export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
   const scopeId = `p-${profile.id.replace(/[^a-z0-9-]/gi, '')}`;
   const customStatus = activeCustomStatus(profile);
-  const primary = isHexColor(profile.primary_color) ? profile.primary_color : 'var(--ae-surface)';
-  const accent = isHexColor(profile.accent_color) ? profile.accent_color : 'var(--ae-accent)';
+  const primary = isHexColor(profile.primary_color) ? profile.primary_color : DEFAULT_PROFILE_PRIMARY;
+  const accent = isHexColor(profile.accent_color) ? profile.accent_color : DEFAULT_PROFILE_ACCENT;
   const memberSince = new Date(profile.created_at).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',

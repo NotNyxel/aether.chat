@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useSupabase } from '../lib/supabase';
 import type { Call, Conversation, Friendship, UserBlock } from '../types/db';
 import { unwrap } from './useChatData';
+import { liveChannel } from '../lib/live';
 
 // ── Friends & blocks ───────────────────────────────────────────────────────────────────────
 
@@ -140,8 +141,8 @@ export function useSocialRealtime(userId: string, onIncomingCall: (call: Call) =
 
   useEffect(() => {
     const invalidate = (key: string[]) => () => void qc.invalidateQueries({ queryKey: key });
-    const ch = sb
-      .channel(`social:${userId}`)
+    const stop = liveChannel(sb, `social:${userId}`, (c) =>
+      c
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, invalidate(['friendships']))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, invalidate(['conversations']))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_members' }, invalidate(['conversations']))
@@ -151,10 +152,13 @@ export function useSocialRealtime(userId: string, onIncomingCall: (call: Call) =
           const call = payload.new as Call;
           if (call.started_by !== userId) callbackRef.current(call);
         }
-      })
-      .subscribe();
+      }),
+      () => {
+        for (const k of [['friendships'], ['conversations'], ['calls', 'active']]) void qc.invalidateQueries({ queryKey: k });
+      },
+    );
     return () => {
-      void sb.removeChannel(ch);
+      stop();
     };
   }, [qc, sb, userId]);
 }

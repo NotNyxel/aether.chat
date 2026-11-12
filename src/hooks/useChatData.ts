@@ -20,6 +20,7 @@ import type {
   ServerMember,
   UserProfile,
 } from '../types/db';
+import { liveChannel } from '../lib/live';
 
 const PAGE_SIZE = 50;
 const TEN_YEARS_S = 10 * 365 * 24 * 3600;
@@ -237,8 +238,8 @@ export function useMessages(scope: MessageScope) {
   useEffect(() => {
     const key = ['messages', scope.id];
     const filter = `${column}=eq.${scope.id}`;
-    const ch = sb
-      .channel(`messages:${scope.id}`)
+    const stop = liveChannel(sb, `messages:${scope.id}`, (c) =>
+      c
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter }, (p) =>
         qc.setQueryData<MessagePages>(key, (d) => upsertMessage(d, p.new as Message)),
       )
@@ -250,10 +251,11 @@ export function useMessages(scope: MessageScope) {
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (p) => {
         const id = (p.old as { id?: string }).id;
         if (id) qc.setQueryData<MessagePages>(key, (d) => removeMessage(d, id));
-      })
-      .subscribe();
+      }),
+      () => void qc.invalidateQueries({ queryKey: key }),
+    );
     return () => {
-      void sb.removeChannel(ch);
+      stop();
     };
   }, [column, qc, sb, scope.id]);
 
@@ -390,8 +392,8 @@ export function useReactions(scope: MessageScope) {
   useEffect(() => {
     const k = ['reactions', scope.id];
     const same = (a: Reaction, b: Partial<Reaction>) => a.message_id === b.message_id && a.user_id === b.user_id && a.emoji === b.emoji;
-    const ch = sb
-      .channel(`reactions:${scope.id}`)
+    const stop = liveChannel(sb, `reactions:${scope.id}`, (c) =>
+      c
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'message_reactions', filter: `scope_id=eq.${scope.id}` }, (p) =>
         qc.setQueryData<Reaction[]>(k, (d) => {
           const r = p.new as Reaction;
@@ -400,10 +402,11 @@ export function useReactions(scope: MessageScope) {
       )
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'message_reactions' }, (p) =>
         qc.setQueryData<Reaction[]>(k, (d) => d?.filter((x) => !same(x, p.old as Partial<Reaction>))),
-      )
-      .subscribe();
+      ),
+      () => void qc.invalidateQueries({ queryKey: k }),
+    );
     return () => {
-      void sb.removeChannel(ch);
+      stop();
     };
   }, [qc, sb, scope.id]);
 

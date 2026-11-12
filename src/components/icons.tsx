@@ -182,5 +182,6 @@ export {
   Gauge as GaugeIcon,
   Scale as ScaleIcon,
   ShieldX as BannedIcon,
+  MousePointer2 as MousePointerIcon,
 } from 'lucide-react';
 export type { LucideProps as IconProps } from 'lucide-react';

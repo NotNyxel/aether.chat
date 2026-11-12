@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "splash",
+        "title": "aether.chat",
+        "url": "splash.html",
+        "width": 300,
+        "height": 360,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "center": true,
+        "decorations": false,
+        "shadow": true,
+        "backgroundColor": "#08080f",
+        "focus": true
+      },
+      {
+        "label": "main",
+        "title": "aether.chat",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 940,
+        "minHeight": 560,
+        "center": true,
+        "visible": false,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 12,
+          "y": 12
+        },
+        "backgroundColor": "#000000"
+      }
+    ]
+  },
+  "bundle": {
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "category": "public.app-category.social-networking",
+    "macOS": {
+      "signingIdentity": "-",
+      "minimumSystemVersion": "11.0"
+    }
+  }
+}

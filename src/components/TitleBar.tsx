@@ -4,7 +4,7 @@
  * In a browser it's just a slim header.
  */
 import { useEffect, useState, type ReactNode } from 'react';
-import { isTauri } from '../lib/platform';
+import { isMacApp, isTauri } from '../lib/platform';
 import { CloseIcon, MinusIcon, RestoreWindowIcon, SquareIcon } from './icons';
 
 async function win() {
@@ -26,15 +26,15 @@ export function TitleBar({ children, title = 'aether.chat', lead }: { children?:
 
   const btn = 'grid h-8 w-11 place-items-center text-ae-muted transition-colors hover:bg-ae-hover hover:text-ae-text';
   return (
-    <header data-tauri-drag-region className="ae-titlebar relative z-[70] flex h-8 shrink-0 items-center gap-2 bg-ae-sunken pl-3 text-xs select-none">
+    <header data-tauri-drag-region className={`ae-titlebar relative z-[70] flex shrink-0 items-center gap-2 bg-ae-sunken text-xs select-none ${isMacApp ? 'h-9 pl-[78px]' : 'h-8 pl-3'}`}>
       {lead}
       <img data-tauri-drag-region src="/icon.svg" alt="" className="h-4 w-4" draggable={false} />
       <span data-tauri-drag-region className="font-semibold tracking-wide text-ae-muted">
         {title}
       </span>
       <div data-tauri-drag-region className="h-full flex-1" />
-      {children && <div className="flex items-center gap-1 pr-1">{children}</div>}
-      {isTauri && (
+      {children && <div className={`flex items-center gap-1 ${isMacApp ? 'pr-2' : 'pr-1'}`}>{children}</div>}
+      {isTauri && !isMacApp && (
         <div className="flex">
           <button type="button" aria-label="Minimise" className={btn} onClick={() => void win().then((w) => w.minimize())}>
             <MinusIcon size={15} />

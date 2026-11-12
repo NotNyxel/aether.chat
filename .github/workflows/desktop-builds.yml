@@ -1,0 +1,86 @@
+# macOS and Linux builds of aether.chat. Windows is built locally by scripts/release.mjs.
+# Run by scripts/release-unix.mjs (or by hand from the Actions tab); it uploads the signed
+# installers and updater bundles as workflow artifacts, which that script then publishes to
+# both GitHub releases and merges into latest.json so these builds update themselves too.
+name: Desktop builds (macOS, Linux)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit, branch or tag to build
+        required: false
+        default: main
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos
+            runner: macos-latest
+            target: universal-apple-darwin
+            args: --target universal-apple-darwin
+          - name: linux
+            runner: ubuntu-22.04
+            target: ''
+            args: ''
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Linux build dependencies
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf build-essential file
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.name == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.name }}
+
+      - run: npm ci
+
+      - name: Build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build ${{ matrix.args }}
+
+      - name: Collect bundles
+        shell: bash
+        run: |
+          mkdir -p out
+          if [ "${{ matrix.name }}" = "macos" ]; then
+            B=src-tauri/target/universal-apple-darwin/release/bundle
+            cp "$B"/dmg/*.dmg out/
+            cp "$B"/macos/*.app.tar.gz out/
+            cp "$B"/macos/*.app.tar.gz.sig out/
+          else
+            B=src-tauri/target/release/bundle
+            cp "$B"/appimage/*.AppImage out/
+            cp "$B"/appimage/*.AppImage.sig out/
+            cp "$B"/deb/*.deb out/
+          fi
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aether-${{ matrix.name }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 14

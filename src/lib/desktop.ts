@@ -186,7 +186,7 @@ export async function registerGlobalShortcuts(bindings: GlobalBinding[]): Promis
 // ── Idle time and running games ─────────────────────────────────────────────────────────────
 
 let lastWebInput = Date.now();
-if (typeof window !== 'undefined' && !isTauri) {
+if (typeof window !== 'undefined') {
   const bump = () => (lastWebInput = Date.now());
   for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel']) window.addEventListener(ev, bump, { passive: true });
 }
@@ -195,7 +195,9 @@ if (typeof window !== 'undefined' && !isTauri) {
 export async function idleSeconds(): Promise<number> {
   if (!isTauri) return Math.floor((Date.now() - lastWebInput) / 1000);
   const { invoke } = await import('@tauri-apps/api/core');
-  return invoke<number>('idle_seconds');
+  const system = await invoke<number>('idle_seconds').catch(() => Number.MAX_SAFE_INTEGER);
+  // macOS and Linux builds can't read system idle time yet: use input inside the app instead.
+  return system > 1e12 ? Math.floor((Date.now() - lastWebInput) / 1000) : system;
 }
 
 export interface NowPlaying {

@@ -3,7 +3,24 @@
 //! default browser, installs signed updates published to GitHub Releases, and exposes a few
 //! small OS helpers the web layer can't reach (idle time, running games).
 
+#[cfg(windows)]
 mod capture;
+
+/// Native capture is Windows-only (Windows Graphics Capture). Elsewhere the app uses the system's
+/// own screen picker through the browser API, so these just say "not here".
+#[cfg(not(windows))]
+mod capture {
+    #[tauri::command]
+    pub async fn capture_sources() -> Result<Vec<()>, String> {
+        Err("Native capture is only available on Windows.".into())
+    }
+    #[tauri::command]
+    pub async fn capture_start() -> Result<(), String> {
+        Err("Native capture is only available on Windows.".into())
+    }
+    #[tauri::command]
+    pub fn capture_stop() {}
+}
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -100,7 +117,7 @@ fn idle_seconds() -> u64 {
     }
     #[cfg(not(windows))]
     {
-        0
+        u64::MAX // unknown: the web layer falls back to tracking input inside the app
     }
 }
 
@@ -334,6 +351,13 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running aether.chat");
+        .build(tauri::generate_context!())
+        .expect("error while running aether.chat")
+        .run(|_app, _event| {
+            // macOS: clicking the Dock icon while the window is hidden in the tray brings it back.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = _event {
+                show_main(_app);
+            }
+        });
 }

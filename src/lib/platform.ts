@@ -1,6 +1,9 @@
 /** Runtime environment helpers: Tauri desktop shell or a plain browser. */
 
 export const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+/** The desktop app on macOS: native traffic-light buttons sit over our title bar. */
+export const isMacApp = isTauri && /Mac OS X|Macintosh/i.test(ua);
 
 /** Opens an http(s) link in the system browser, never inside the app's webview. */
 export async function openExternal(url: string): Promise<void> {

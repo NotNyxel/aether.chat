@@ -3,6 +3,39 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.4.0] - 2026-11-12
+
+**Hundreds of new cosmetics, instant messages, push notifications, Android, and more**
+
+- **Messages send instantly.** Your message shows up the moment you press Enter and the box clears straight
+  away. Fast typing is never wiped or blocked while the server answers, and quick messages still arrive in
+  order. If one fails, it's put back in the box for you.
+- **Hundreds of new profile cosmetics**, all searchable and sorted into categories:
+  - 100 new nameplates, 100 avatar decorations, 100 avatar shapes and 100 banner colour presets;
+  - 100 profile effects, 100 profile frames and 100 profile themes;
+  - 100 name fonts and 100 name effects.
+- **Your own colours everywhere:** pick nameplate, decoration, frame, effect and theme colours with a colour
+  picker. **White and Crimson Roses are now one Roses frame in any colour.**
+- **Rain fixed:** drops fall in parallel lines at one angle, which you can set for every falling effect.
+- **A new colour picker everywhere in the app:** a bigger colour square and hue slider, an **eyedropper** that
+  picks any colour on screen, HEX or RGB entry, swatches, recent colours, keyboard control and a before/after
+  preview.
+- **Crop & zoom for avatars and banners:** after uploading (or with **Adjust**), drag to frame it and zoom up to
+  4×. **GIF avatars and banners keep animating**, because the file itself is never re-encoded.
+- **Status emoji picker:** choose your status emoji from the emoji picker instead of typing it.
+- **Push notifications (web app):** get DMs and @mentions on your phone or in your browser even when
+  aether.chat is closed. Turn it on in Settings → Notifications. On iPhone and iPad, add aether.chat to your
+  Home Screen first.
+- **Explore public servers:** server owners can list their server (Server Settings → Safety & Welcome → Server
+  discovery, with a category). Anyone can find and join it from **Add a server → Explore public servers**,
+  without an invite.
+- **Webhooks:** let GitHub, CI tools and bots post into a channel (Server Settings → Bot → Webhooks). They
+  accept the same JSON as Discord webhooks.
+- **Custom server emoji:** upload up to 100 per server (PNG, GIF, WebP; GIFs animate) in Server Settings →
+  Emoji. Use them from the emoji picker or by typing `:name`. They show for everyone, everywhere.
+- **Android app:** download `aether.chat_<version>_android.apk` from the Releases page and install it.
+- Database: `supabase/migrations/013_platform.sql`. New Edge Functions: `push` and `webhook`.
+
 ## [1.3.0] - 2026-11-12
 
 **Our own screen sharing, live sync everywhere, and a profile fix**

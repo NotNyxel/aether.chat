@@ -39,6 +39,9 @@ new version and installs it before opening.
   the first time, right-click it and choose **Open** (or run `xattr -cr "/Applications/aether.chat.app"`).
 - Linux: `…_linux-x86_64.AppImage` (updates itself; `chmod +x` it and run) or `…_linux-amd64.deb`.
 
+**Android:** install `aether.chat_<version>_android.apk` from the Releases page (allow installing from your browser
+when Android asks).
+
 **No install?** Use the web app at **[aether-chat-beta.vercel.app](https://aether-chat-beta.vercel.app)** in any browser,
 on PC or phone.
 
@@ -236,6 +239,7 @@ Migrations live in `supabase/`. Run them in order in the Supabase SQL editor:
 | `migrations/004_server_management.sql` | New permissions, timeouts, `@role` mentions, NSFW channels, channel and role reordering, kick and nickname RPCs, custom invite codes, audit log |
 | `migrations/009_final.sql` | App admins and `app_config`, people search, DMs to anyone as limited message requests, nameplates, profile frames and widgets, admin RPCs |
 | `migrations/010_invites.sql` | Case-insensitive invite codes, friendly join errors, `invite_details()` previews |
+| `migrations/013_platform.sql` | Profile `decor` (custom colours, crops, effect angle), any avatar shape, Web Push subscriptions and the push trigger (pg_net + Vault secret), server discovery, channel webhooks, custom server emoji |
 | `migrations/012_servers_bot.sql` | The built-in bot (`bot_command`, welcome messages), server verification levels, welcome channel and rules, adjustable group DM size |
 | `migrations/011_moderation.sql` | Platform bans (enforced on every table) and appeals, warnings and danger levels, admin account editing and deletion, admin audit log |
 | `migrations/003_messaging.sql` | Polls and votes, pins, full-text search index, mentions and `@everyone`, forwards, per-channel unread state, `unread_summary()` |

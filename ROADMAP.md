@@ -125,7 +125,14 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ✅ Self-healing Realtime: reconnect and catch up after sleep, background or network changes
 - ✅ Profiles render with their own colours for every viewer
 
-## Batch 7: Community & integrations → 1.4
+## 1.4.0 ✅
+- ✅ ~900 generated cosmetics with custom colours, 100 bundled name fonts, rain angle
+- ✅ Custom colour picker, avatar/banner crop & zoom (GIF-safe), status emoji picker
+- ✅ Optimistic, ordered message sending
+- ✅ Web Push notifications, server discovery, webhooks, custom server emoji
+- ✅ Android APK
+
+## Batch 7: Community & integrations → 1.5
 - ⬜ Server discovery (opt-in public directory, categories, search)
 - ⬜ Server templates, welcome screen, rules screening
 - ⬜ Incoming webhooks (Edge Function endpoint per channel)

@@ -1,10 +1,11 @@
 /** App-level desktop behaviour: auto-idle, game activity, taskbar badge, tray, custom status expiry. */
 import { useEffect, useState } from 'react';
-import { idleSeconds, runningProcesses, setBadge, setCloseToTray } from '../lib/desktop';
+import { idleSeconds, nowPlaying, runningProcesses, setBadge, setCloseToTray } from '../lib/desktop';
 import { detectGame } from '../lib/games';
 import { isTauri } from '../lib/platform';
 import { useSettingsStore } from '../stores/settingsStore';
 import type { PresenceStatus, UserProfile } from '../types/db';
+import type { Listening } from './usePresence';
 import { useUpdateProfile } from './useChatData';
 
 /**
@@ -56,6 +57,38 @@ export function useGameActivity(): string | null {
     };
   }, [shareActivity, customGames]);
   return game;
+}
+
+/** Opt-in Listening to Spotify: polls the media session every 5 s and publishes the track. */
+export function useSpotifyListening(): Listening | null {
+  const share = useSettingsStore((s) => s.activity.shareSpotify);
+  const [track, setTrack] = useState<Listening | null>(null);
+  useEffect(() => {
+    if (!share || !isTauri) {
+      setTrack(null);
+      return;
+    }
+    let stopped = false;
+    const poll = async () => {
+      const np = await nowPlaying().catch(() => null);
+      if (stopped) return;
+      if (!np || !np.playing) return setTrack(null);
+      const started = Date.now() - np.position_ms;
+      setTrack((cur) =>
+        // Only republish when the track changes or someone seeks (drift over 3 s), to keep presence quiet.
+        cur && cur.title === np.title && cur.artist === np.artist && Math.abs(cur.started_at - started) < 3000
+          ? cur
+          : { title: np.title, artist: np.artist, album: np.album, duration_ms: np.duration_ms, started_at: started, playing: true },
+      );
+    };
+    void poll();
+    const t = setInterval(() => void poll(), 5_000);
+    return () => {
+      stopped = true;
+      clearInterval(t);
+    };
+  }, [share]);
+  return track;
 }
 
 export function useTaskbarBadge(count: number): void {

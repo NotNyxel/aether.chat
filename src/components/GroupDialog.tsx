@@ -55,7 +55,7 @@ export function GroupDialog({ me, onClose, existing }: {
       <p className="text-xs text-ae-muted">You can add {Math.max(0, room - picked.length)} more friend{room - picked.length === 1 ? '' : 's'}.</p>
       <input
         autoFocus
-        className="w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm outline-none focus:border-ae-accent"
+        className="ae-input w-full text-sm"
         placeholder="Type a friend's username"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
@@ -86,7 +86,7 @@ export function GroupDialog({ me, onClose, existing }: {
       </ul>
       {!existing && picked.length > 1 && (
         <input
-          className="w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm outline-none focus:border-ae-accent"
+          className="ae-input w-full text-sm"
           placeholder="Group name (optional)"
           maxLength={100}
           value={name}

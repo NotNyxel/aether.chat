@@ -2,14 +2,16 @@
  * Toasts: short confirmations and errors in the bottom-right corner ("Link copied", "Saved",
  * "Blocked by AutoMod"). Call `toast('Saved')` or `toast.error('Couldn't save')` from anywhere.
  */
+import type { ReactNode } from 'react';
 import { create } from 'zustand';
+import { CheckIcon, WarningIcon } from './icons';
 
 type Tone = 'info' | 'success' | 'error';
 interface ToastItem {
   id: number;
   text: string;
   tone: Tone;
-  icon?: string;
+  icon?: ReactNode;
 }
 
 const useToasts = create<{ items: ToastItem[]; push: (t: Omit<ToastItem, 'id'>) => void; dismiss: (id: number) => void }>()((set) => ({
@@ -22,11 +24,11 @@ const useToasts = create<{ items: ToastItem[]; push: (t: Omit<ToastItem, 'id'>) 
   dismiss: (id) => set((s) => ({ items: s.items.filter((x) => x.id !== id) })),
 }));
 
-export function toast(text: string, icon?: string) {
+export function toast(text: string, icon?: ReactNode) {
   useToasts.getState().push({ text, tone: 'info', icon });
 }
-toast.success = (text: string, icon = '✓') => useToasts.getState().push({ text, tone: 'success', icon });
-toast.error = (text: string, icon = '⚠') => useToasts.getState().push({ text, tone: 'error', icon });
+toast.success = (text: string, icon: ReactNode = <CheckIcon size={14} />) => useToasts.getState().push({ text, tone: 'success', icon });
+toast.error = (text: string, icon: ReactNode = <WarningIcon size={14} />) => useToasts.getState().push({ text, tone: 'error', icon });
 
 export function Toaster() {
   const items = useToasts((s) => s.items);

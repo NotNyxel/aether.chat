@@ -1,8 +1,9 @@
 /** Server sidebar: channels grouped by category, invites, channel creation, leave/delete server. */
+import { InviteDialog } from './Invites';
 import { toast } from './Toaster';
 import { openContextMenu } from './ContextMenu';
 import { useMemo, useState } from 'react';
-import { useCreateChannel, useCreateInvite, useDeleteServer, useLeaveServer, useServerPermissions } from '../hooks/useChatData';
+import { useCreateChannel, useDeleteServer, useLeaveServer, useServerPermissions } from '../hooks/useChatData';
 import { isRowUnread, useMarkRead, useUnreadSummary } from '../hooks/useMessageExtras';
 import { muteUntil, useNotifyResolver, useSetNotificationSetting } from '../hooks/useNotifications';
 import { NotificationOptions } from './NotificationMenu';
@@ -15,7 +16,7 @@ import { useUiStore } from '../stores/uiStore';
 import type { Channel, ChannelSubtype, ChannelType, Server } from '../types/db';
 import { useCall } from './CallContext';
 import { Dialog, PromptForm } from './Dialog';
-import { ForumIcon, HashIcon, ImageIcon, LinkIcon, LogOutIcon, MegaphoneIcon, PlusIcon, StageIcon, TrashIcon, VolumeIcon } from './icons';
+import { BellIcon, BellOffIcon, CheckIcon, ChevronDownIcon, ForumIcon, HashIcon, ImageIcon, LinkIcon, LogOutIcon, MegaphoneIcon, PlusIcon, SettingsIcon, StageIcon, TrashIcon, VolumeIcon } from './icons';
 import { UserPanel } from './UserPanel';
 
 type NewChannelKind = 'text' | 'announcement' | 'forum' | 'media' | 'voice' | 'stream' | 'category';
@@ -54,11 +55,10 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
   const { joinChannel } = useCall();
   const { data: perms = 0n } = useServerPermissions(server.id);
   const { byChannel } = useVoiceStates(server.id);
-  const createInvite = useCreateInvite();
   const createChannel = useCreateChannel(server.id);
   const leaveServer = useLeaveServer(userId);
   const deleteServer = useDeleteServer(userId);
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [newChannel, setNewChannel] = useState<{ parentId: string | null } | null>(null);
   const [newType, setNewType] = useState<NewChannelKind>('text');
   const [confirm, setConfirm] = useState<'leave' | 'delete' | null>(null);
@@ -138,17 +138,25 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
   return (
     <aside className="ae-panel flex w-60 shrink-0 flex-col border-r border-ae-border">
       <div className="relative">
-        {server.banner_url && <img src={server.banner_url} alt="" className="h-24 w-full object-cover" />}
+        {/* The header row is always 48px tall, matching the channel header beside it. A banner sits
+            behind it and extends below, faded so its artwork never fights with the server name. */}
+        {server.banner_url && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[136px] overflow-hidden">
+            <img src={server.banner_url} alt="" className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/10 to-[var(--ae-bg-elevated)]" />
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
-          className={`flex h-12 w-full items-center justify-between gap-2 border-b border-ae-border px-4 text-left hover:bg-ae-hover/50 ${
-            server.banner_url ? 'absolute inset-x-0 top-0 bg-gradient-to-b from-black/60 to-transparent text-white' : ''
+          className={`relative flex h-12 w-full items-center justify-between gap-2 px-4 text-left transition-colors ${
+            server.banner_url ? 'text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.8)] hover:bg-black/20' : 'border-b border-ae-border hover:bg-ae-hover/50'
           }`}
         >
           <h2 className="truncate font-semibold">{server.name}</h2>
-          <span className={`text-xs transition-transform ${menuOpen ? 'rotate-180' : ''}`}>▾</span>
+          <ChevronDownIcon size={16} className={`shrink-0 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
         </button>
+        {server.banner_url && <div className="h-[88px]" />}
         {menuOpen && (
           <div className="absolute inset-x-2 top-12 z-30 space-y-0.5 rounded-ae border border-ae-border bg-ae-elevated p-1.5 shadow-2xl" onMouseLeave={() => setMenuOpen(false)}>
             {canInvite && (
@@ -157,7 +165,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                 className={`${menuItem} text-ae-accent`}
                 onClick={() => {
                   setMenuOpen(false);
-                  createInvite.mutate(server.id, { onSuccess: setInviteCode });
+                  setInviteOpen(true);
                 }}
               >
                 Invite people <LinkIcon size={14} />
@@ -171,7 +179,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                 openServerSettings({ serverId: server.id, tab: 'overview' });
               }}
             >
-              Server settings <span>⚙</span>
+              Server settings <span><SettingsIcon size={15} className="ae-ico" /></span>
             </button>
             <button
               type="button"
@@ -181,7 +189,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                 setNotifyOpen(true);
               }}
             >
-              Notification settings <span>🔔</span>
+              Notification settings <span><BellIcon size={15} className="ae-ico" /></span>
             </button>
             {canManageChannels && (
               <>
@@ -239,7 +247,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                   <span className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100">
                     {canOpenChannelSettings && (
                       <button type="button" title="Edit category" className="text-ae-muted hover:text-ae-text" onClick={() => openChannelSettings(category.id)}>
-                        ⚙
+                        <SettingsIcon size={15} className="ae-ico" />
                       </button>
                     )}
                     {canManageChannels && (
@@ -275,19 +283,19 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                         onContextMenu={(e) => {
                           const muted = resolve({ kind: 'channel', id: ch.id, serverId: server.id }).muted;
                           openContextMenu(e, [
-                            ch.type === 'text' && { label: 'Mark as read', icon: '✓', disabled: !hasUnread && !mentions, onClick: () => markRead({ kind: 'channel', id: ch.id }) },
-                            (ch.type === 'voice' || ch.type === 'stream') && { label: ch.type === 'stream' ? 'Join stage' : 'Join voice', icon: '🔊', onClick: () => joinChannel(ch) },
+                            ch.type === 'text' && { label: 'Mark as read', icon: <CheckIcon size={15} />, disabled: !hasUnread && !mentions, onClick: () => markRead({ kind: 'channel', id: ch.id }) },
+                            (ch.type === 'voice' || ch.type === 'stream') && { label: ch.type === 'stream' ? 'Join stage' : 'Join voice', icon: <VolumeIcon size={15} />, onClick: () => joinChannel(ch) },
                             ch.type === 'text' &&
                               (muted
-                                ? { label: 'Unmute channel', icon: '🔔', onClick: () => setNotify.mutate({ scopeId: ch.id, kind: 'channel', patch: { muted_until: null } }) }
-                                : { label: 'Mute channel for 1 hour', icon: '🔕', onClick: () => setNotify.mutate({ scopeId: ch.id, kind: 'channel', patch: { muted_until: muteUntil(60) } }) }),
-                            canOpenChannelSettings && { label: 'Edit channel', icon: '⚙', onClick: () => openChannelSettings(ch.id) },
+                                ? { label: 'Unmute channel', icon: <BellIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: ch.id, kind: 'channel', patch: { muted_until: null } }) }
+                                : { label: 'Mute channel for 1 hour', icon: <BellOffIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: ch.id, kind: 'channel', patch: { muted_until: muteUntil(60) } }) }),
+                            canOpenChannelSettings && { label: 'Edit channel', icon: <SettingsIcon size={15} />, onClick: () => openChannelSettings(ch.id) },
                             'divider',
                             {
                               label: 'Copy channel link',
-                              icon: '🔗',
+                              icon: <LinkIcon size={15} />,
                               onClick: () =>
-                                void navigator.clipboard.writeText(`https://aether.chat/channels/${server.id}/${ch.id}`).then(() => toast('Link copied', '🔗')),
+                                void navigator.clipboard.writeText(`https://aether.chat/channels/${server.id}/${ch.id}`).then(() => toast('Link copied', <LinkIcon size={14} />)),
                             },
                             { label: 'Copy channel ID', icon: '#', onClick: () => void navigator.clipboard.writeText(ch.id).then(() => toast('ID copied', '#')) },
                           ]);
@@ -323,7 +331,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                           className="absolute top-1/2 right-2 hidden -translate-y-1/2 text-xs text-ae-muted group-hover/ch:block hover:text-ae-text"
                           onClick={() => openChannelSettings(ch.id)}
                         >
-                          ⚙
+                          <SettingsIcon size={15} className="ae-ico" />
                         </button>
                       )}
                       {(ch.type === 'voice' || ch.type === 'stream') && (
@@ -343,25 +351,11 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
       {notifyOpen && (
         <Dialog title={`Notification settings: ${server.name}`} onClose={() => setNotifyOpen(false)}>
           <NotificationOptions scope={{ kind: 'server', id: server.id }} />
-          <p className="px-2 text-xs text-ae-muted">Channels follow these settings unless you change them with the 🔔 in a channel&apos;s header.</p>
+          <p className="px-2 text-xs text-ae-muted">Channels follow these settings unless you change them with the <BellIcon size={15} className="ae-ico" /> in a channel&apos;s header.</p>
         </Dialog>
       )}
 
-      {inviteCode && (
-        <Dialog title="Invite people" onClose={() => setInviteCode(null)}>
-          <p className="text-sm text-ae-muted">Share this code. It expires in 7 days.</p>
-          <div className="flex gap-2">
-            <input readOnly value={inviteCode} className="flex-1 rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 font-mono text-sm" />
-            <button
-              type="button"
-              className="rounded-ae bg-ae-accent px-4 text-sm font-semibold text-ae-on-accent"
-              onClick={() => void navigator.clipboard.writeText(inviteCode)}
-            >
-              Copy
-            </button>
-          </div>
-        </Dialog>
-      )}
+      {inviteOpen && <InviteDialog server={server} me={userId} onClose={() => setInviteOpen(false)} />}
 
       {newChannel && (
         <Dialog title="Create channel" onClose={() => setNewChannel(null)}>

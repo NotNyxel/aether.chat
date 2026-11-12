@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { useSoundboard, useSoundboardActions } from '../hooks/useSoundboard';
 import { BUILTIN_SOUNDS, builtinBuffer, decodeClip, previewBuffer } from '../lib/soundboard';
 import type { Server } from '../types/db';
-import { TrashIcon } from './icons';
+import { AttachIcon, TrashIcon, VolumeIcon } from './icons';
 import { inputCls, Section } from './SettingsPanel';
 
 export function SoundboardTab({ server, canManage }: { server: Server; canManage: boolean }) {
@@ -34,7 +34,7 @@ export function SoundboardTab({ server, canManage }: { server: Server; canManage
                   className="ae-press grid h-8 w-8 place-items-center rounded-full bg-ae-surface hover:bg-ae-hover"
                   onClick={() => void decodeClip(s.url).then((b) => previewBuffer(b, s.volume))}
                 >
-                  {s.emoji || '🔊'}
+                  {s.emoji || <VolumeIcon size={15} />}
                 </button>
                 {canManage ? (
                   <input
@@ -80,7 +80,7 @@ export function SoundboardTab({ server, canManage }: { server: Server; canManage
             <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             <div className="flex gap-2">
               <button type="button" className="ae-press shrink-0 rounded-ae bg-ae-surface px-3 py-2 text-sm hover:bg-ae-hover" onClick={() => fileRef.current?.click()}>
-                {file ? `📎 ${file.name}` : 'Choose a file'}
+                {file ? <><AttachIcon size={14} className="ae-ico" /> {file.name}</> : 'Choose a file'}
               </button>
               <input className={`${inputCls} !w-16 shrink-0 text-center`} placeholder="😀" maxLength={8} value={emoji} onChange={(e) => setEmoji(e.target.value)} aria-label="Emoji" />
               <input className={inputCls} placeholder="Name" maxLength={32} value={name} onChange={(e) => setName(e.target.value)} />

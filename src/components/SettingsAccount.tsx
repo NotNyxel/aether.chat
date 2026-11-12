@@ -2,10 +2,11 @@
  * Settings → My Account (email, password, two-factor, sessions, data export, delete account)
  * and Settings → Privacy & Safety (DMs, friend requests, message requests, blocked users).
  */
+import { DownloadIcon, LockIcon, UnlockIcon } from './icons';
 import { ask } from './ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useProfile } from '../hooks/useChatData';
+import { useProfile, useUpdateProfile } from '../hooks/useChatData';
 import { DEFAULT_PRIVACY, usePrivacySettings, useSavePrivacy } from '../hooks/useAccount';
 import { useBlocks, useFriendActions } from '../hooks/useSocialData';
 import { authRedirectUrl } from '../lib/authLinks';
@@ -149,7 +150,7 @@ function TwoFactor() {
     if (err) return setError(err.message);
     setEnroll(null);
     setCode('');
-    toast.success('Two-factor authentication is on.', '🔐');
+    toast.success('Two-factor authentication is on.', <LockIcon size={14} />);
     void qc.invalidateQueries({ queryKey: ['mfa-factors'] });
   };
 
@@ -157,7 +158,7 @@ function TwoFactor() {
     if (!verified || !(await ask('Turn off two-factor authentication? Your account will only be protected by your password.'))) return;
     const { error: err } = await sb.auth.mfa.unenroll({ factorId: verified.id });
     if (err) return toast.error(err.message);
-    toast('Two-factor authentication is off.', '🔓');
+    toast('Two-factor authentication is off.', <UnlockIcon size={14} />);
     void qc.invalidateQueries({ queryKey: ['mfa-factors'] });
   };
 
@@ -165,7 +166,7 @@ function TwoFactor() {
     <Section title="Two-factor authentication" description="Protect your account with a 6-digit code from an authenticator app (Google Authenticator, Authy, 1Password, Bitwarden…) at sign-in.">
       {verified ? (
         <div className="flex items-center gap-3">
-          <span className="rounded-full bg-ae-success/15 px-3 py-1 text-sm font-semibold text-ae-success">🔐 Enabled</span>
+          <span className="rounded-full bg-ae-success/15 px-3 py-1 text-sm font-semibold text-ae-success"><LockIcon size={15} className="ae-ico" /> Enabled</span>
           <button type="button" className={`${btn} bg-ae-surface hover:bg-ae-hover`} onClick={() => void disable()}>
             Remove authenticator
           </button>
@@ -335,7 +336,7 @@ export function AccountTab({ userId, onSignOut }: { userId: string; onSignOut: (
             setExporting(true);
             try {
               const where = await exportData(sb);
-              if (where) toast.success(`Saved ${where}`, '📦');
+              if (where) toast.success(`Saved ${where}`, <DownloadIcon size={14} />);
             } catch (e) {
               toast.error(e instanceof Error ? e.message : String(e));
             } finally {
@@ -343,7 +344,7 @@ export function AccountTab({ userId, onSignOut }: { userId: string; onSignOut: (
             }
           }}
         >
-          {exporting ? 'Preparing…' : '📦 Download my data'}
+          {exporting ? 'Preparing…' : <><DownloadIcon size={15} className="ae-ico" /> Download my data</>}
         </button>
       </Section>
 
@@ -408,6 +409,7 @@ export function PrivacyTab({ userId }: { userId: string }) {
           value={p.dm_policy}
           onChange={(v) => set({ dm_policy: v })}
           options={[
+            { id: 'everyone', label: 'Everyone', hint: 'Anyone can message you. People you don’t know land in Message requests, limited to a few messages until you accept.' },
             { id: 'servers', label: 'Friends and server members', hint: 'Anyone you share a server with can message you.' },
             { id: 'friends', label: 'Friends only', hint: 'Server members can’t start DMs with you, and existing non-friend DMs become read-only.' },
           ]}
@@ -418,6 +420,10 @@ export function PrivacyTab({ userId }: { userId: string }) {
           checked={p.message_requests}
           onChange={(v) => set({ message_requests: v })}
         />
+      </Section>
+
+      <Section title="Discovery">
+        <DiscoverableToggle userId={userId} />
       </Section>
 
       <Section title="Friend requests" description="Who can send you a friend request.">
@@ -452,5 +458,18 @@ export function PrivacyTab({ userId }: { userId: string }) {
         </ul>
       </Section>
     </div>
+  );
+}
+
+function DiscoverableToggle({ userId }: { userId: string }) {
+  const { data: me } = useProfile(userId);
+  const update = useUpdateProfile(userId);
+  return (
+    <Toggle
+      label="Let people find me in search"
+      hint="When on, anyone can find you by username or display name in “Search for someone”. Friends can always find you."
+      checked={me?.discoverable ?? true}
+      onChange={(v) => update.mutate({ discoverable: v }, { onSuccess: () => toast.success(v ? 'You can be found in search.' : 'You’re hidden from search.'), onError: (e) => toast.error(e.message) })}
+    />
   );
 }

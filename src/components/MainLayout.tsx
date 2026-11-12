@@ -1,15 +1,18 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { AddServerDialog } from './Invites';
+import { InboxButton } from './Inbox';
+import { QuickSwitcher, QuickSwitcherButton } from './QuickSwitcher';
+import { TitleBar, WindowFrame } from './TitleBar';
 import { ask } from './ConfirmDialog';
 import { ProfileExtras } from './ProfileExtras';
 import { ReportDialog } from './ReportDialog';
-import { ContextMenuLayer } from './ContextMenu';
 import { MeContext } from '../hooks/useMe';
 import { useEffect, useMemo } from 'react';
 import { useChannels, useProfile, useServerMembers, useServers } from '../hooks/useChatData';
 import { useActivityFeed } from '../hooks/useActivityFeed';
 import { useEventReminders } from '../hooks/useEvents';
 import { useChannelById } from '../hooks/useThreads';
-import { useAutoIdle, useCustomStatusExpiry, useGameActivity, useTaskbarBadge, useTraySync } from '../hooks/useDesktop';
+import { useAutoIdle, useCustomStatusExpiry, useGameActivity, useSpotifyListening, useTaskbarBadge, useTraySync } from '../hooks/useDesktop';
 import { useNotifyResolver } from '../hooks/useNotifications';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { useUnreadSummary } from '../hooks/useMessageExtras';
@@ -27,12 +30,14 @@ import { FriendsView } from './FriendsView';
 import { HomeSidebar } from './HomeSidebar';
 import { IncomingCall } from './IncomingCall';
 import { Lightbox } from './Lightbox';
-import { ProfilePopover } from './ProfileCard';
+import { FullProfileModal } from './FullProfile';
 import { ServerRail } from './ServerRail';
 import { ChannelSettings } from './ChannelSettings';
 import { MemberModeration, ServerSettings, useRank } from './ServerSettings';
 import { ServerView } from './ServerView';
 import { SettingsPanel } from './SettingsPanel';
+import { ProfileStudioLayer } from './ProfileStudio';
+import { AnnouncementBar } from './AdminPanel';
 import { EventsDialog } from './Events';
 import { CreateThreadDialog } from './Threads';
 
@@ -100,7 +105,7 @@ function ServerMemberTools({ server, me, userId }: { server: Server; me: string;
   const member = members.find((m) => m.user_id === userId);
   if (!member) return null;
   return (
-    <div className="w-[340px] rounded-ae border border-ae-border bg-ae-elevated p-3">
+    <div className="rounded-ae border border-ae-border bg-ae-elevated p-3">
       <p className="mb-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">In {server.name}</p>
       {member.nickname && <p className="mb-1 text-sm">Nickname: {member.nickname}</p>}
       <MemberModeration server={server} member={member} rank={rank} compact />
@@ -124,7 +129,7 @@ function PopoverForUser({ me, userId, server, onClose }: { me: string; userId: s
       }
     : data;
   return (
-    <ProfilePopover
+    <FullProfileModal
       profile={profile}
       onClose={onClose}
       footer={
@@ -202,7 +207,17 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
   useEventReminders(userId, me?.presence_status === 'dnd');
 
   return (
-    <div className="flex h-full text-ae-text">
+    <WindowFrame
+      bar={
+        <TitleBar title={server ? server.name : conversation ? 'Direct messages' : 'Friends'}>
+          <QuickSwitcherButton />
+          <InboxButton userId={userId} servers={servers.data ?? []} />
+        </TitleBar>
+      }
+    >
+    <div className="flex h-full flex-col text-ae-text">
+    <AnnouncementBar />
+    <div className="flex min-h-0 flex-1">
       <ServerRail userId={userId} servers={servers.data ?? []} activeId={server?.id ?? null} homeBadge={homeBadge} />
 
       {server ? (
@@ -227,7 +242,9 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
         )}
       </main>
 
+    </div>
       <SettingsPanel userId={userId} onSignOut={onSignOut} />
+      <ProfileStudioLayer userId={userId} />
       <IncomingCall userId={userId} silent={me?.presence_status === 'dnd'} />
       <ForwardDialog me={userId} />
       <Lightbox />
@@ -235,10 +252,12 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <ServerSettings servers={servers.data ?? []} userId={userId} />
       <CreateThreadDialog />
       <ReportDialog me={userId} />
-      <ContextMenuLayer />
       <EventsDialog servers={servers.data ?? []} channels={channels.data ?? []} userId={userId} />
       <ChannelSettings servers={servers.data ?? []} channels={channels.data ?? []} userId={userId} />
+      <QuickSwitcher userId={userId} servers={servers.data ?? []} />
+      <AddServerDialog userId={userId} />
     </div>
+    </WindowFrame>
   );
 }
 
@@ -251,10 +270,11 @@ export function MainLayout({ userId, onSignOut }: { userId: string; onSignOut: (
   // Until the profile loads, stay untracked so an "invisible" user never flashes online.
   const status = useAutoIdle(me?.presence_status ?? 'invisible');
   const activity = useGameActivity();
+  const listening = useSpotifyListening();
 
   return (
     <MeContext.Provider value={userId}>
-    <PresenceProvider userId={userId} status={status} activity={activity}>
+    <PresenceProvider userId={userId} status={status} activity={activity} listening={listening}>
       <CallProvider userId={userId}>
         <Shell userId={userId} onSignOut={onSignOut} />
       </CallProvider>

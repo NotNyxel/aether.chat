@@ -58,12 +58,12 @@ export function ForwardDialog({ me }: { me: string }) {
     <Dialog title="Forward to" onClose={() => close(null)}>
       {message && (
         <p className="line-clamp-2 rounded-ae border-l-2 border-ae-border bg-ae-sunken px-3 py-2 text-xs text-ae-muted">
-          {message.content || (message.poll ? `📊 ${message.poll.question}` : `${message.attachments.length} attachment(s)`)}
+          {message.content || (message.poll ? `Poll: ${message.poll.question}` : `${message.attachments.length} attachment(s)`)}
         </p>
       )}
       <input
         autoFocus
-        className="w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm outline-none focus:border-ae-accent"
+        className="ae-input w-full text-sm"
         placeholder="Search channels and DMs"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
@@ -87,7 +87,7 @@ export function ForwardDialog({ me }: { me: string }) {
           ))}
       </div>
       <input
-        className="w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm outline-none focus:border-ae-accent"
+        className="ae-input w-full text-sm"
         placeholder="Add an optional message"
         maxLength={2000}
         value={comment}

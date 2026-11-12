@@ -1,4 +1,8 @@
 /** One chat message: header, reply/forward context, Markdown, attachments, poll, embeds, reactions, hover toolbar. */
+import { inviteCodesIn } from '../lib/invites';
+import { InviteEmbed } from './Invites';
+import { AudioPlayer, VideoPlayer } from './MediaPlayer';
+import { openExternal } from '../lib/platform';
 import { openContextMenu } from './ContextMenu';
 import { openReport } from './ReportDialog';
 import { toast } from './Toaster';
@@ -10,7 +14,7 @@ import { Markdown } from '../lib/markdown';
 import { useUiStore } from '../stores/uiStore';
 import type { Attachment, Message, PollVote } from '../types/db';
 import { EmojiPicker } from './EmojiPicker';
-import { LinkIcon, TrashIcon } from './icons';
+import { CheckIcon, EditIcon, FileIcon, FlagIcon, ForwardIcon, LinkIcon, LockIcon, MegaphoneIcon, PinIcon, PinOffIcon, ReactIcon, ThreadIcon, TrashIcon, ReplyIcon, CopyIcon } from './icons';
 import { LinkEmbed } from './LinkEmbed';
 import { PollCard } from './PollCard';
 import { Avatar, StyledName } from './ProfileCard';
@@ -45,20 +49,19 @@ function AttachmentView({ a }: { a: Attachment }) {
       <img src={a.url} alt={a.alt ?? a.name} loading="lazy" className="max-h-80 max-w-sm rounded-ae border border-ae-border object-contain" />
     </button>
   ) : a.content_type.startsWith('video/') ? (
-    <video src={a.url} controls className="max-h-80 max-w-md rounded-ae border border-ae-border" aria-label={a.alt ?? a.name} />
+    <VideoPlayer src={a.url} label={a.alt ?? a.name} />
   ) : a.content_type.startsWith('audio/') ? (
-    <div className="w-80 rounded-ae border border-ae-border bg-ae-sunken p-2">
-      <p className="mb-1 truncate text-xs">{a.name}</p>
-      <audio src={a.url} controls className="w-full" />
-    </div>
+    <AudioPlayer src={a.url} name={a.name} />
   ) : (
     <a
       href={a.url}
-      target="_blank"
-      rel="noreferrer"
+      onClick={(e) => {
+        e.preventDefault();
+        void openExternal(a.url);
+      }}
       className="flex max-w-sm items-center gap-3 rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm hover:border-ae-accent"
     >
-      <span className="text-2xl">📄</span>
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-ae-surface text-ae-accent"><FileIcon size={20} /></span>
       <span className="min-w-0">
         <span className="block truncate text-ae-accent">{a.name}</span>
         <span className="text-xs text-ae-muted">{formatSize(a.size)}</span>
@@ -84,7 +87,7 @@ function ToolbarButton({ title, onClick, danger, children }: { title: string; on
       title={title}
       aria-label={title}
       onClick={onClick}
-      className={`grid h-7 min-w-7 place-items-center rounded px-1 text-sm hover:bg-ae-hover ${danger ? 'text-ae-muted hover:text-ae-danger' : ''}`}
+      className={`ae-press grid h-8 min-w-8 place-items-center rounded-md px-1 text-[15px] text-ae-muted transition-colors hover:bg-ae-hover hover:text-ae-text ${danger ? 'hover:!text-ae-danger' : ''}`}
     >
       {children}
     </button>
@@ -137,7 +140,7 @@ function ThreadChip({ parentId, threadId, onOpen }: { parentId: string; threadId
       onClick={onOpen}
       className="ae-enter ae-lift mt-1.5 flex max-w-md items-center gap-2 rounded-ae border border-ae-border bg-ae-surface/60 px-3 py-1.5 text-left text-sm hover:border-ae-accent"
     >
-      <span>{t.thread_locked ? '🔒' : '🧵'}</span>
+      {t.thread_locked ? <LockIcon size={15} /> : <ThreadIcon size={15} />}
       <span className="truncate font-semibold">{t.name}</span>
       <span className="shrink-0 text-xs text-ae-accent">
         {t.thread_message_count} {t.thread_message_count === 1 ? 'message' : 'messages'}
@@ -167,54 +170,55 @@ function MessageItemImpl(props: MessageItemProps) {
   const showHeader = !grouped || !!message.reply_to_id || !!message.forwarded_from;
   const scopeId = message.channel_id ?? message.conversation_id!;
   const embeds = editing ? [] : extractEmbedUrls(message.content);
+  const inviteCodes = editing ? [] : inviteCodesIn(message.content);
 
   return (
     <li
       id={`msg-${message.id}`}
-      className={`ae-msg group relative flex gap-3 px-4 hover:bg-ae-hover/40 ${showHeader ? 'mt-3 pt-1 pb-0.5' : 'py-0.5'} ${mentioned && !mine ? 'ae-mentioned' : ''}`}
+      className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-[17px] pt-0.5 pb-0.5' : 'py-[1px]'} ${mentioned && !mine ? 'ae-mentioned' : ''}`}
       onMouseLeave={() => setPicker(false)}
       onContextMenu={(e) => {
         if (editing) return;
         openContextMenu(e, [
-          { label: 'Add reaction', icon: '🙂', onClick: () => setPicker(true) },
-          { label: 'Reply', icon: '↩', onClick: () => props.onReply(message) },
-          { label: 'Forward', icon: '➦', onClick: () => openForward(message.id) },
+          { label: 'Add reaction', icon: <ReactIcon size={15} />, onClick: () => setPicker(true) },
+          { label: 'Reply', icon: <ReplyIcon size={15} />, onClick: () => props.onReply(message) },
+          { label: 'Forward', icon: <ForwardIcon size={15} />, onClick: () => openForward(message.id) },
           props.canThread && message.channel_id
             ? {
                 label: message.thread_id ? 'Open thread' : 'Create thread',
-                icon: '🧵',
+                icon: <ThreadIcon size={15} />,
                 onClick: () => (message.thread_id ? openThread(message.thread_id) : openThreadDraft({ parentId: message.channel_id!, messageId: message.id })),
               }
             : null,
           mine && !message.poll && {
             label: 'Edit message',
-            icon: '✎',
+            icon: <EditIcon size={15} />,
             onClick: () => {
               setDraft(message.content);
               props.onStartEdit(message.id);
             },
           },
-          props.canPin && { label: message.pinned ? 'Unpin message' : 'Pin message', icon: '📌', onClick: () => props.onTogglePin(message.id, !message.pinned) },
-          props.canPublish && { label: 'Publish', icon: '📢', onClick: () => announcements.publish.mutate(message.id) },
+          props.canPin && { label: message.pinned ? 'Unpin message' : 'Pin message', icon: <PinIcon size={15} />, onClick: () => props.onTogglePin(message.id, !message.pinned) },
+          props.canPublish && { label: 'Publish', icon: <MegaphoneIcon size={15} />, onClick: () => announcements.publish.mutate(message.id) },
           'divider',
           message.content && {
             label: 'Copy text',
-            icon: '⧉',
-            onClick: () => void navigator.clipboard.writeText(message.content).then(() => toast('Copied text', '⧉')),
+            icon: <CopyIcon size={15} />,
+            onClick: () => void navigator.clipboard.writeText(message.content).then(() => toast('Copied text', <CopyIcon size={14} />)),
           },
           {
             label: 'Copy message link',
-            icon: '🔗',
-            onClick: () => void navigator.clipboard.writeText(buildMessageLink(message, props.serverId)).then(() => toast('Link copied', '🔗')),
+            icon: <LinkIcon size={15} />,
+            onClick: () => void navigator.clipboard.writeText(buildMessageLink(message, props.serverId)).then(() => toast('Link copied', <LinkIcon size={14} />)),
           },
           'divider',
           !mine && message.author_id && {
             label: 'Report message',
-            icon: '⚑',
+            icon: <FlagIcon size={15} />,
             danger: true,
             onClick: () => openReport({ messageId: message.id, userId: message.author_id, preview: message.content.slice(0, 280) }),
           },
-          mine && { label: 'Delete message', icon: '🗑', danger: true, onClick: () => props.onDelete(message.id) },
+          mine && { label: 'Delete message', icon: <TrashIcon size={15} />, danger: true, onClick: () => props.onDelete(message.id) },
         ]);
       }}
     >
@@ -224,7 +228,7 @@ function MessageItemImpl(props: MessageItemProps) {
             <Avatar profile={avatarProfile} size={40} showFrame={false} />
           </button>
         ) : (
-          <time className="hidden pt-1 text-[10px] text-ae-muted group-hover:block" dateTime={message.created_at}>
+          <time className="invisible block pt-[3px] text-right text-[10px] leading-5 text-ae-muted tabular-nums group-hover:visible" dateTime={message.created_at}>
             {new Date(message.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
           </time>
         )}
@@ -233,17 +237,16 @@ function MessageItemImpl(props: MessageItemProps) {
         {message.reply_to_id && (
           <button
             type="button"
-            className="mb-0.5 block max-w-full truncate text-left text-xs text-ae-muted hover:text-ae-text"
+            className="relative mb-1 flex max-w-full items-center gap-1.5 truncate text-left text-[13px] text-ae-muted before:absolute before:top-1/2 before:-left-[38px] before:h-3 before:w-8 before:rounded-tl-md before:border-t-2 before:border-l-2 before:border-ae-border before:content-[''] hover:text-ae-text"
             onClick={() => goTo({ serverId: props.serverId, scopeId, messageId: message.reply_to_id! })}
             title="Jump to the original message"
           >
-            ↪{' '}
             {props.replyTarget ? (
               <>
                 <strong>
                   <DisplayName userId={props.replyTarget.author_id} />
                 </strong>{' '}
-                {props.replyTarget.content.slice(0, 120) || (props.replyTarget.poll ? '📊 poll' : '[attachment]')}
+                {props.replyTarget.content.slice(0, 120) || (props.replyTarget.poll ? 'Poll' : 'Attachment')}
               </>
             ) : (
               <em>Click to load the original message</em>
@@ -254,26 +257,26 @@ function MessageItemImpl(props: MessageItemProps) {
           <div className="flex items-baseline gap-2">
             <button
               type="button"
-              className="text-sm font-semibold hover:underline"
+              className="text-[15px] leading-5 font-semibold hover:underline"
               onClick={() => message.author_id && showProfile(message.author_id)}
             >
               <StyledName profile={author} text={name} color={props.authorColor ?? author?.accent_color ?? undefined} />
             </button>
-            <time className="text-xs text-ae-muted" dateTime={message.created_at} title={new Date(message.created_at).toLocaleString()}>
+            <time className="text-[11px] text-ae-muted" dateTime={message.created_at} title={new Date(message.created_at).toLocaleString()}>
               {formatTime(message.created_at)}
             </time>
-            {message.pinned && <span className="text-xs text-ae-muted" title="Pinned">📌</span>}
+            {message.pinned && <span className="text-xs text-ae-muted" title="Pinned"><PinIcon size={15} className="ae-ico" /></span>}
           </div>
         )}
 
         {message.crossposted_from && (
           <p className="mt-0.5 text-xs text-ae-muted">
-            📢 From <strong className="text-ae-text">{message.crossposted_from.server_name}</strong> · #{message.crossposted_from.channel_name}
+            <MegaphoneIcon size={15} className="ae-ico" /> From <strong className="text-ae-text">{message.crossposted_from.server_name}</strong> · #{message.crossposted_from.channel_name}
           </p>
         )}
         {message.forwarded_from && (
           <p className="mt-0.5 text-xs text-ae-muted italic">
-            ↪ Forwarded from <DisplayName userId={message.forwarded_from.author_id} /> · {formatTime(message.forwarded_from.created_at)}
+            <ForwardIcon size={12} className="ae-ico" /> Forwarded from <DisplayName userId={message.forwarded_from.author_id} /> · {formatTime(message.forwarded_from.created_at)}
           </p>
         )}
 
@@ -282,7 +285,7 @@ function MessageItemImpl(props: MessageItemProps) {
             <div className="space-y-1">
               <textarea
                 autoFocus
-                className="w-full resize-none rounded-ae border border-ae-accent bg-ae-sunken px-3 py-2 text-sm outline-none"
+                className="ae-input w-full resize-none text-sm"
                 rows={Math.min(8, Math.max(2, draft.split('\n').length))}
                 value={draft}
                 maxLength={4000}
@@ -298,7 +301,7 @@ function MessageItemImpl(props: MessageItemProps) {
               <p className="text-xs text-ae-muted">Enter to save · Esc to cancel</p>
             </div>
           ) : (
-            message.content && <Markdown source={message.content} className="text-sm leading-relaxed" />
+            message.content && <Markdown source={message.content} className="text-[15px] leading-[1.375rem] text-ae-text/95" />
           )}
 
           {message.attachments.length > 0 && (
@@ -309,11 +312,16 @@ function MessageItemImpl(props: MessageItemProps) {
             </div>
           )}
         </div>
-        {message.edited_at && !editing && <span className="text-[10px] text-ae-muted" title={new Date(message.edited_at).toLocaleString()}>(edited)</span>}
+        {message.edited_at && !editing && <span className="text-[10px] text-ae-muted" data-tip={`Edited ${new Date(message.edited_at).toLocaleString()}`}>(edited)</span>}
 
         {message.poll && <PollCard message={message} votes={props.votes ?? []} me={me} onVote={(ids) => props.onVote(message.id, ids)} />}
-        {embeds.map((url) => (
-          <LinkEmbed key={url} url={url} />
+        {embeds
+          .filter((url) => !inviteCodes.length || !/aether\.chat\/inv\/|aether\.chat-releases\/inv\//.test(url))
+          .map((url) => (
+            <LinkEmbed key={url} url={url} />
+          ))}
+        {inviteCodes.map((c) => (
+          <InviteEmbed key={c} code={c} me={me} />
         ))}
 
         {props.reactions && props.reactions.size > 0 && (
@@ -325,11 +333,11 @@ function MessageItemImpl(props: MessageItemProps) {
                   key={emoji}
                   type="button"
                   onClick={() => props.onReact(message.id, emoji, active)}
-                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
-                    active ? 'border-ae-accent bg-ae-accent/15' : 'border-ae-border bg-ae-sunken hover:border-ae-muted'
+                  className={`ae-press flex h-6 items-center gap-1.5 rounded-lg border px-1.5 text-xs font-semibold tabular-nums transition-colors ${
+                    active ? 'border-ae-accent/70 bg-ae-accent/15 text-ae-accent' : 'border-transparent bg-ae-surface/70 text-ae-muted hover:border-ae-border'
                   }`}
                 >
-                  <span className="text-sm">{emoji}</span>
+                  <span className="text-[15px] leading-none">{emoji}</span>
                   <span>{users.length}</span>
                 </button>
               );
@@ -337,26 +345,26 @@ function MessageItemImpl(props: MessageItemProps) {
           </div>
         )}
         {message.thread_id && message.channel_id && <ThreadChip parentId={message.channel_id} threadId={message.thread_id} onOpen={() => openThread(message.thread_id)} />}
-        {message.published_at && <p className="mt-0.5 text-[11px] text-ae-muted">📢 Published to following servers</p>}
+        {message.published_at && <p className="mt-0.5 text-[11px] text-ae-muted"><MegaphoneIcon size={15} className="ae-ico" /> Published to following servers</p>}
         {announcements.publish.error && <p className="mt-0.5 text-xs text-ae-danger">{announcements.publish.error.message}</p>}
       </div>
 
       {!editing && (
-        <div className="absolute -top-4 right-4 z-10 hidden items-center gap-0.5 rounded-ae border border-ae-border bg-ae-elevated p-0.5 shadow group-hover:flex">
+        <div className="ae-pop absolute -top-4 right-4 z-10 hidden items-center gap-0.5 rounded-lg border border-ae-border bg-ae-elevated p-0.5 shadow-lg group-hover:flex">
           {QUICK.map((e) => (
             <ToolbarButton key={e} title={`React ${e}`} onClick={() => props.onReact(message.id, e, props.reactions?.get(e)?.includes(me) ?? false)}>
               {e}
             </ToolbarButton>
           ))}
           <ToolbarButton title="Add reaction" onClick={() => setPicker((p) => !p)}>
-            🙂
+            <ReactIcon size={15} className="ae-ico" />
           </ToolbarButton>
           <span className="mx-0.5 h-5 w-px bg-ae-border" />
           <ToolbarButton title="Reply" onClick={() => props.onReply(message)}>
-            ↩
+            <ReplyIcon size={16} />
           </ToolbarButton>
           <ToolbarButton title="Forward" onClick={() => openForward(message.id)}>
-            ➦
+            <ForwardIcon size={15} className="ae-ico" />
           </ToolbarButton>
           {props.canThread && message.channel_id && (
             <ToolbarButton
@@ -365,12 +373,12 @@ function MessageItemImpl(props: MessageItemProps) {
                 message.thread_id ? openThread(message.thread_id) : openThreadDraft({ parentId: message.channel_id!, messageId: message.id })
               }
             >
-              🧵
+              <ThreadIcon size={15} className="ae-ico" />
             </ToolbarButton>
           )}
           {props.canPublish && (
             <ToolbarButton title="Publish to following servers" onClick={() => announcements.publish.mutate(message.id)}>
-              📢
+              <MegaphoneIcon size={15} className="ae-ico" />
             </ToolbarButton>
           )}
           {mine && !message.poll && (
@@ -381,12 +389,12 @@ function MessageItemImpl(props: MessageItemProps) {
                 props.onStartEdit(message.id);
               }}
             >
-              ✎
+              <EditIcon size={15} className="ae-ico" />
             </ToolbarButton>
           )}
           {props.canPin && (
             <ToolbarButton title={message.pinned ? 'Unpin' : 'Pin'} onClick={() => props.onTogglePin(message.id, !message.pinned)}>
-              {message.pinned ? '📍' : '📌'}
+              {message.pinned ? <PinOffIcon size={15} /> : <PinIcon size={15} />}
             </ToolbarButton>
           )}
           <ToolbarButton
@@ -398,7 +406,7 @@ function MessageItemImpl(props: MessageItemProps) {
               });
             }}
           >
-            {copied ? '✓' : <LinkIcon size={14} />}
+            {copied ? <CheckIcon size={14} /> : <LinkIcon size={14} />}
           </ToolbarButton>
           {mine && (
             <ToolbarButton title="Delete" danger onClick={() => props.onDelete(message.id)}>

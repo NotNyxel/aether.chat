@@ -10,28 +10,30 @@ import { useSupabase } from '../lib/supabase';
 import { AVATAR_FRAMES, isHexColor } from '../theme/presets';
 import type { AvatarShape, CardStyle, EditableProfile, NameEffect, NameFont, ProfileEffect, ProfileLink, UserProfile } from '../types/db';
 import { Dialog } from './Dialog';
-import { CloseIcon } from './icons';
+import { CheckIcon, ChevronRightIcon, CloseIcon, FrameIcon, IdCardIcon, LinkIcon, NameplateIcon, PaletteIcon, ShapeIcon, SparklesIcon } from './icons';
+import { CARD_FRAMES, NAMEPLATES } from '../lib/profileDecor';
+import { useUiStore } from '../stores/uiStore';
 import { Avatar, ProfileCard, StyledName } from './ProfileCard';
 import { ColorField, Field, inputCls, Section } from './SettingsPanel';
 import { toast } from './Toaster';
 
-const EDITABLE_KEYS: (keyof EditableProfile)[] = [
+export const EDITABLE_KEYS: (keyof EditableProfile)[] = [
   'username', 'display_name', 'custom_status', 'status_emoji', 'bio', 'avatar_url', 'avatar_frame', 'banner_url', 'primary_color',
   'accent_color', 'custom_css', 'audio_status_url', 'theme_preset', 'pronouns', 'name_font', 'name_effect', 'name_color_a', 'name_color_b',
-  'profile_effect', 'card_style', 'avatar_shape', 'profile_links',
+  'profile_effect', 'card_style', 'avatar_shape', 'profile_links', 'nameplate', 'card_frame', 'profile_widgets',
 ];
 
-function toDraft(p: UserProfile): EditableProfile {
+export function toDraft(p: UserProfile): EditableProfile {
   return Object.fromEntries(EDITABLE_KEYS.map((k) => [k, p[k]])) as EditableProfile;
 }
 
-const FRAME_LABELS = Object.fromEntries(AVATAR_FRAMES.map((f) => [f.id, f.label]));
-const SHAPES: { id: AvatarShape; label: string }[] = [
+export const FRAME_LABELS = Object.fromEntries(AVATAR_FRAMES.map((f) => [f.id, f.label]));
+export const SHAPES: { id: AvatarShape; label: string }[] = [
   { id: 'circle', label: 'Circle' },
   { id: 'squircle', label: 'Squircle' },
   { id: 'hexagon', label: 'Hexagon' },
 ];
-const EFFECTS: { id: ProfileEffect; label: string }[] = [
+export const EFFECTS: { id: ProfileEffect; label: string }[] = [
   { id: 'none', label: 'None' },
   { id: 'sparkles', label: 'Sparkles' },
   { id: 'stars', label: 'Stars' },
@@ -42,14 +44,24 @@ const EFFECTS: { id: ProfileEffect; label: string }[] = [
   { id: 'fireflies', label: 'Fireflies' },
   { id: 'bubbles', label: 'Bubbles' },
   { id: 'rain', label: 'Rain' },
+  { id: 'embers', label: 'Embers' },
+  { id: 'leaves', label: 'Autumn' },
+  { id: 'music', label: 'Music' },
+  { id: 'lightning', label: 'Lightning' },
 ];
-const CARDS: { id: CardStyle; label: string }[] = [
+export const CARDS: { id: CardStyle; label: string }[] = [
   { id: 'solid', label: 'Solid' },
   { id: 'gradient', label: 'Gradient' },
   { id: 'glass', label: 'Glass' },
   { id: 'aurora', label: 'Aurora' },
+  { id: 'mesh', label: 'Mesh' },
+  { id: 'holo', label: 'Holographic' },
+  { id: 'midnight', label: 'Midnight' },
+  { id: 'sunset', label: 'Sunset' },
+  { id: 'ocean', label: 'Deep Sea' },
+  { id: 'noir', label: 'Noir' },
 ];
-const FONTS: { id: NameFont; label: string }[] = [
+export const FONTS: { id: NameFont; label: string }[] = [
   { id: 'default', label: 'Default' },
   { id: 'rounded', label: 'Rounded' },
   { id: 'serif', label: 'Serif' },
@@ -58,15 +70,21 @@ const FONTS: { id: NameFont; label: string }[] = [
   { id: 'mono', label: 'Mono' },
   { id: 'pixel', label: 'Pixel' },
 ];
-const NAME_EFFECTS: { id: NameEffect; label: string }[] = [
+export const NAME_EFFECTS: { id: NameEffect; label: string }[] = [
   { id: 'none', label: 'Plain' },
   { id: 'gradient', label: 'Gradient' },
   { id: 'rainbow', label: 'Rainbow' },
   { id: 'shimmer', label: 'Shimmer' },
   { id: 'glow', label: 'Glow' },
   { id: 'neon', label: 'Neon' },
+  { id: 'fire', label: 'Fire' },
+  { id: 'ice', label: 'Ice' },
+  { id: 'chrome', label: 'Chrome' },
+  { id: 'pastel', label: 'Pastel' },
+  { id: 'toxic', label: 'Toxic' },
+  { id: 'glitch', label: 'Glitch' },
 ];
-const COLOR_PRESETS: [string, string][] = [
+export const COLOR_PRESETS: [string, string][] = [
   ['#7c5cff', '#00e5ff'],
   ['#ff3cac', '#784ba0'],
   ['#ff8a4c', '#ffd166'],
@@ -80,7 +98,7 @@ const COLOR_PRESETS: [string, string][] = [
 ];
 
 /** A shrunken, non-interactive ProfileCard for picker tiles. */
-function MiniCard({ profile }: { profile: UserProfile }) {
+export function MiniCard({ profile }: { profile: UserProfile }) {
   return (
     <div className="pointer-events-none relative h-[118px] w-full overflow-hidden">
       <div className="absolute top-0 left-1/2 w-[340px] origin-top -translate-x-1/2 scale-[0.3]">
@@ -98,12 +116,14 @@ interface PickerProps<T extends string> {
   apply: (id: T) => Partial<UserProfile>;
   renderTile: (preview: UserProfile, id: T) => ReactNode;
   extra?: (hovered: T) => ReactNode;
+  /** Replaces the profile card in the preview column. */
+  aside?: (preview: UserProfile) => ReactNode;
   onApply: (patch: Partial<UserProfile>) => void;
   onClose: () => void;
 }
 
 /** Grid of options on the left, your live card on the right. Hover to try, click to select, Apply to keep. */
-function Picker<T extends string>({ title, options, current, base, apply, renderTile, extra, onApply, onClose }: PickerProps<T>) {
+export function Picker<T extends string>({ title, options, current, base, apply, renderTile, extra, aside, onApply, onClose }: PickerProps<T>) {
   const [selected, setSelected] = useState<T>(current);
   const [hovered, setHovered] = useState<T | null>(null);
   const shown = hovered ?? selected;
@@ -133,28 +153,31 @@ function Picker<T extends string>({ title, options, current, base, apply, render
           <div className="ae-scroll min-h-0 flex-1 overflow-y-auto p-4">
             <div className="grid grid-cols-3 gap-2.5 lg:grid-cols-4" onMouseLeave={() => setHovered(null)}>
               {options.map((o) => (
-                <button
+                <div
                   key={o.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selected === o.id}
                   onMouseEnter={() => setHovered(o.id)}
                   onFocus={() => setHovered(o.id)}
                   onClick={() => setSelected(o.id)}
-                  className={`ae-enter group relative overflow-hidden rounded-ae border-2 bg-ae-sunken p-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg ${
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), setSelected(o.id))}
+                  className={`ae-enter group relative cursor-pointer overflow-hidden rounded-ae border-2 bg-ae-sunken p-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg ${
                     selected === o.id ? 'border-ae-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--ae-accent)_25%,transparent)]' : 'border-transparent hover:border-ae-border'
                   }`}
                 >
                   {renderTile({ ...base, ...apply(o.id) } as UserProfile, o.id)}
                   <p className="mt-1.5 truncate text-center text-xs font-semibold">{o.label}</p>
                   {current === o.id && <span className="absolute top-1.5 left-1.5 rounded bg-ae-surface px-1.5 text-[9px] font-bold text-ae-muted uppercase">current</span>}
-                  {selected === o.id && <span className="absolute top-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-full bg-ae-accent text-[11px] text-ae-on-accent">✓</span>}
-                </button>
+                  {selected === o.id && <span className="absolute top-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-full bg-ae-accent text-[11px] text-ae-on-accent"><CheckIcon size={13} /></span>}
+                </div>
               ))}
             </div>
             {extra?.(shown)}
           </div>
           <aside className="hidden w-[380px] shrink-0 flex-col items-center gap-3 border-l border-ae-border bg-ae-sunken/50 p-5 md:flex">
             <p className="self-start text-[11px] font-bold tracking-wide text-ae-muted uppercase">Preview</p>
-            <ProfileCard profile={preview} />
+            {aside ? aside(preview) : <ProfileCard profile={preview} />}
             <p className="text-sm font-semibold">{options.find((o) => o.id === shown)?.label}</p>
           </aside>
         </div>
@@ -178,7 +201,7 @@ function Picker<T extends string>({ title, options, current, base, apply, render
   );
 }
 
-function CustomizeRow({ icon, title, value, onChange, children }: { icon: ReactNode; title: string; value: ReactNode; onChange: () => void; children?: ReactNode }) {
+export function CustomizeRow({ icon, title, value, onChange, children }: { icon: ReactNode; title: string; value: ReactNode; onChange: () => void; children?: ReactNode }) {
   return (
     <div className="flex items-center gap-3 rounded-ae border border-ae-border bg-ae-surface/30 px-3 py-2.5 transition-colors hover:bg-ae-surface/60">
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-ae bg-ae-sunken text-lg">{icon}</span>
@@ -194,7 +217,7 @@ function CustomizeRow({ icon, title, value, onChange, children }: { icon: ReactN
   );
 }
 
-function ImageSlot({ label, url, round, userId, kind, onChange }: {
+export function ImageSlot({ label, url, round, userId, kind, onChange }: {
   label: string;
   url: string | null;
   round?: boolean;
@@ -259,7 +282,7 @@ function ImageSlot({ label, url, round, userId, kind, onChange }: {
   );
 }
 
-type PickerKind = 'frame' | 'shape' | 'effect' | 'card' | 'name' | 'colors';
+export type PickerKind = 'frame' | 'shape' | 'effect' | 'card' | 'name' | 'colors' | 'plate' | 'cardframe';
 
 function MainProfile({ userId }: { userId: string }) {
   const { data: profile } = useProfile(userId);
@@ -271,6 +294,7 @@ function MainProfile({ userId }: { userId: string }) {
   const [advanced, setAdvanced] = useState(false);
   const [linkLabel, setLinkLabel] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
+  const openStudio = useUiStore((s) => s.openStudio);
 
   useEffect(() => {
     if (profile && !draft) setDraft(toDraft(profile));
@@ -316,6 +340,21 @@ function MainProfile({ userId }: { userId: string }) {
   return (
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0 space-y-6 pb-20">
+        <button
+          type="button"
+          onClick={() => openStudio()}
+          className="ae-lift group flex w-full items-center gap-4 overflow-hidden rounded-ae border border-ae-border p-4 text-left"
+          style={{ background: 'linear-gradient(120deg, color-mix(in srgb, var(--ae-accent) 30%, transparent), transparent 70%)' }}
+        >
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-ae bg-ae-accent text-ae-on-accent">
+            <SparklesIcon size={22} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold">Open Profile Studio</span>
+            <span className="block text-sm text-ae-muted">Nameplates, frames, effects and your profile board, with a full-size live preview.</span>
+          </span>
+          <ChevronRightIcon size={18} className="text-ae-muted transition-transform group-hover:translate-x-1" />
+        </button>
         <Section title="Identity">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Display name">
@@ -348,10 +387,12 @@ function MainProfile({ userId }: { userId: string }) {
 
         <Section title="Customize" description="Click Change to browse every option. Hover one to try it on your card.">
           <div className="space-y-2">
-            <CustomizeRow icon="💫" title="Avatar decoration" value={FRAME_LABELS[draft.avatar_frame ?? 'none'] ?? 'None'} onChange={() => setPicker('frame')} />
-            <CustomizeRow icon="⬢" title="Avatar shape" value={SHAPES.find((s) => s.id === (draft.avatar_shape ?? 'circle'))?.label} onChange={() => setPicker('shape')} />
-            <CustomizeRow icon="✨" title="Profile effect" value={EFFECTS.find((e) => e.id === (draft.profile_effect ?? 'none'))?.label} onChange={() => setPicker('effect')} />
-            <CustomizeRow icon="🪪" title="Card style" value={CARDS.find((c) => c.id === (draft.card_style ?? 'solid'))?.label} onChange={() => setPicker('card')} />
+            <CustomizeRow icon={<SparklesIcon size={18} />} title="Avatar decoration" value={FRAME_LABELS[draft.avatar_frame ?? 'none'] ?? 'None'} onChange={() => setPicker('frame')} />
+            <CustomizeRow icon={<ShapeIcon size={18} />} title="Avatar shape" value={SHAPES.find((s) => s.id === (draft.avatar_shape ?? 'circle'))?.label} onChange={() => setPicker('shape')} />
+            <CustomizeRow icon={<SparklesIcon size={18} />} title="Profile effect" value={EFFECTS.find((e) => e.id === (draft.profile_effect ?? 'none'))?.label} onChange={() => setPicker('effect')} />
+            <CustomizeRow icon={<NameplateIcon size={18} />} title="Nameplate" value={NAMEPLATES.find((n) => n.id === (draft.nameplate || 'none'))?.label} onChange={() => setPicker('plate')} />
+            <CustomizeRow icon={<FrameIcon size={18} />} title="Profile frame" value={CARD_FRAMES.find((n) => n.id === (draft.card_frame || 'none'))?.label} onChange={() => setPicker('cardframe')} />
+            <CustomizeRow icon={<IdCardIcon size={18} />} title="Card style" value={CARDS.find((c) => c.id === (draft.card_style ?? 'solid'))?.label} onChange={() => setPicker('card')} />
             <CustomizeRow
               icon="Aa"
               title="Name style"
@@ -362,7 +403,7 @@ function MainProfile({ userId }: { userId: string }) {
               }
               onChange={() => setPicker('name')}
             />
-            <CustomizeRow icon="🎨" title="Profile colours" value="Banner and accent colours" onChange={() => setPicker('colors')}>
+            <CustomizeRow icon={<PaletteIcon size={18} />} title="Profile colours" value="Banner and accent colours" onChange={() => setPicker('colors')}>
               <span className="flex">
                 <span className="h-6 w-6 rounded-full border-2 border-ae-elevated" style={{ background: draft.primary_color ?? 'var(--ae-surface)' }} />
                 <span className="-ml-2 h-6 w-6 rounded-full border-2 border-ae-elevated" style={{ background: draft.accent_color ?? 'var(--ae-accent)' }} />
@@ -375,7 +416,7 @@ function MainProfile({ userId }: { userId: string }) {
           <div className="space-y-1.5">
             {links.map((l: ProfileLink, i: number) => (
               <div key={`${l.url}-${i}`} className="ae-enter flex items-center gap-2 rounded-ae bg-ae-surface px-3 py-1.5 text-sm">
-                <span className="font-semibold">🔗 {l.label}</span>
+                <span className="font-semibold"><LinkIcon size={15} className="ae-ico" /> {l.label}</span>
                 <span className="flex-1 truncate text-xs text-ae-muted">{l.url}</span>
                 <button type="button" className="text-ae-muted hover:text-ae-danger" onClick={() => set({ profile_links: links.filter((_, j) => j !== i) })}>
                   <CloseIcon size={14} />
@@ -405,7 +446,7 @@ function MainProfile({ userId }: { userId: string }) {
 
         <section>
           <button type="button" className="flex w-full items-center gap-2 text-sm font-semibold text-ae-muted hover:text-ae-text" onClick={() => setAdvanced((v) => !v)}>
-            <span className={`transition-transform ${advanced ? 'rotate-90' : ''}`}>▸</span> Advanced: audio status and profile CSS
+            <ChevronRightIcon size={14} className={`transition-transform ${advanced ? 'rotate-90' : ''}`} /> Advanced: audio status and profile CSS
           </button>
           {advanced && (
             <div className="ae-enter mt-3 space-y-4">
@@ -500,6 +541,7 @@ function MainProfile({ userId }: { userId: string }) {
       {picker === 'card' && (
         <Picker title="Card style" options={CARDS} current={draft.card_style ?? 'solid'} base={merged} apply={(id) => ({ card_style: id })} renderTile={(p) => <MiniCard profile={p} />} onApply={applyPatch} onClose={() => setPicker(null)} />
       )}
+      <ExtraPickers picker={picker} draft={draft} merged={merged} applyPatch={applyPatch} close={() => setPicker(null)} />
       {picker === 'name' && <NamePicker base={merged} onApply={applyPatch} onClose={() => setPicker(null)} />}
       {picker === 'colors' && (
         <Picker
@@ -526,7 +568,7 @@ function MainProfile({ userId }: { userId: string }) {
 }
 
 /** Name style has two dimensions (font and effect) plus colours, so it gets its own picker. */
-function NamePicker({ base, onApply, onClose }: { base: UserProfile; onApply: (p: Partial<UserProfile>) => void; onClose: () => void }) {
+export function NamePicker({ base, onApply, onClose }: { base: UserProfile; onApply: (p: Partial<UserProfile>) => void; onClose: () => void }) {
   const [font, setFont] = useState<NameFont>(base.name_font ?? 'default');
   const [effect, setEffect] = useState<NameEffect>(base.name_effect ?? 'none');
   const [a, setA] = useState<string | null>(base.name_color_a);
@@ -706,6 +748,76 @@ export function ProfileEditor({ userId }: { userId: string }) {
         ))}
       </div>
       {tab === 'main' ? <MainProfile userId={userId} /> : <ServerProfiles userId={userId} />}
+    </div>
+  );
+}
+
+/** A member-list row with a nameplate behind it, for picker tiles and previews. */
+export function NameplateRow({ profile, className = '' }: { profile: UserProfile; className?: string }) {
+  return (
+    <div className={`ae-plate flex items-center gap-2 overflow-hidden rounded-ae px-2 py-1.5 ${className}`} data-plate={profile.nameplate || 'none'}>
+      <Avatar profile={profile} size={32} showFrame={false} />
+      <span className="min-w-0">
+        <StyledName profile={profile} className="block truncate text-sm font-semibold" />
+        <span className="block truncate text-[11px] text-ae-muted">{profile.custom_status || 'Online'}</span>
+      </span>
+    </div>
+  );
+}
+
+/** Pickers for nameplates and profile frames (shared by the settings page and Profile Studio). */
+export function ExtraPickers({ picker, draft, merged, applyPatch, close }: { picker: PickerKind | null; draft: EditableProfile; merged: UserProfile; applyPatch: (p: Partial<UserProfile>) => void; close: () => void }) {
+  if (picker === 'plate')
+    return (
+      <Picker
+        title="Nameplate"
+        options={NAMEPLATES.map((n) => ({ id: n.id as string, label: n.label }))}
+        current={draft.nameplate || 'none'}
+        base={merged}
+        apply={(id) => ({ nameplate: id })}
+        renderTile={(p) => (
+          <div className="ae-plate ae-plate-swatch grid h-20 place-items-center rounded-md bg-ae-bg/60" data-plate={p.nameplate || 'none'}>
+            {(p.nameplate || 'none') === 'none' && <span className="text-xs text-ae-muted">No nameplate</span>}
+          </div>
+        )}
+        aside={(p) => <MemberListMock profile={p} />}
+        onApply={applyPatch}
+        onClose={close}
+      />
+    );
+  if (picker === 'cardframe')
+    return (
+      <Picker
+        title="Profile frame"
+        options={CARD_FRAMES.map((n) => ({ id: n.id as string, label: n.label }))}
+        current={draft.card_frame || 'none'}
+        base={merged}
+        apply={(id) => ({ card_frame: id })}
+        renderTile={(p) => <MiniCard profile={p} />}
+        onApply={applyPatch}
+        onClose={close}
+      />
+    );
+  return null;
+}
+
+/** A fake member list with you in it, for previewing nameplates. */
+function MemberListMock({ profile }: { profile: UserProfile }) {
+  const others = ['Aria', 'Kai', 'Juniper'];
+  return (
+    <div className="w-full space-y-0.5 rounded-ae border border-ae-border bg-ae-bg p-2">
+      <p className="px-2 pb-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Online — 4</p>
+      <div className="px-0.5">
+        <NameplateRow profile={profile} />
+      </div>
+      {others.map((n, i) => (
+        <div key={n} className="flex items-center gap-2 px-2.5 py-1.5 opacity-70">
+          <span className="grid h-8 w-8 place-items-center rounded-full text-xs font-bold text-white" style={{ background: ['#5865f2', '#eb459e', '#3ba55d'][i] }}>
+            {n[0]}
+          </span>
+          <span className="text-sm">{n}</span>
+        </div>
+      ))}
     </div>
   );
 }

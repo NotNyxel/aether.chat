@@ -272,26 +272,26 @@ nav[aria-label='Servers'] > button:hover {
 
 /* ── Display names ─────────────────────────────────────────────────────────────────────── */
 .ae-name[data-font='serif'] {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Twemoji', 'Playfair Display', Georgia, serif;
 }
 .ae-name[data-font='mono'] {
-  font-family: 'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace;
+  font-family: 'Twemoji', 'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace;
 }
 .ae-name[data-font='rounded'] {
-  font-family: 'Nunito', 'Segoe UI', sans-serif;
+  font-family: 'Twemoji', 'Nunito', 'Segoe UI', sans-serif;
   font-weight: 800;
 }
 .ae-name[data-font='display'] {
-  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-family: 'Twemoji', 'Bebas Neue', Impact, sans-serif;
   letter-spacing: 0.04em;
   font-weight: 400;
 }
 .ae-name[data-font='handwritten'] {
-  font-family: 'Pacifico', 'Segoe Script', cursive;
+  font-family: 'Twemoji', 'Pacifico', 'Segoe Script', cursive;
   font-weight: 400;
 }
 .ae-name[data-font='pixel'] {
-  font-family: 'Press Start 2P', monospace;
+  font-family: 'Twemoji', 'Press Start 2P', monospace;
   font-size: 0.72em;
   font-weight: 400;
   line-height: 1.6;
@@ -573,4 +573,281 @@ textarea:focus,
 input:not([type='range']):not([type='checkbox']):not([type='radio']):focus,
 select:focus {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ae-accent) 16%, transparent);
+}
+
+/* ═══ 1.0: no default browser UI. Native controls are restyled to match the theme. ═══ */
+
+/* Inline icons sitting in text */
+.ae-ico {
+  display: inline-block;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ae-text-muted) 28%, transparent);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--ae-text-muted) 50%, transparent);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Checkboxes become switches-in-a-box; radios become rings */
+input[type='checkbox'],
+input[type='radio'] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  display: inline-grid;
+  place-content: center;
+  border: 2px solid color-mix(in srgb, var(--ae-text-muted) 70%, transparent);
+  background: var(--ae-bg-sunken);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    scale 120ms var(--ae-ease-out);
+}
+input[type='checkbox'] {
+  border-radius: 6px;
+}
+input[type='radio'] {
+  border-radius: 9999px;
+}
+input[type='checkbox']::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  background: var(--ae-accent-contrast);
+  scale: 0;
+  transition: scale 160ms var(--ae-ease-spring);
+}
+input[type='radio']::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--ae-accent);
+  scale: 0;
+  transition: scale 160ms var(--ae-ease-spring);
+}
+input[type='checkbox']:checked {
+  background: var(--ae-accent);
+  border-color: var(--ae-accent);
+}
+input[type='checkbox']:checked::before,
+input[type='radio']:checked::before {
+  scale: 1;
+}
+input[type='radio']:checked {
+  border-color: var(--ae-accent);
+}
+input[type='checkbox']:active,
+input[type='radio']:active {
+  scale: 0.9;
+}
+
+/* Range sliders */
+input[type='range'] {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(var(--ae-accent), var(--ae-accent)) 0 / var(--fill, 50%) 100% no-repeat, var(--ae-surface-hover);
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 3px solid var(--ae-accent);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: scale 120ms var(--ae-ease-out);
+}
+input[type='range']:hover::-webkit-slider-thumb {
+  scale: 1.15;
+}
+input[type='range']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Number spinners and search-clear buttons */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button,
+input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* Password reveal button (Edge) */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* Native selection-drag image and tap highlight */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+img {
+  -webkit-user-drag: none;
+}
+
+/* ═══ Text boxes (1.0): one style everywhere ═══ */
+.ae-input {
+  display: block;
+  background: color-mix(in srgb, var(--ae-bg-sunken) 85%, var(--ae-surface));
+  color: var(--ae-text);
+  border: 1px solid color-mix(in srgb, var(--ae-border) 70%, transparent);
+  border-radius: calc(var(--ae-radius) + 2px);
+  padding: 9px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  outline: none;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 180ms ease;
+}
+.ae-input::placeholder {
+  color: color-mix(in srgb, var(--ae-text-muted) 75%, transparent);
+}
+.ae-input:hover:not(:focus):not(:disabled) {
+  border-color: color-mix(in srgb, var(--ae-text-muted) 45%, transparent);
+}
+.ae-input:focus {
+  border-color: var(--ae-accent);
+  background: var(--ae-bg-sunken);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ae-accent) 20%, transparent);
+}
+.ae-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+textarea.ae-input {
+  resize: vertical;
+  min-height: 2.5rem;
+}
+
+/* Selects, colour and date inputs: our popovers replace the browser's, so style the closed state */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 2rem !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+}
+input[type='color'] {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1px solid var(--ae-border);
+  border-radius: 8px;
+  padding: 2px;
+  cursor: pointer;
+  background: var(--ae-bg-sunken);
+}
+input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type='color']::-webkit-color-swatch {
+  border: none;
+  border-radius: 6px;
+}
+input::-webkit-calendar-picker-indicator {
+  display: none;
+}
+input[type='date'],
+input[type='datetime-local'],
+input[type='time'] {
+  cursor: pointer;
+}
+
+/* ═══ Status icons ═══ */
+.ae-status svg * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ae-status-moon,
+.ae-status-bar,
+.ae-status-hole {
+  transform: scale(0);
+}
+.ae-status[data-status='idle'] .ae-status-moon,
+.ae-status[data-status='dnd'] .ae-status-bar,
+.ae-status[data-status='offline'] .ae-status-hole {
+  transform: scale(1);
+}
+:root[data-ae-status-anim='true'] .ae-status-moon,
+:root[data-ae-status-anim='true'] .ae-status-bar,
+:root[data-ae-status-anim='true'] .ae-status-hole {
+  transition: transform 360ms var(--ae-ease-spring);
+}
+:root[data-ae-status-anim='true'] .ae-status-fill {
+  transition: fill 300ms ease;
+}
+@keyframes ae-status-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 3px var(--ae-success));
+  }
+}
+@keyframes ae-status-dnd {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 3px var(--ae-danger));
+  }
+}
+@keyframes ae-status-sway {
+  0%,
+  100% {
+    rotate: -12deg;
+  }
+  50% {
+    rotate: 8deg;
+  }
+}
+:root[data-ae-status-anim='true'] .ae-status[data-status='online'] svg {
+  animation: ae-status-glow 2.8s ease-in-out infinite;
+}
+:root[data-ae-status-anim='true'] .ae-status[data-status='dnd'] svg {
+  animation: ae-status-dnd 2.4s ease-in-out infinite;
+}
+:root[data-ae-status-anim='true'] .ae-status[data-status='idle'] svg {
+  animation: ae-status-sway 4s ease-in-out infinite;
 }

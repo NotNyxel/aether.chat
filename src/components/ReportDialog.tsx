@@ -2,6 +2,7 @@
  * Report a message or a user. Server messages go to that server's moderators (Server Settings →
  * Moderation). Reports about DMs or users outside a server are stored for the aether.chat operator.
  */
+import { ShieldIcon } from './icons';
 import { useState } from 'react';
 import { create } from 'zustand';
 import { useProfile } from '../hooks/useChatData';
@@ -63,7 +64,7 @@ export function ReportDialog({ me }: { me: string }) {
     <Dialog title={target.messageId ? 'Report message' : `Report ${name}`} onClose={close}>
       {done ? (
         <div className="space-y-3 text-center">
-          <p className="text-4xl">🛡️</p>
+          <p className="text-4xl"><ShieldIcon size={15} className="ae-ico" /></p>
           <p className="font-semibold">Thanks, we got it.</p>
           <p className="text-sm text-ae-muted">
             {target.serverId || target.messageId

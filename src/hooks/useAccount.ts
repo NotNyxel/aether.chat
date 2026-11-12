@@ -5,7 +5,7 @@ import type { AutomodEvent, AutomodRule, PrivacySettings, Report, ReportReason, 
 import { unwrap } from './useChatData';
 
 export const DEFAULT_PRIVACY: Omit<PrivacySettings, 'user_id' | 'updated_at'> = {
-  dm_policy: 'servers',
+  dm_policy: 'everyone',
   friend_request_policy: 'everyone',
   message_requests: true,
 };

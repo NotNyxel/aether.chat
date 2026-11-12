@@ -1,8 +1,9 @@
 /**
  * Server Settings → Moderation (reports queue and AutoMod activity) and → AutoMod (rules).
  */
+import { ArchiveIcon, CheckIcon, CrownIcon, FontIcon, LinkIcon, ShieldIcon, SunIcon, ZapIcon } from './icons';
 import { ask } from './ConfirmDialog';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useProfile, useServerMembers } from '../hooks/useChatData';
 import { useAutomod, useResolveReport, useServerReports } from '../hooks/useAccount';
 import { useServerRoles } from '../hooks/useServerAdmin';
@@ -122,7 +123,7 @@ function ReportCard({ r, server }: { r: Report; server: Server }) {
         </div>
       ) : (
         <p className="text-xs text-ae-muted">
-          {r.status === 'resolved' ? '✓ Resolved' : 'Dismissed'}
+          {r.status === 'resolved' ? <><CheckIcon size={13} className="ae-ico" /> Resolved</> : 'Dismissed'}
           {r.resolution ? `: ${r.resolution}` : ''}
           {r.resolved_by && (
             <>
@@ -164,7 +165,7 @@ export function ModerationTab({ server, channels }: { server: Server; channels: 
       {view !== 'automod' ? (
         (view === 'open' ? open : closed).length === 0 ? (
           <div className="py-12 text-center text-ae-muted">
-            <p className="mb-2 text-4xl">{view === 'open' ? '🌤️' : '🗂️'}</p>
+            <p className="mb-2 text-4xl">{view === 'open' ? <SunIcon size={40} className="mx-auto" /> : <ArchiveIcon size={40} className="mx-auto" />}</p>
             <p>{view === 'open' ? 'No open reports. All quiet.' : 'Nothing here yet.'}</p>
           </div>
         ) : (
@@ -181,7 +182,7 @@ export function ModerationTab({ server, channels }: { server: Server; channels: 
           {events.map((e) => (
             <li key={e.id} className="ae-enter rounded-ae border border-ae-border bg-ae-surface/30 p-2.5 text-sm">
               <div className="flex flex-wrap items-center gap-2">
-                <span>🛡️</span>
+                <span><ShieldIcon size={15} className="ae-ico" /></span>
                 <Who userId={e.user_id} />
                 <span className="text-ae-muted">in #{chName(e.channel_id)}</span>
                 <span className="rounded bg-ae-surface px-1.5 text-xs">{e.rule_name}</span>
@@ -200,11 +201,11 @@ export function ModerationTab({ server, channels }: { server: Server; channels: 
   );
 }
 
-const TRIGGERS: { id: AutomodTrigger; label: string; icon: string; hint: string }[] = [
-  { id: 'keyword', label: 'Blocked words', icon: '🔤', hint: 'Words or phrases. Use * as a wildcard (scam* matches scammer).' },
-  { id: 'link', label: 'Links', icon: '🔗', hint: 'Blocks every link except the domains you allow.' },
+const TRIGGERS: { id: AutomodTrigger; label: string; icon: ReactNode; hint: string }[] = [
+  { id: 'keyword', label: 'Blocked words', icon: <FontIcon size={15} />, hint: 'Words or phrases. Use * as a wildcard (scam* matches scammer).' },
+  { id: 'link', label: 'Links', icon: <LinkIcon size={15} />, hint: 'Blocks every link except the domains you allow.' },
   { id: 'mention', label: 'Mention spam', icon: '@', hint: 'Too many @mentions in one message.' },
-  { id: 'spam', label: 'Message spam', icon: '🌊', hint: 'Flooding (5+ messages in 5 seconds) or repeating the same message.' },
+  { id: 'spam', label: 'Message spam', icon: <ZapIcon size={15} />, hint: 'Flooding (5+ messages in 5 seconds) or repeating the same message.' },
 ];
 const ACTIONS: { id: AutomodAction; label: string }[] = [
   { id: 'block', label: 'Block the message' },
@@ -397,7 +398,7 @@ export function TransferOwnership({ server, userId }: { server: Server; userId: 
             if (!(await ask('Transfer ownership? This is permanent unless the new owner gives it back.'))) return;
             const { error } = await sb.rpc('transfer_server', { p_server_id: server.id, p_new_owner: to });
             if (error) toast.error(error.message);
-            else toast.success('Ownership transferred.', '👑');
+            else toast.success('Ownership transferred.', <CrownIcon size={14} />);
           }}
         >
           Transfer

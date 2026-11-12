@@ -10,8 +10,9 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "aetherchat"
-version = "0.9.0"
+version = "1.0.0"
 dependencies = [
+ "serde",
  "serde_json",
  "tauri",
  "tauri-build",
@@ -24,6 +25,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
+ "windows",
 ]
 
 [[package]]

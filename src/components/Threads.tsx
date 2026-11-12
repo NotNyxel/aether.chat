@@ -10,7 +10,7 @@ import { hasPermission, Permission } from '../lib/permissions';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, Server } from '../types/db';
 import { Dialog } from './Dialog';
-import { CloseIcon } from './icons';
+import { ArchiveIcon, CloseIcon, EditIcon, ForumIcon, LockIcon, ShieldIcon, ThreadIcon, TrashIcon, UnarchiveIcon, UnlockIcon } from './icons';
 import { MessagePane } from './MessagePane';
 import { inputCls, Toggle } from './SettingsPanel';
 
@@ -99,10 +99,10 @@ export function ThreadPanel({ threadId, server, userId, channels, wide = false }
         serverId={server.id}
         memberIds={memberIds}
         channels={channels}
-        placeholder={thread.thread_locked ? 'This thread is locked' : `Message ${forum ? '' : '🧵 '}${thread.name}`}
+        placeholder={thread.thread_locked ? 'This thread is locked' : `Message ${thread.name}`}
         header={
           <div className="relative flex min-w-0 flex-1 items-center gap-2">
-            <span>{thread.thread_locked ? '🔒' : thread.thread_private ? '🔐' : forum ? '💬' : '🧵'}</span>
+            <span className="text-ae-muted">{thread.thread_locked ? <LockIcon size={16} /> : thread.thread_private ? <ShieldIcon size={16} /> : forum ? <ForumIcon size={16} /> : <ThreadIcon size={16} />}</span>
             {renaming ? (
               <form
                 className="flex-1"
@@ -149,15 +149,15 @@ export function ThreadPanel({ threadId, server, userId, channels, wide = false }
                       setMenu(false);
                     }}
                   >
-                    ✎ Rename
+                    <EditIcon size={15} className="ae-ico" /> Rename
                   </button>
                 )}
                 <button type="button" className={item} onClick={() => actions.update.mutate({ id: thread.id, archived: !archived })}>
-                  {archived ? '📂 Reopen' : '🗄 Archive'}
+                  {archived ? <><UnarchiveIcon size={14} className="ae-ico" /> Reopen</> : <><ArchiveIcon size={14} className="ae-ico" /> Archive</>}
                 </button>
                 {manage && (
                   <button type="button" className={item} onClick={() => actions.update.mutate({ id: thread.id, locked: !thread.thread_locked })}>
-                    {thread.thread_locked ? '🔓 Unlock' : '🔒 Lock (only moderators can reply)'}
+                    {thread.thread_locked ? <><UnlockIcon size={14} className="ae-ico" /> Unlock</> : <><LockIcon size={14} className="ae-ico" /> Lock (only moderators can reply)</>}
                   </button>
                 )}
                 <p className="px-2 pt-1 text-[10px] font-bold tracking-wide text-ae-muted uppercase">Auto-archive after inactivity</p>
@@ -181,7 +181,7 @@ export function ThreadPanel({ threadId, server, userId, channels, wide = false }
                     actions.remove.mutate(thread.id, { onSuccess: () => openThread(null) });
                   }}
                 >
-                  🗑 Delete {forum ? 'post' : 'thread'}
+                  <TrashIcon size={15} className="ae-ico" /> Delete {forum ? 'post' : 'thread'}
                 </button>
               </ThreadMenu>
             )}
@@ -329,7 +329,7 @@ export function ThreadsButton({ channel, userId }: { channel: Channel; userId: s
           setOpen(false);
         }}
       >
-        <span>{t.thread_locked ? '🔒' : t.thread_private ? '🔐' : '🧵'}</span>
+        <span className="text-ae-muted">{t.thread_locked ? <LockIcon size={15} /> : t.thread_private ? <ShieldIcon size={15} /> : <ThreadIcon size={15} />}</span>
         <span className="min-w-0 flex-1 truncate">{t.name}</span>
         {memberships?.has(t.id) && <span className="text-[10px] text-ae-accent">following</span>}
         <span className="shrink-0 text-xs text-ae-muted">
@@ -347,7 +347,7 @@ export function ThreadsButton({ channel, userId }: { channel: Channel; userId: s
         className={`relative grid h-7 w-7 place-items-center rounded-ae text-base ${open ? 'bg-ae-hover' : 'opacity-70 hover:opacity-100'}`}
         onClick={() => setOpen((v) => !v)}
       >
-        🧵
+        <ThreadIcon size={15} className="ae-ico" />
         {active.length > 0 && <span className="absolute -top-1 -right-1 rounded-full bg-ae-accent px-1 text-[9px] font-bold text-ae-on-accent">{active.length}</span>}
       </button>
       {open && (
@@ -367,7 +367,7 @@ export function ThreadsButton({ channel, userId }: { channel: Channel; userId: s
               </button>
             )}
           </div>
-          {threads.length === 0 && <p className="px-2 py-4 text-center text-sm text-ae-muted">No threads yet. Hover a message and click 🧵 to start one.</p>}
+          {threads.length === 0 && <p className="px-2 py-4 text-center text-sm text-ae-muted">No threads yet. Hover a message and click <ThreadIcon size={15} className="ae-ico" /> to start one.</p>}
           <ul className="ae-scroll max-h-80 overflow-y-auto">
             {active.map(row)}
             {archived.length > 0 && <li className="px-2 pt-2 text-[10px] font-bold tracking-wide text-ae-muted uppercase">Archived — {archived.length}</li>}

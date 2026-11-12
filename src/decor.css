@@ -1,0 +1,382 @@
+/* ═══ Profile decorations: nameplates and card frames (aether.chat 1.0) ═══ */
+
+/* ── Nameplates: a decorative strip behind a name in member lists, DMs and the user panel ── */
+.ae-plate {
+  position: relative;
+  isolation: isolate;
+}
+.ae-plate::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  opacity: 0;
+  -webkit-mask-image: linear-gradient(to left, #000 25%, transparent 92%);
+  mask-image: linear-gradient(to left, #000 25%, transparent 92%);
+  transition: opacity 200ms ease;
+}
+.ae-plate:not([data-plate='none'])::before {
+  opacity: 0.55;
+}
+.ae-plate:not([data-plate='none']):hover::before {
+  opacity: 0.8;
+}
+.ae-plate[data-plate='aurora']::before {
+  background: linear-gradient(120deg, #1de9b6, #7c4dff, #00b8d4, #1de9b6);
+  background-size: 300% 100%;
+  animation: ae-plate-slide 8s linear infinite;
+}
+.ae-plate[data-plate='sunset']::before {
+  background: linear-gradient(90deg, #ff512f, #f09819, #ff5e62);
+}
+.ae-plate[data-plate='ocean']::before {
+  background:
+    repeating-radial-gradient(circle at 100% 120%, transparent 0 8px, rgba(255, 255, 255, 0.12) 9px 10px),
+    linear-gradient(90deg, #0052d4, #4364f7, #6fb1fc);
+}
+.ae-plate[data-plate='galaxy']::before {
+  background:
+    radial-gradient(1px 1px at 20% 30%, #fff, transparent),
+    radial-gradient(1px 1px at 60% 70%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 80% 20%, #fff, transparent),
+    radial-gradient(1px 1px at 40% 80%, #fff, transparent),
+    radial-gradient(1px 1px at 90% 60%, #fff, transparent),
+    radial-gradient(circle at 80% 50%, #8e2de2, #4a00e0 45%, #1a0533);
+  animation: ae-plate-twinkle 3s ease-in-out infinite;
+}
+.ae-plate[data-plate='sakura']::before {
+  background:
+    radial-gradient(4px 3px at 70% 30%, #fff 50%, transparent 55%),
+    radial-gradient(3px 4px at 85% 70%, #ffd1e3 50%, transparent 55%),
+    radial-gradient(4px 3px at 95% 40%, #fff 50%, transparent 55%),
+    linear-gradient(90deg, #ffafbd, #ffc3a0);
+}
+.ae-plate[data-plate='ember']::before {
+  background: linear-gradient(0deg, #ff2d00, #ff9a00 60%, #ffd000);
+  animation: ae-plate-flicker 1.6s ease-in-out infinite;
+}
+.ae-plate[data-plate='frost']::before {
+  background:
+    radial-gradient(2px 2px at 75% 30%, #fff, transparent),
+    radial-gradient(2px 2px at 90% 70%, #fff, transparent),
+    linear-gradient(90deg, #83a4d4, #b6fbff);
+}
+.ae-plate[data-plate='neon']::before {
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 255, 255, 0.5) 0 1px, transparent 1px 12px),
+    repeating-linear-gradient(0deg, rgba(255, 0, 255, 0.5) 0 1px, transparent 1px 12px),
+    linear-gradient(90deg, #12002e, #2b0057);
+}
+.ae-plate[data-plate='holo']::before {
+  background: linear-gradient(110deg, #ff9a9e, #fad0c4, #a1c4fd, #c2e9fb, #d4fc79, #ff9a9e);
+  background-size: 300% 100%;
+  animation: ae-plate-slide 5s linear infinite;
+}
+.ae-plate[data-plate='gold']::before {
+  background: linear-gradient(105deg, #b8860b 0%, #ffd700 30%, #fff6c9 45%, #daa520 60%, #8b6508 100%);
+  background-size: 250% 100%;
+  animation: ae-plate-slide 4s linear infinite;
+}
+.ae-plate[data-plate='forest']::before {
+  background: linear-gradient(90deg, #134e5e, #71b280);
+}
+.ae-plate[data-plate='midnight']::before {
+  background:
+    radial-gradient(circle at 88% 40%, #fff8 0 6px, transparent 7px),
+    linear-gradient(90deg, #0f2027, #203a43, #2c5364);
+}
+.ae-plate[data-plate='candy']::before {
+  background: repeating-linear-gradient(-45deg, #ff9ad5 0 10px, #9ad5ff 10px 20px, #fff59a 20px 30px);
+}
+.ae-plate[data-plate='matrix']::before {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 6px, rgba(0, 255, 102, 0.7) 6px 7px),
+    linear-gradient(180deg, #001a08, #00330f);
+  background-size:
+    100% 200%,
+    100% 100%;
+  animation: ae-plate-rain 2.5s linear infinite;
+}
+.ae-plate[data-plate='storm']::before {
+  background: linear-gradient(90deg, #232526, #414345);
+  animation: ae-plate-lightning 5s steps(1) infinite;
+}
+@keyframes ae-plate-slide {
+  to {
+    background-position: -300% 0;
+  }
+}
+@keyframes ae-plate-twinkle {
+  50% {
+    filter: brightness(1.35);
+  }
+}
+@keyframes ae-plate-flicker {
+  50% {
+    filter: brightness(1.25) saturate(1.2);
+  }
+}
+@keyframes ae-plate-rain {
+  to {
+    background-position:
+      0 200%,
+      0 0;
+  }
+}
+@keyframes ae-plate-lightning {
+  0%,
+  100% {
+    filter: none;
+  }
+  91% {
+    filter: brightness(3);
+  }
+  93% {
+    filter: none;
+  }
+  95% {
+    filter: brightness(2.2);
+  }
+}
+
+/* ── Card frames: decorative borders and ornaments around the profile card ── */
+.ae-card[data-cardframe]:not([data-cardframe='none'])::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.ae-card[data-cardframe='gold']::after {
+  border: 3px solid transparent;
+  background: linear-gradient(135deg, #8b6508, #ffd700, #fff6c9, #daa520, #8b6508) border-box;
+  -webkit-mask:
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.ae-card[data-cardframe='neon']::after {
+  box-shadow:
+    inset 0 0 0 2px var(--card-b),
+    inset 0 0 18px color-mix(in srgb, var(--card-b) 70%, transparent);
+  animation: ae-flicker 4s steps(1) infinite;
+}
+.ae-card[data-cardframe='rainbow']::after {
+  border: 3px solid transparent;
+  background: conic-gradient(from var(--ae-angle, 0deg), red, orange, yellow, lime, cyan, blue, violet, red) border-box;
+  -webkit-mask:
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ae-frame-spin 6s linear infinite;
+}
+@property --ae-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes ae-frame-spin {
+  to {
+    --ae-angle: 360deg;
+  }
+}
+.ae-card[data-cardframe='frost']::after {
+  box-shadow:
+    inset 0 0 0 2px #cfefff,
+    inset 0 0 22px #9fd8ff88;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e6f7ff' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M12 2l-2 2m2-2 2 2M12 22l-2-2m2 2 2-2'/%3E%3C/svg%3E") 10px 10px / 26px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e6f7ff' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7'/%3E%3C/svg%3E") calc(100% - 12px) calc(100% - 12px) / 20px no-repeat;
+}
+.ae-card[data-cardframe='flames']::after {
+  background: linear-gradient(0deg, #ff3d00cc, #ff9100 18%, transparent 40%);
+  -webkit-mask: radial-gradient(14px 26px at 50% 100%, #000 60%, transparent 62%) 0 100% / 22px 100% repeat-x;
+  mask: radial-gradient(14px 26px at 50% 100%, #000 60%, transparent 62%) 0 100% / 22px 100% repeat-x;
+  animation: ae-plate-flicker 1.2s ease-in-out infinite;
+}
+.ae-card[data-cardframe='stars']::after {
+  box-shadow: inset 0 0 0 1px #fff3;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffe08a'%3E%3Cpath d='m12 2 2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z'/%3E%3C/svg%3E") 12px 12px / 18px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff'%3E%3Cpath d='m12 2 2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z'/%3E%3C/svg%3E") 34px 8px / 10px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffe08a'%3E%3Cpath d='m12 2 2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z'/%3E%3C/svg%3E") calc(100% - 14px) calc(100% - 14px) / 22px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff'%3E%3Cpath d='m12 2 2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z'/%3E%3C/svg%3E") calc(100% - 40px) calc(100% - 10px) / 11px no-repeat;
+  animation: ae-plate-twinkle 2.6s ease-in-out infinite;
+}
+.ae-card[data-cardframe='circuit']::after {
+  box-shadow: inset 0 0 0 1px #00e5ff66;
+  background:
+    linear-gradient(90deg, #00e5ff 0 40px, transparent 40px) 0 0 / 100% 2px no-repeat,
+    linear-gradient(180deg, #00e5ff 0 40px, transparent 40px) 0 0 / 2px 100% no-repeat,
+    linear-gradient(270deg, #00e5ff 0 60px, transparent 60px) 100% 100% / 100% 2px no-repeat,
+    linear-gradient(0deg, #00e5ff 0 60px, transparent 60px) 100% 100% / 2px 100% no-repeat,
+    radial-gradient(circle, #00e5ff 0 3px, transparent 4px) 37px -3px / 8px 8px no-repeat,
+    radial-gradient(circle, #00e5ff 0 3px, transparent 4px) calc(100% - 57px) calc(100% + 3px) / 8px 8px no-repeat;
+  filter: drop-shadow(0 0 4px #00e5ff);
+}
+.ae-card[data-cardframe='vines']::after {
+  box-shadow: inset 0 0 0 2px #2e7d32aa;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' fill='%234caf50'%3E%3Cpath d='M2 58C10 40 20 30 40 22c-8 6-14 14-18 26zM6 30c6-2 12 0 14 6-6 2-12 0-14-6zm14-18c6 0 10 4 10 10-6 0-10-4-10-10z'/%3E%3C/svg%3E") 0 0 / 60px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' fill='%2366bb6a'%3E%3Cpath d='M58 2C50 20 40 30 20 38c8-6 14-14 18-26zM54 30c-6 2-12 0-14-6 6-2 12 0 14 6zM40 48c-6 0-10-4-10-10 6 0 10 4 10 10z'/%3E%3C/svg%3E") 100% 100% / 60px no-repeat;
+}
+.ae-card[data-cardframe='hearts']::after {
+  box-shadow: inset 0 0 0 2px #ff7ab6aa;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff4f9a'%3E%3Cpath d='M12 21s-8-5.3-8-11a4.7 4.7 0 0 1 8-3.3A4.7 4.7 0 0 1 20 10c0 5.7-8 11-8 11z'/%3E%3C/svg%3E") 10px 10px / 22px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffb3d1'%3E%3Cpath d='M12 21s-8-5.3-8-11a4.7 4.7 0 0 1 8-3.3A4.7 4.7 0 0 1 20 10c0 5.7-8 11-8 11z'/%3E%3C/svg%3E") 30px 6px / 12px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff4f9a'%3E%3Cpath d='M12 21s-8-5.3-8-11a4.7 4.7 0 0 1 8-3.3A4.7 4.7 0 0 1 20 10c0 5.7-8 11-8 11z'/%3E%3C/svg%3E") calc(100% - 10px) calc(100% - 10px) / 24px no-repeat;
+}
+/* Roses: clusters of layered petals in the top-left and bottom-right corners */
+.ae-card[data-cardframe='roses']::after,
+.ae-card[data-cardframe='crimson-roses']::after {
+  --rose: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg stroke='%238a8aa0' stroke-width='.8' fill='%23f4f4fb'%3E%3Ccircle cx='20' cy='20' r='13'/%3E%3Cpath d='M20 9c6 0 10 5 9 10M11 16c1-5 6-8 11-7M12 27c-4-3-4-9-1-12M28 28c-4 3-10 3-13 0M29 17c2 5 0 10-4 12' fill='none'/%3E%3Ccircle cx='20' cy='20' r='5' fill='%23e6e6f2'/%3E%3Cpath d='M17 20c0-2 2-3 3-3s3 1 3 3' fill='none'/%3E%3C/g%3E%3Cpath d='M6 34c3-4 7-5 10-4-3 2-6 4-10 4zM34 6c-4 3-5 7-4 10 2-3 4-6 4-10z' fill='%237c8c74'/%3E%3C/svg%3E");
+  box-shadow: inset 0 0 0 1px #ffffff22;
+  background:
+    var(--rose) -8px -8px / 58px no-repeat,
+    var(--rose) 34px -10px / 40px no-repeat,
+    var(--rose) -10px 32px / 38px no-repeat,
+    var(--rose) calc(100% + 8px) calc(100% + 8px) / 62px no-repeat,
+    var(--rose) calc(100% - 40px) calc(100% + 10px) / 42px no-repeat,
+    var(--rose) calc(100% + 10px) calc(100% - 40px) / 36px no-repeat;
+  filter: drop-shadow(0 2px 4px #0008);
+}
+.ae-card[data-cardframe='crimson-roses']::after {
+  --rose: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg stroke='%235a0010' stroke-width='.8' fill='%23c2182b'%3E%3Ccircle cx='20' cy='20' r='13'/%3E%3Cpath d='M20 9c6 0 10 5 9 10M11 16c1-5 6-8 11-7M12 27c-4-3-4-9-1-12M28 28c-4 3-10 3-13 0M29 17c2 5 0 10-4 12' fill='none'/%3E%3Ccircle cx='20' cy='20' r='5' fill='%23a10f22'/%3E%3Cpath d='M17 20c0-2 2-3 3-3s3 1 3 3' fill='none'/%3E%3C/g%3E%3Cpath d='M6 34c3-4 7-5 10-4-3 2-6 4-10 4zM34 6c-4 3-5 7-4 10 2-3 4-6 4-10z' fill='%232e5d32'/%3E%3C/svg%3E");
+}
+
+/* Picker swatches show the whole plate */
+.ae-plate.ae-plate-swatch::before {
+  -webkit-mask-image: none;
+  mask-image: none;
+  opacity: 0.95;
+}
+
+/* Motion levels */
+:root[data-ae-animations='subtle'] .ae-plate::before,
+:root[data-ae-animations='subtle'] .ae-card::after {
+  animation: none !important;
+}
+
+/* ── More card styles ── */
+.ae-card[data-card='midnight'] {
+  background:
+    radial-gradient(1px 1px at 12% 18%, #fff, transparent),
+    radial-gradient(1px 1px at 72% 12%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 40% 38%, #fff, transparent),
+    radial-gradient(1px 1px at 88% 52%, #fff, transparent),
+    radial-gradient(1px 1px at 22% 78%, #fff, transparent),
+    radial-gradient(1px 1px at 60% 88%, #fff, transparent),
+    linear-gradient(180deg, #0b1026, #1b1446 60%, color-mix(in srgb, var(--card-b) 40%, #0b1026)) !important;
+}
+.ae-card[data-card='holo'] {
+  background:
+    linear-gradient(115deg, #ff9a9e33, #a1c4fd44, #c2e9fb33, #d4fc7933, #fbc2eb44),
+    var(--ae-bg-elevated) !important;
+  background-size: 300% 300%, auto !important;
+  animation: ae-holo 10s ease-in-out infinite;
+}
+@keyframes ae-holo {
+  50% {
+    background-position: 100% 100%, 0 0;
+  }
+}
+.ae-card[data-card='noir'] {
+  background: #050506 !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--card-b) 60%, transparent);
+}
+.ae-card[data-card='sunset'] {
+  background: linear-gradient(180deg, #2a1033 0%, #6b2147 40%, #d4573b 85%, #f5a25d 120%) !important;
+}
+.ae-card[data-card='mesh'] {
+  background:
+    radial-gradient(at 20% 10%, color-mix(in srgb, var(--card-a) 70%, transparent) 0, transparent 50%),
+    radial-gradient(at 90% 30%, color-mix(in srgb, var(--card-b) 70%, transparent) 0, transparent 50%),
+    radial-gradient(at 40% 90%, color-mix(in srgb, var(--card-b) 45%, var(--card-a)) 0, transparent 55%),
+    var(--ae-bg-elevated) !important;
+}
+.ae-card[data-card='ocean'] {
+  background:
+    repeating-radial-gradient(circle at 50% 130%, transparent 0 18px, #ffffff08 19px 21px),
+    linear-gradient(180deg, #03203a, #064a6e 55%, #0a8bb3) !important;
+}
+.ae-card[data-card='midnight'] .ae-profile-body,
+.ae-card[data-card='noir'] .ae-profile-body,
+.ae-card[data-card='sunset'] .ae-profile-body,
+.ae-card[data-card='ocean'] .ae-profile-body {
+  background: #00000055;
+  color: #fff;
+}
+
+/* ── More name effects ── */
+.ae-name[data-effect='fire'],
+.ae-name[data-effect='ice'],
+.ae-name[data-effect='chrome'],
+.ae-name[data-effect='pastel'],
+.ae-name[data-effect='toxic'] {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent !important;
+}
+.ae-name[data-effect='fire'] {
+  background-image: linear-gradient(0deg, #ff2d00, #ff9a00 45%, #ffe259);
+  background-size: 100% 200%;
+  filter: drop-shadow(0 0 4px #ff5a0088);
+  animation: ae-name-rise 1.6s ease-in-out infinite alternate;
+}
+.ae-name[data-effect='ice'] {
+  background-image: linear-gradient(180deg, #ffffff, #b6fbff 40%, #5aa9ff);
+  filter: drop-shadow(0 0 4px #9fd8ff88);
+}
+.ae-name[data-effect='chrome'] {
+  background-image: linear-gradient(180deg, #ffffff 0%, #c9ccd3 45%, #5c6370 50%, #e6e8ec 75%, #9aa0aa 100%);
+}
+.ae-name[data-effect='pastel'] {
+  background-image: linear-gradient(90deg, #ffb3c6, #ffd6a5, #fdffb6, #caffbf, #9bf6ff, #bdb2ff, #ffb3c6);
+  background-size: 200% 100%;
+  animation: ae-slide-bg 6s linear infinite;
+}
+.ae-name[data-effect='toxic'] {
+  background-image: linear-gradient(90deg, #a8ff00, #00ff9d, #a8ff00);
+  background-size: 200% 100%;
+  filter: drop-shadow(0 0 5px #7dff0088);
+  animation: ae-slide-bg 3s linear infinite;
+}
+.ae-name[data-effect='glitch'] {
+  color: var(--name-a) !important;
+  text-shadow:
+    1.5px 0 #ff2a6d,
+    -1.5px 0 #05d9e8;
+  animation: ae-glitch 2.4s steps(1) infinite;
+}
+@keyframes ae-name-rise {
+  to {
+    background-position: 0 100%;
+  }
+}
+@keyframes ae-glitch {
+  0%,
+  86%,
+  100% {
+    text-shadow:
+      1.5px 0 #ff2a6d,
+      -1.5px 0 #05d9e8;
+    transform: none;
+  }
+  88% {
+    text-shadow:
+      -2px 0 #ff2a6d,
+      2px 0 #05d9e8;
+    transform: translateX(1px) skewX(-6deg);
+  }
+  92% {
+    transform: translateX(-1px);
+  }
+}
+:root[data-ae-animations='subtle'] .ae-name {
+  animation: none !important;
+}

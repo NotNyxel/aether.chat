@@ -4,9 +4,9 @@ export type ChannelType = 'category' | 'text' | 'voice' | 'stream';
 export type PresenceStatus = 'online' | 'idle' | 'dnd' | 'invisible';
 
 export type NameFont = 'default' | 'serif' | 'mono' | 'rounded' | 'display' | 'handwritten' | 'pixel';
-export type NameEffect = 'none' | 'gradient' | 'rainbow' | 'glow' | 'neon' | 'shimmer';
-export type ProfileEffect = 'none' | 'sparkles' | 'snow' | 'hearts' | 'fireflies' | 'confetti' | 'rain' | 'stars' | 'bubbles' | 'petals';
-export type CardStyle = 'solid' | 'glass' | 'gradient' | 'aurora';
+export type NameEffect = 'none' | 'gradient' | 'rainbow' | 'glow' | 'neon' | 'shimmer' | 'fire' | 'ice' | 'chrome' | 'glitch' | 'pastel' | 'toxic';
+export type ProfileEffect = 'none' | 'sparkles' | 'snow' | 'hearts' | 'fireflies' | 'confetti' | 'rain' | 'stars' | 'bubbles' | 'petals' | 'embers' | 'leaves' | 'music' | 'lightning';
+export type CardStyle = 'solid' | 'glass' | 'gradient' | 'aurora' | 'midnight' | 'holo' | 'noir' | 'sunset' | 'mesh' | 'ocean';
 export type AvatarShape = 'circle' | 'squircle' | 'hexagon';
 export interface ProfileLink {
   label: string;
@@ -28,6 +28,11 @@ export interface UserProfile {
   card_style: CardStyle;
   avatar_shape: AvatarShape;
   profile_links: ProfileLink[];
+  nameplate: string;
+  card_frame: string;
+  profile_widgets: import('../lib/profileDecor').ProfileWidget[];
+  discoverable: boolean;
+  is_admin: boolean;
   status_emoji: string | null;
   bio: string | null;
   avatar_url: string | null;
@@ -60,6 +65,10 @@ export type EditableProfile = Pick<
   | 'card_style'
   | 'avatar_shape'
   | 'profile_links'
+  | 'nameplate'
+  | 'card_frame'
+  | 'profile_widgets'
+  | 'discoverable'
   | 'status_emoji'
   | 'bio'
   | 'avatar_url'
@@ -385,7 +394,7 @@ export interface EventRsvp {
 
 export interface PrivacySettings {
   user_id: string;
-  dm_policy: 'servers' | 'friends';
+  dm_policy: 'everyone' | 'servers' | 'friends';
   friend_request_policy: 'everyone' | 'mutuals' | 'nobody';
   message_requests: boolean;
   updated_at: string;

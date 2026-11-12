@@ -9,6 +9,8 @@
  *            [label](https://url), bare and <suppressed> links, @mentions, @everyone / @here,
  *            <#channel>, <t:unix:style> timestamps, aether.chat message links (open in-app)
  */
+import { openJoinDialog } from './joinBus';
+import { parseInviteCode } from './invites';
 import { useQueryClient } from '@tanstack/react-query';
 import { Fragment, lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { useUiStore } from '../stores/uiStore';
@@ -35,13 +37,15 @@ function Spoiler({ children }: { children: ReactNode }) {
 function Link({ href, children }: { href: string; children: ReactNode }) {
   const goTo = useUiStore((s) => s.goTo);
   const internal = parseMessageLink(href);
+  const invite = /aether\.chat\/inv\/|aether\.chat-releases\/inv\//.test(href) ? parseInviteCode(href) : null;
   return (
     <a
       href={href}
-      title={internal ? 'Jump to message' : href}
+      title={internal ? 'Jump to message' : invite ? 'Join server' : href}
       onClick={(e) => {
         e.preventDefault();
         if (internal) goTo(internal);
+        else if (invite) openJoinDialog(invite);
         else void openExternal(href);
       }}
     >
@@ -159,7 +163,7 @@ const INLINE_RULES: InlineRule[] = [
       const internal = parseMessageLink(m[0]);
       return (
         <Link key={k} href={m[0]}>
-          {internal ? '💬 message link' : m[0]}
+          {internal ? 'message link' : m[0]}
         </Link>
       );
     },

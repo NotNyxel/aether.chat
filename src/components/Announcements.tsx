@@ -2,6 +2,7 @@
  * Announcement channels: "Follow" sends published posts from this channel into a text channel of
  * another server you manage. Published messages arrive there marked "📢 From <server> · #channel".
  */
+import { MegaphoneIcon } from './icons';
 import { useState } from 'react';
 import { useChannels, useServers } from '../hooks/useChatData';
 import { useAnnouncementActions } from '../hooks/useThreads';
@@ -19,7 +20,7 @@ export function FollowButton({ channel, server, userId }: { channel: Channel; se
         className="ae-press rounded-ae border border-ae-border px-2 py-1 text-xs hover:border-ae-accent"
         onClick={() => setOpen(true)}
       >
-        📢 Follow
+        <MegaphoneIcon size={15} className="ae-ico" /> Follow
       </button>
       {open && <FollowDialog channel={channel} server={server} userId={userId} onClose={() => setOpen(false)} />}
     </>

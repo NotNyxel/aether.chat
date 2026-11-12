@@ -54,6 +54,8 @@ That's it. There's nothing to configure. The app keeps itself up to date: when a
 | **Replies & edits** | Reply to any message. Edit your own inline, or press **↑** to edit your last message. |
 | **Reactions** | Full emoji picker (search, categories, recents) plus quick reactions, with live counts. |
 | **Attachments** | Upload via the **+** button, paste or drag-and-drop (up to 25 MB). Mark as spoiler, add alt text, click an image for a full-screen viewer. |
+| **Invites** | `aether.chat/inv/CODE` links or just the code, case-insensitive, with a live server preview before joining and invite cards in chat. |
+| **Message requests** | Search for anyone and send up to 3 messages; they land in Message requests with Accept, Ignore, Block and Block & report. |
 | **Autocomplete** | `@member`, `@everyone` / `@here`, `#channel` and `:emoji`. Completed `:shortcodes:` turn into emoji. |
 | **Mentions & unreads** | Mention badges on servers, channels and DMs. Unread dots, a "NEW" divider and *Jump to present*. |
 | **Pins & search** | Pinned-messages panel. Full-text search with `from:`, `has:`, `pinned:`, `before:` and `after:` filters, plus jump-to-result. |
@@ -123,7 +125,8 @@ That's it. There's nothing to configure. The app keeps itself up to date: when a
 | **Per-chat settings** | 🔔 in any header: mute for a duration, all messages / only @mentions / nothing, suppress @everyone per server. |
 | **Inbox** | Recent mentions (direct, role, @everyone) and every unread chat, with mark-as-read. |
 | **Taskbar** | Unread badge on the taskbar icon, flashing on incoming calls. |
-| **Presence** | Auto-idle after inactivity, custom status with emoji and expiry, opt-in "Playing …" game activity. |
+| **Presence** | Auto-idle after inactivity, custom status with emoji and expiry, animated status icons, opt-in "Playing …" with real game art and "Listening to Spotify" with album art and progress. |
+| **Profiles** | Profile Studio with a live full-size preview, nameplates, profile frames, effects, themes, name styles and a profile board of widgets. Switch between several accounts. |
 | **System tray** | Close to tray, start with Windows, tray menu with mute and deafen, single instance. |
 | **Background shortcuts** | Mute, deafen and push-to-talk work while you're in another app. |
 
@@ -134,6 +137,9 @@ and previews live in **Settings → Notifications & Sounds**. Do Not Disturb sil
 
 ### ⚙️ App
 - **Automatic, signed updates** from GitHub Releases.
+- **No default browser UI:** custom title bar, menus, pickers, media players and dialogs; Twemoji for emoji.
+- **40 themes.**
+- **Admin panel** for app admins: stats, users, badges, app settings and report review.
 - **Tiny footprint:** about a 1.3 MB installer, using the system WebView2 instead of bundling Chromium.
 - **Settings:** profile editor, appearance, audio and video devices, notifications, keybinds, bandwidth, activity
   privacy, Windows (tray, startup, idle).
@@ -218,9 +224,13 @@ Migrations live in `supabase/`. Run them in order in the Supabase SQL editor:
 | `migrations/006_voice_and_profiles.sql` | Voice states (occupancy), voice moderation and stage RPCs, soundboard table and bucket, 3 new permissions, profile customization columns, any theme id |
 | `migrations/005_notifications.sql` | Notification settings (levels, mute, @everyone suppression) honoured by unread counts, custom status expiry, `recent_mentions` for the inbox |
 | `migrations/004_server_management.sql` | New permissions, timeouts, `@role` mentions, NSFW channels, channel and role reordering, kick and nickname RPCs, custom invite codes, audit log |
+| `migrations/009_final.sql` | App admins and `app_config`, people search, DMs to anyone as limited message requests, nameplates, profile frames and widgets, admin RPCs |
+| `migrations/010_invites.sql` | Case-insensitive invite codes, friendly join errors, `invite_details()` previews |
 | `migrations/003_messaging.sql` | Polls and votes, pins, full-text search index, mentions and `@everyone`, forwards, per-channel unread state, `unread_summary()` |
 
-Edge Functions live in `supabase/functions/` (`link-preview`: SSRF-safe Open Graph fetcher, signed-in users only).
+Edge Functions live in `supabase/functions/`: `link-preview` (SSRF-safe Open Graph fetcher) and `game-art` (Steam artwork lookup). Both are for signed-in users only.
+
+**Making someone an admin:** the first admin is set in Supabase (`update public.users set is_admin = true where username = '…';`). After that, admins can grant or remove admin from Settings → Admin Panel.
 
 **Workflow for schema changes:**
 1. Add `supabase/migrations/NNN_name.sql`.
@@ -288,4 +298,12 @@ Features ship in themed batches, one minor version each. See **[ROADMAP.md](ROAD
   so a modified client could ignore a server mute. Everyone else's app still won't play that member's audio.
 - **Clicking a desktop notification doesn't jump to the message** in the desktop app yet (the notification plugin
   has no click events on Windows). Open the Inbox to jump to it.
+- **Spotify status reads Windows' media controls,** so it needs the Spotify desktop app (not the web player).
+- **Switch Accounts remembers accounts on this device only.** Signing out of an account removes it from the list.
 - **Windows only** for now.
+
+## Credits
+- Emoji: [Twemoji](https://github.com/twitter/twemoji) by Twitter (graphics CC-BY 4.0), via the
+  [twemoji-colr font](https://github.com/mozilla/twemoji-colr) (OFL 1.1).
+- Icons: [Lucide](https://lucide.dev) (ISC). Brand marks: [Simple Icons](https://simpleicons.org) (CC0).
+- Game artwork comes from Steam's public store search; album art from Apple's public iTunes Search API.

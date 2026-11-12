@@ -198,6 +198,22 @@ export async function idleSeconds(): Promise<number> {
   return invoke<number>('idle_seconds');
 }
 
+export interface NowPlaying {
+  title: string;
+  artist: string;
+  album: string;
+  position_ms: number;
+  duration_ms: number;
+  playing: boolean;
+}
+
+/** The track Spotify is playing (desktop only, via Windows' media session API). */
+export async function nowPlaying(): Promise<NowPlaying | null> {
+  if (!isTauri) return null;
+  const { invoke } = await import('@tauri-apps/api/core');
+  return invoke<NowPlaying | null>('now_playing');
+}
+
 /** Lower-cased executable names currently running (desktop only). */
 export async function runningProcesses(): Promise<string[]> {
   if (!isTauri) return [];

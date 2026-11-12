@@ -1,5 +1,5 @@
 /** A DM or group DM: header with call buttons, the in-call panel, chat history and (for groups) members. */
-import { ask } from './ConfirmDialog';
+import { ask, promptText } from './ConfirmDialog';
 import { useMemo, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { PresenceDot, usePresenceOf } from '../hooks/usePresence';
@@ -9,7 +9,7 @@ import type { Conversation } from '../types/db';
 import { useCall } from './CallContext';
 import { ConversationAvatar, otherMemberIds, useConversationTitle } from './ConversationBits';
 import { GroupDialog } from './GroupDialog';
-import { CameraIcon, PhoneIcon, UserPlusIcon, UsersIcon } from './icons';
+import { CameraIcon, CrownIcon, PhoneIcon, UserPlusIcon, UsersIcon } from './icons';
 import { MessagePane } from './MessagePane';
 import { Avatar } from './ProfileCard';
 import { VoiceRoom } from './VoiceRoom';
@@ -30,7 +30,7 @@ function MemberRow({ userId, owner }: { userId: string; owner: boolean }) {
           <PresenceDot status={status} size={11} className="absolute -right-0.5 -bottom-0.5 z-10" />
         </span>
         <span className="min-w-0 flex-1 truncate text-sm">{p?.display_name || p?.username || '…'}</span>
-        {owner && <span title="Group owner">👑</span>}
+        {owner && <span title="Group owner"><CrownIcon size={15} className="ae-ico" /></span>}
       </button>
     </li>
   );
@@ -95,9 +95,9 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
       <h1
         className="truncate font-semibold"
         title={conv.type === 'group' ? 'Double-click to rename' : undefined}
-        onDoubleClick={() => {
+        onDoubleClick={async () => {
           if (conv.type !== 'group') return;
-          const name = window.prompt('Group name', conv.name ?? '');
+          const name = await promptText('Group name', { initial: conv.name ?? '', maxLength: 100, placeholder: 'Leave empty to use member names' });
           if (name !== null) actions.rename.mutate({ conversationId: conv.id, name: name.trim() || null });
         }}
       >

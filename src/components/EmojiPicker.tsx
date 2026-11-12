@@ -1,3 +1,4 @@
+import { ClockIcon } from './icons';
 /** Emoji picker: search, category tabs, recents. Closes on outside click or Escape. */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EMOJI_GROUPS, getRecentEmoji, pushRecentEmoji, searchEmoji, useEmojiData, type EmojiEntry } from '../lib/emoji';
@@ -61,7 +62,7 @@ export function EmojiPicker({ onPick, onClose, className = 'bottom-full right-0 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Find the perfect emoji"
-          className="w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-1.5 text-sm outline-none focus:border-ae-accent"
+          className="ae-input w-full text-sm"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && results?.[0]) {
               e.preventDefault();
@@ -75,7 +76,7 @@ export function EmojiPicker({ onPick, onClose, className = 'bottom-full right-0 
         {!results && (
           <nav className="flex w-10 shrink-0 flex-col items-center gap-1 overflow-y-auto border-r border-ae-border py-2">
             <button type="button" title="Recent" className="text-lg opacity-70 hover:opacity-100" onClick={() => scrollRef.current?.scrollTo({ top: 0 })}>
-              🕘
+              <ClockIcon size={18} />
             </button>
             {EMOJI_GROUPS.map((g) => (
               <button

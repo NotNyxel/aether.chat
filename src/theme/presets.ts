@@ -29,7 +29,23 @@ export type ThemePresetId =
   | 'daylight'
   | 'catppuccin-latte'
   | 'sakura'
-  | 'paper';
+  | 'paper'
+  | 'everforest'
+  | 'kanagawa'
+  | 'one-dark'
+  | 'ayu-mirage'
+  | 'material-ocean'
+  | 'lavender'
+  | 'mint'
+  | 'coffee'
+  | 'amethyst'
+  | 'aurora-borealis'
+  | 'blood-moon'
+  | 'arctic'
+  | 'retro-terminal'
+  | 'cotton-candy'
+  | 'github-light'
+  | 'nightfall';
 
 export interface ThemeTokens {
   /** Page backdrop (may be a gradient). */
@@ -291,12 +307,85 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
     backdrop: '#f4eedb', bg: '#fdf6e3', bgElevated: '#f4eedb', bgSunken: '#ece5cf', surface: '#eee8d5', surfaceHover: '#e3dcc4', border: '#ddd5bb',
     text: '#3b4a52', textMuted: '#657b83', accent: '#268bd2', radius: '6px',
   }, true),
+
+  everforest: preset('everforest', 'Everforest', 'Soft greens for long sessions.', {
+    bg: '#2d353b', bgElevated: '#343f44', bgSunken: '#272e33', surface: '#3d484d', surfaceHover: '#475258', border: '#4f585e',
+    text: '#d3c6aa', textMuted: '#9da9a0', accent: '#a7c080', radius: '10px',
+  }),
+  kanagawa: preset('kanagawa', 'Kanagawa', 'Ink and wave, inspired by Hokusai.', {
+    bg: '#1f1f28', bgElevated: '#2a2a37', bgSunken: '#16161d', surface: '#363646', surfaceHover: '#3f3f52', border: '#54546d',
+    text: '#dcd7ba', textMuted: '#938aa9', accent: '#7e9cd8', radius: '8px',
+  }),
+  'one-dark': preset('one-dark', 'One Dark', 'The classic editor theme.', {
+    bg: '#282c34', bgElevated: '#2f343e', bgSunken: '#21252b', surface: '#353b45', surfaceHover: '#3e4451', border: '#3e4451',
+    text: '#abb2bf', textMuted: '#7f848e', accent: '#61afef', radius: '8px',
+  }),
+  'ayu-mirage': preset('ayu-mirage', 'Ayu Mirage', 'Warm orange on deep slate.', {
+    bg: '#1f2430', bgElevated: '#242936', bgSunken: '#1a1f29', surface: '#2d3343', surfaceHover: '#363d4f', border: '#3a4152',
+    text: '#cccac2', textMuted: '#8a9199', accent: '#ffcc66', radius: '8px',
+  }),
+  'material-ocean': preset('material-ocean', 'Material Ocean', 'Deep blue with teal highlights.', {
+    bg: '#0f111a', bgElevated: '#141724', bgSunken: '#090b10', surface: '#1a1c25', surfaceHover: '#232637', border: '#232637',
+    text: '#c8d3f5', textMuted: '#717cb4', accent: '#84ffff', radius: '10px',
+  }),
+  lavender: preset('lavender', 'Lavender Haze', 'Dreamy purples, soft and calm.', {
+    backdrop: 'radial-gradient(120% 90% at 0% 0%, #3b2b5a 0%, #1c1630 60%)',
+    bg: '#1d1730', bgElevated: '#251e3d', bgSunken: '#17122a', surface: '#2e2649', surfaceHover: '#3a3059', border: '#3d335c',
+    text: '#ece6ff', textMuted: '#a99cd0', accent: '#b69cff', radius: '14px',
+  }),
+  mint: preset('mint', 'Mint', 'Fresh and minty, light and clean.', {
+    backdrop: '#e8f7f1', bg: '#f4fbf8', bgElevated: '#ffffff', bgSunken: '#e5f3ed', surface: '#e6f4ee', surfaceHover: '#d6ece2', border: '#cfe5db',
+    text: '#17322a', textMuted: '#55786c', accent: '#14a37f', radius: '12px',
+  }, true),
+  coffee: preset('coffee', 'Coffee', 'Roasted browns and crema.', {
+    bg: '#211a16', bgElevated: '#2a211c', bgSunken: '#1a1411', surface: '#352a23', surfaceHover: '#43352c', border: '#4a3a30',
+    text: '#eadbc8', textMuted: '#b09a84', accent: '#d4a373', radius: '10px',
+  }),
+  amethyst: preset('amethyst', 'Amethyst', 'Crystal violet with a glow.', {
+    backdrop: 'linear-gradient(160deg, #1a0b2e, #2d0f4a 60%, #120624)',
+    bg: '#170a29', bgElevated: '#1f0f36', bgSunken: '#12071f', surface: '#2a1547', surfaceHover: '#361c5a', border: '#3d2163',
+    text: '#f1e6ff', textMuted: '#b197d8', accent: '#c77dff', radius: '12px', glow: '0 0 18px #c77dff55',
+  }),
+  'aurora-borealis': preset('aurora-borealis', 'Aurora Borealis', 'Northern lights over a dark sky.', {
+    backdrop: 'radial-gradient(80% 60% at 20% 0%, #0f5f4a 0%, transparent 60%), radial-gradient(70% 60% at 90% 10%, #3b2a7a 0%, transparent 60%), #071016',
+    bg: '#0b1419', bgElevated: '#101c23', bgSunken: '#070e12', surface: '#14242d', surfaceHover: '#1b313c', border: '#1f3844',
+    text: '#e3fbf3', textMuted: '#88b3a8', accent: '#3ff2b4', radius: '12px', glow: '0 0 18px #3ff2b444',
+  }),
+  'blood-moon': preset('blood-moon', 'Blood Moon', 'Deep crimson night.', {
+    backdrop: 'radial-gradient(90% 70% at 80% 0%, #4a0b12 0%, #0d0607 65%)',
+    bg: '#120809', bgElevated: '#1a0c0e', bgSunken: '#0c0506', surface: '#241113', surfaceHover: '#30171a', border: '#3a1b1f',
+    text: '#f6e4e4', textMuted: '#b98a8d', accent: '#ff4d5e', radius: '8px',
+  }),
+  arctic: preset('arctic', 'Arctic', 'Icy blues, crisp and bright.', {
+    backdrop: '#e7f0f8', bg: '#f3f8fc', bgElevated: '#ffffff', bgSunken: '#e4eef7', surface: '#e6eff7', surfaceHover: '#d7e5f1', border: '#cfdeeb',
+    text: '#13263a', textMuted: '#5a7189', accent: '#2b8ef0', radius: '10px',
+  }, true),
+  'retro-terminal': preset('retro-terminal', 'Retro Terminal', 'Amber phosphor on black.', {
+    bg: '#0c0a05', bgElevated: '#13100a', bgSunken: '#080603', surface: '#1b170d', surfaceHover: '#262012', border: '#3a2f14',
+    text: '#ffc66d', textMuted: '#b48a45', accent: '#ffb000', radius: '2px', font: `'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace`,
+  }),
+  'cotton-candy': preset('cotton-candy', 'Cotton Candy', 'Pink and blue, sweet and soft.', {
+    backdrop: 'linear-gradient(135deg, #ffe3f1, #dff1ff)',
+    bg: '#fff5fb', bgElevated: '#ffffff', bgSunken: '#fbe9f4', surface: '#f8e6f2', surfaceHover: '#f0d7e9', border: '#ecd2e4',
+    text: '#3a2440', textMuted: '#8a6b90', accent: '#ff6fb5', radius: '18px',
+  }, true),
+  'github-light': preset('github-light', 'Clean Light', 'Neutral, high-clarity light theme.', {
+    backdrop: '#f6f8fa', bg: '#ffffff', bgElevated: '#ffffff', bgSunken: '#f6f8fa', surface: '#f3f4f6', surfaceHover: '#eaeef2', border: '#d8dee4',
+    text: '#1f2328', textMuted: '#656d76', accent: '#0969da', radius: '8px',
+  }, true),
+  nightfall: preset('nightfall', 'Nightfall', 'Indigo dusk with a warm accent.', {
+    backdrop: 'linear-gradient(180deg, #141432, #0b0b1c)',
+    bg: '#10102a', bgElevated: '#171736', bgSunken: '#0b0b1f', surface: '#1f1f45', surfaceHover: '#292955', border: '#2c2c5c',
+    text: '#e9e8ff', textMuted: '#9c9bd0', accent: '#ff9e64', radius: '12px',
+  }),
 };
 
 export const PRESET_ORDER: ThemePresetId[] = [
   'oled-dark', 'midnight', 'aether-glass', 'cyberpunk', 'synthwave', 'vaporwave', 'nord', 'dracula', 'catppuccin-mocha', 'tokyo-night',
   'rose-pine', 'gruvbox', 'solarized-dark', 'monokai', 'forest', 'ocean', 'sunset', 'crimson', 'matrix', 'high-contrast',
-  'daylight', 'catppuccin-latte', 'sakura', 'paper',
+  'everforest', 'kanagawa', 'one-dark', 'ayu-mirage', 'material-ocean', 'lavender', 'coffee', 'amethyst', 'aurora-borealis', 'blood-moon',
+  'retro-terminal', 'nightfall',
+  'daylight', 'catppuccin-latte', 'sakura', 'paper', 'mint', 'arctic', 'cotton-candy', 'github-light',
 ];
 
 /** Animated avatar frame presets (CSS in src/index.css). Stored in users.avatar_frame. */

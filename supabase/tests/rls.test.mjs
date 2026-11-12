@@ -16,7 +16,7 @@ const db = new PGlite({ extensions: { citext } });
 const STUBS = `
 create role anon nologin; create role authenticated nologin; create role service_role nologin;
 create schema auth;
-create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb);
+create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb, email text, last_sign_in_at timestamptz);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;
 create schema extensions; grant usage on schema extensions to authenticated, anon;
@@ -87,7 +87,14 @@ await db.exec(`insert into auth.users (id, raw_user_meta_data) values
 
 console.log('\nFriends');
 await expectOk('alice → bob request', () => as(A, `select public.send_friend_request('bob') r`));
-await expectError('bob cannot DM alice before accepting (no shared server)', () => as(B, `select public.open_dm('${A}')`), 'only message friends');
+await expectError('with "friends and server members", bob cannot DM alice (no shared server)', async () => {
+  await as(A, `insert into public.privacy_settings (dm_policy) values ('servers')`);
+  try {
+    await as(B, `select public.open_dm('${A}')`);
+  } finally {
+    await as(A, `delete from public.privacy_settings where user_id = '${A}'`);
+  }
+}, 'people in their servers');
 await expectOk('bob accepts', () => as(B, `select public.accept_friend_request('${A}')`));
 await expectOk('alice ↔ carol become friends (mutual request auto-accepts)', async () => {
   await as(A, `select public.send_friend_request('carol')`);
@@ -532,7 +539,7 @@ await expectOk('profile customization fields are writable', () =>
 await expectError('profile links must be https', () =>
   as(E, `update public.users set profile_links = '[{"label":"x","url":"javascript:alert(1)"}]' where id = '${E}'`), 'check');
 await expectError('unknown profile effects are rejected', () =>
-  as(E, `update public.users set profile_effect = 'explode' where id = '${E}'`), 'check');
+  as(E, `update public.users set profile_effect = 'Explode!' where id = '${E}'`), 'check');
 
 // ── Batch 5: threads, forums, announcements, events ─────────────────────────────────────
 console.log('\n# Batch 5: threads, forums, announcements, events');
@@ -778,6 +785,77 @@ await expectOk('a user can delete their account', async () => {
   const n = (await as(A, `select count(*)::int n from public.users where id = '${F}'`)).rows[0].n;
   if (n !== 0) throw new Error('still there');
 });
+
+// ── 1.0: admins, people search, open message requests, nameplates & widgets ─────────────
+console.log('\n# 1.0: admin, search, requests');
+await db.exec(`update public.users set is_admin = true where id = '${A}'`); // bootstrap, like the service role would
+await expectOk('admins see platform stats; others are refused', async () => {
+  const s = (await as(A, `select public.admin_stats() s`)).rows[0].s;
+  if (!(s.users >= 4)) throw new Error(JSON.stringify(s));
+  let refused = false;
+  try { await as(E, `select public.admin_stats()`); } catch (e) { refused = e.message.includes('Admins only'); }
+  if (!refused) throw new Error('not refused');
+});
+await expectError('users cannot make themselves admin', () => as(E, `update public.users set is_admin = true where id = '${E}'`), 'permission denied');
+await expectOk('admin grants admin and badges to carol', async () => {
+  await as(A, `select public.admin_set_admin('${C}', true)`);
+  await as(A, `select public.admin_set_badges('${C}', '["staff","moderator"]'::jsonb)`);
+  const r = (await as(C, `select is_admin, badge_ids from public.users where id = '${C}'`)).rows[0];
+  if (!r.is_admin || r.badge_ids.length !== 2) throw new Error(JSON.stringify(r));
+  await as(A, `select public.admin_set_admin('${C}', false)`);
+});
+await expectError('admins cannot remove their own admin', () => as(A, `select public.admin_set_admin('${A}', false)`), 'own admin');
+await expectOk('admin search shows emails only to admins', async () => {
+  const r = await as(A, `select username from public.admin_search_users('erin')`);
+  if (r.rows[0]?.username !== 'erin') throw new Error(JSON.stringify(r.rows));
+});
+await expectOk('admin sets the message request limit to 2', () => as(A, `select public.admin_set_config('message_request_limit', '2'::jsonb)`));
+await expectError('only admins change app config', () => as(E, `select public.admin_set_config('message_request_limit', '99'::jsonb)`), 'Admins only');
+
+await expectOk('people search finds discoverable users and hides blocked ones', async () => {
+  const r = await as(B, `select username from public.search_users('car')`);
+  if (!r.rows.some((x) => x.username === 'carol')) throw new Error(JSON.stringify(r.rows));
+  await as(E, `update public.users set discoverable = false where id = '${E}'`);
+  const hidden = await as(B, `select count(*)::int n from public.search_users('erin')`);
+  await as(E, `update public.users set discoverable = true where id = '${E}'`);
+  if (hidden.rows[0].n !== 0) throw new Error('found');
+});
+const strangerConv = (await expectOk('a stranger (bob, no shared server) can message erin as a request', async () => {
+  await as(E, `update public.privacy_settings set dm_policy = 'everyone' where user_id = '${E}'`);
+  const conv = (await as(B, `select public.open_dm('${E}') id`)).rows[0].id;
+  const pending = (await as(E, `select request_pending from public.conversation_members where conversation_id = $1 and user_id = '${E}'`, [conv])).rows[0];
+  if (!pending?.request_pending) throw new Error('not a request');
+  return { rows: [{ id: conv }] };
+}))?.rows[0].id;
+await expectOk('...up to the configured limit', async () => {
+  await as(B, `insert into public.messages (conversation_id, content) values ($1, 'hi!')`, [strangerConv]);
+  await as(B, `insert into public.messages (conversation_id, content) values ($1, 'saw your post')`, [strangerConv]);
+  let capped = false;
+  try { await as(B, `insert into public.messages (conversation_id, content) values ($1, 'hello??')`, [strangerConv]); } catch (e) { capped = e.message.includes("haven't accepted"); }
+  if (!capped) throw new Error('not capped');
+});
+await expectOk('once accepted, the limit is gone', async () => {
+  await as(E, `select public.respond_message_request($1, true)`, [strangerConv]);
+  await as(B, `insert into public.messages (conversation_id, content) values ($1, 'thanks for accepting')`, [strangerConv]);
+});
+await expectOk('nameplates, frames and widgets are writable; bad widgets are rejected', async () => {
+  await as(E, `update public.users set nameplate = 'aurora', card_frame = 'roses', profile_widgets = '[{"type":"favorite_game","name":"VALORANT"}]' where id = '${E}'`);
+  let rejected = false;
+  try { await as(E, `update public.users set profile_widgets = '[{"type":"malware"}]' where id = '${E}'`); } catch { rejected = true; }
+  if (!rejected) throw new Error('accepted');
+});
+await expectOk('admins can see and resolve DM reports', async () => {
+  const id = (await as(E, `insert into public.reports (target_user_id, reason, details) values ('${B}', 'spam', 'unsolicited') returning id`)).rows[0].id;
+  await as(A, `select public.resolve_report($1, 'resolved', 'warned')`, [id]);
+  const r = (await as(E, `select status from public.reports where id = $1`, [id])).rows[0];
+  if (r.status !== 'resolved') throw new Error(r.status);
+});
+
+await expectOk('invite codes work in any case and preview the server', async () => {
+  const d = (await as(B, `select name, is_member, member_count from public.invite_details('TESTVANITY')`)).rows[0];
+  if (d?.name !== 'Test' || d.is_member || !(d.member_count > 1)) throw new Error(JSON.stringify(d));
+});
+await expectError('unknown invite codes give a friendly error', () => as(B, `select public.join_server('nope-not-real')`), "doesn't exist");
 
 await expectOk('presence status column is writable', () => as(C, `update public.users set presence_status = 'dnd' where id = '${C}'`));
 await expectError('badge_ids still not writable', () => as(C, `update public.users set badge_ids = '["staff"]' where id = '${C}'`));

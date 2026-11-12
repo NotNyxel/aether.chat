@@ -13,7 +13,7 @@ import { useSupabase } from '../lib/supabase';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, Conversation, Message, Server, UnreadRow } from '../types/db';
 import { ConversationAvatar, useConversationTitle } from './ConversationBits';
-import { CloseIcon, HashIcon, InboxIcon } from './icons';
+import { CheckIcon, CloseIcon, HashIcon, InboxIcon, SparklesIcon } from './icons';
 import { Avatar } from './ProfileCard';
 
 type ChannelInfo = Pick<Channel, 'id' | 'name' | 'server_id'>;
@@ -63,7 +63,7 @@ function MentionRow({ m, where, onOpen }: { m: Message; where: React.ReactNode; 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">{author?.display_name || author?.username || '…'}</p>
             <div className="line-clamp-4 text-sm">
-              <Markdown source={m.content || (m.attachments?.length ? '📎 attachment' : m.poll ? `📊 ${m.poll.question}` : '')} />
+              <Markdown source={m.content || (m.attachments?.length ? '*Attachment*' : m.poll ? `*Poll:* ${m.poll.question}` : '')} />
             </div>
           </div>
         </div>
@@ -80,15 +80,16 @@ export function InboxButton({ userId, servers }: { userId: string; servers: Serv
     <>
       <button
         type="button"
-        title="Inbox: mentions and unreads"
+        data-inbox-toggle
+        data-tip="Inbox"
+        data-tip-side="bottom"
+        aria-label="Inbox"
         onClick={() => setOpen((v) => !v)}
-        className={`relative grid h-12 w-12 place-items-center transition-all ${
-          open ? 'rounded-[16px] bg-ae-accent text-ae-on-accent' : 'rounded-[24px] bg-ae-surface text-ae-muted hover:rounded-[16px] hover:bg-ae-hover hover:text-ae-text'
-        }`}
+        className={`relative grid h-7 w-8 place-items-center rounded-md transition-colors ${open ? 'bg-ae-hover text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'}`}
       >
-        <InboxIcon size={22} />
+        <InboxIcon size={17} />
         {mentions > 0 && (
-          <span className="absolute -right-1 -bottom-1 min-w-5 rounded-full border-2 border-ae-sunken bg-ae-danger px-1 text-center text-[11px] font-bold text-white">
+          <span className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-ae-danger px-1 text-center text-[10px] leading-4 font-bold text-white">
             {mentions > 99 ? '99+' : mentions}
           </span>
         )}
@@ -110,7 +111,7 @@ function InboxPanel({ userId, servers, onClose }: { userId: string; servers: Ser
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node) && !(e.target as HTMLElement).closest?.('[title^="Inbox"]')) onClose();
+      if (!ref.current?.contains(e.target as Node) && !(e.target as HTMLElement).closest?.('[data-inbox-toggle]')) onClose();
     };
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('mousedown', close);
@@ -180,7 +181,7 @@ function InboxPanel({ userId, servers, onClose }: { userId: string; servers: Ser
   return (
     <div
       ref={ref}
-      className="fixed top-3 left-[84px] z-50 flex max-h-[min(640px,calc(100vh-24px))] w-[440px] flex-col rounded-ae border border-ae-border bg-ae-elevated shadow-2xl"
+      className="ae-pop fixed top-10 right-3 z-[75] flex max-h-[min(640px,calc(100vh-56px))] w-[440px] flex-col rounded-ae border border-ae-border bg-ae-elevated shadow-2xl"
       role="dialog"
       aria-label="Inbox"
     >
@@ -202,7 +203,7 @@ function InboxPanel({ userId, servers, onClose }: { userId: string; servers: Ser
             <p className="p-6 text-center text-sm text-ae-danger">{mentionsQ.error.message}</p>
           ) : (mentionsQ.data ?? []).length === 0 ? (
             <div className="p-8 text-center text-sm text-ae-muted">
-              <p className="mb-2 text-3xl">📭</p>
+              <p className="mb-2 text-3xl"><InboxIcon size={15} className="ae-ico" /></p>
               Nobody has mentioned you yet. When someone @mentions you or one of your roles, it shows up here.
             </div>
           ) : (
@@ -225,7 +226,7 @@ function InboxPanel({ userId, servers, onClose }: { userId: string; servers: Ser
           )
         ) : unreadRows.length === 0 ? (
           <div className="p-8 text-center text-sm text-ae-muted">
-            <p className="mb-2 text-3xl">✨</p>
+            <p className="mb-2 text-3xl"><SparklesIcon size={15} className="ae-ico" /></p>
             You&apos;re all caught up.
           </div>
         ) : (
@@ -257,7 +258,7 @@ function InboxPanel({ userId, servers, onClose }: { userId: string; servers: Ser
                     className="rounded px-1.5 text-xs text-ae-muted opacity-0 group-hover:opacity-100 hover:text-ae-text"
                     onClick={() => markRead({ kind: r.server_id ? 'channel' : 'conversation', id: r.scope_id })}
                   >
-                    ✓
+                    <CheckIcon size={15} className="ae-ico" />
                   </button>
                 </li>
               ))}

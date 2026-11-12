@@ -19,6 +19,18 @@
   --font-ae: var(--ae-font);
 }
 
+/* Twemoji (Discord-style emoji) as a colour font, so every emoji, including inside text boxes, uses
+   the same pack instead of Windows' Segoe UI Emoji. unicode-range keeps it to emoji codepoints, so
+   it never replaces letters or digits. Licence: src/assets/fonts/TWEMOJI-FONT-LICENSE.txt (OFL). */
+@font-face {
+  font-family: 'Twemoji';
+  src: url('./assets/fonts/twemoji.woff2') format('woff2');
+  font-display: swap;
+  unicode-range:
+    U+00A9, U+00AE, U+200D, U+203C, U+2049, U+20E3, U+2122, U+2139, U+2194-21AA, U+231A-23FF, U+24C2, U+25AA-27BF,
+    U+2934-2935, U+2B05-2B55, U+3030, U+303D, U+3297, U+3299, U+FE0F, U+1F000-1FAFF, U+E0020-E007F;
+}
+
 html,
 body,
 #root {
@@ -29,7 +41,7 @@ body,
 body {
   background: var(--ae-backdrop, #000);
   color: var(--ae-text, #f2f2f4);
-  font-family: var(--ae-font, system-ui, sans-serif);
+  font-family: 'Twemoji', var(--ae-font, system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
@@ -46,8 +58,6 @@ body {
 }
 
 .ae-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--ae-surface-hover) transparent;
 }
 
 :focus-visible {
@@ -205,7 +215,7 @@ body {
   border: 1px solid var(--ae-border);
   border-radius: 4px;
   padding: 0 4px;
-  font-family: 'Cascadia Code', ui-monospace, monospace;
+  font-family: 'Twemoji', 'Cascadia Code', ui-monospace, monospace;
   font-size: 0.875em;
 }
 .ae-md pre {

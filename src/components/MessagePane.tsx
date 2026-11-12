@@ -4,6 +4,7 @@
  * pins and search), jump to present, auto mark-as-read, pins and search panels, drag-and-drop
  * uploads, typing indicator and the composer.
  */
+import { ArrowDownIcon, LockIcon, MegaphoneIcon, PinIcon } from './icons';
 import { ask } from './ConfirmDialog';
 import { useServerMembers } from '../hooks/useChatData';
 import { NotificationBell } from './NotificationMenu';
@@ -254,7 +255,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             className={`text-lg leading-none ${panel === 'pins' ? '' : 'opacity-60 hover:opacity-100'}`}
             onClick={() => setPanel(panel === 'pins' ? null : 'pins')}
           >
-            📌
+            <PinIcon size={15} className="ae-ico" />
           </button>
           <form
             onSubmit={(e) => {
@@ -267,7 +268,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             <input
               name="q"
               placeholder="Search"
-              className="w-36 rounded-ae border border-ae-border bg-ae-sunken px-2 py-1 text-xs outline-none transition-[width] focus:w-56 focus:border-ae-accent"
+              className="w-36 ae-input text-xs "
             />
           </form>
         </div>
@@ -384,18 +385,18 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             <button
               type="button"
               onClick={scrollToBottom}
-              className="absolute right-6 bottom-28 z-20 rounded-full bg-ae-accent px-4 py-1.5 text-xs font-semibold text-ae-on-accent shadow-lg"
+              className="ae-pop ae-press absolute right-6 bottom-28 z-20 flex items-center gap-1.5 rounded-full bg-ae-accent px-4 py-1.5 text-xs font-semibold text-ae-on-accent shadow-lg"
             >
-              Jump to present ↓
+              Jump to present <ArrowDownIcon size={13} />
             </button>
           )}
 
           {!canSend ? (
             <p className="ae-enter mx-4 mb-4 rounded-ae border border-ae-border bg-ae-sunken px-4 py-3 text-sm text-ae-muted">
               {channel?.thread_locked
-                ? '🔒 This thread is locked. Only moderators can reply.'
+                ? <><LockIcon size={15} className="ae-ico" /> This thread is locked. Only moderators can reply.</>
                 : isAnnouncement
-                  ? '📢 This is an announcement channel. Only moderators post here, and other servers can follow it.'
+                  ? <><MegaphoneIcon size={15} className="ae-ico" /> This is an announcement channel. Only moderators post here, and other servers can follow it.</>
                   : "You don't have permission to send messages here."}
             </p>
           ) : (

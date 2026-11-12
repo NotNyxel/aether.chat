@@ -4,7 +4,7 @@ import { useMessageSearch, usePinnedMessages, type SearchQuery } from '../hooks/
 import { Markdown } from '../lib/markdown';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, Message, MessageScope } from '../types/db';
-import { CloseIcon } from './icons';
+import { CloseIcon, PinIcon } from './icons';
 import { DisplayName, formatTime } from './MessageItem';
 
 function ResultCard({ m, serverId, channelName, onUnpin }: {
@@ -26,7 +26,7 @@ function ResultCard({ m, serverId, channelName, onUnpin }: {
       {m.content ? (
         <Markdown source={m.content.length > 400 ? `${m.content.slice(0, 400)}…` : m.content} className="text-sm" />
       ) : (
-        <p className="text-sm text-ae-muted italic">{m.poll ? `📊 ${m.poll.question}` : `${m.attachments.length} attachment(s)`}</p>
+        <p className="text-sm text-ae-muted italic">{m.poll ? `Poll: ${m.poll.question}` : `${m.attachments.length} attachment(s)`}</p>
       )}
       <div className="mt-1.5 flex gap-3 text-xs opacity-0 group-hover:opacity-100">
         <button
@@ -69,13 +69,13 @@ export function PinsPanel({ scope, serverId, canPin, onUnpin, onClose }: {
 }) {
   const { data = [], isLoading } = usePinnedMessages(scope, true);
   return (
-    <PanelShell title="📌 Pinned messages" onClose={onClose}>
+    <PanelShell title="Pinned messages" onClose={onClose}>
       {isLoading && <p className="text-sm text-ae-muted">Loading…</p>}
       {!isLoading && data.length === 0 && (
         <div className="py-10 text-center text-sm text-ae-muted">
-          <p className="text-3xl">📌</p>
+          <p className="text-3xl"><PinIcon size={15} className="ae-ico" /></p>
           <p className="mt-2">No pinned messages yet.</p>
-          <p className="text-xs">Hover a message and click 📌 to pin it.</p>
+          <p className="text-xs">Hover a message and click <PinIcon size={15} className="ae-ico" /> to pin it.</p>
         </div>
       )}
       <ul className="space-y-2">
@@ -109,7 +109,7 @@ export function SearchPanel({ scope, serverId, channels, initial, onClose }: {
   const channelName = (id: string | null) => channels.find((c) => c.id === id)?.name;
 
   return (
-    <PanelShell title="🔍 Search" onClose={onClose}>
+    <PanelShell title="Search" onClose={onClose}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -118,7 +118,7 @@ export function SearchPanel({ scope, serverId, channels, initial, onClose }: {
       >
         <input
           autoFocus
-          className="w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm outline-none focus:border-ae-accent"
+          className="ae-input w-full text-sm"
           placeholder={scope.kind === 'channel' ? 'Search this server' : 'Search this conversation'}
           value={raw}
           onChange={(e) => setRaw(e.target.value)}

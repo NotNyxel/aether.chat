@@ -7,7 +7,7 @@ import { APP_NAME } from '../config';
 import { authRedirectUrl } from '../lib/authLinks';
 import { useSupabase } from '../lib/supabase';
 
-const input = 'w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-2.5 text-sm outline-none transition-colors focus:border-ae-accent';
+const input = 'ae-input w-full';
 
 function Shell({ title, subtitle, children }: { title: string; subtitle: ReactNode; children: ReactNode }) {
   return (

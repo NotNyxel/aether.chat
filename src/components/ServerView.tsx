@@ -3,7 +3,8 @@ import { useUserMenu } from '../hooks/useUserMenu';
 import { useMemo, useState } from 'react';
 import { useProfile, useServerMembers } from '../hooks/useChatData';
 import { activeCustomStatus } from '../hooks/useDesktop';
-import { PresenceDot, useActivityOf, usePresenceMap } from '../hooks/usePresence';
+import { PresenceDot, usePresenceMap } from '../hooks/usePresence';
+import { ActivityLine } from './ActivityCards';
 import { useMemberStyles, useServerLive } from '../hooks/useServerAdmin';
 import { useVoiceStates } from '../hooks/useVoiceStates';
 import { useUiStore } from '../stores/uiStore';
@@ -13,7 +14,7 @@ import { ChannelGlyph, ChannelIcon } from './ChannelSidebar';
 import { FollowButton } from './Announcements';
 import { ForumView } from './Forum';
 import { ThreadPanel, ThreadsButton } from './Threads';
-import { UsersIcon } from './icons';
+import { CrownIcon, NsfwIcon, StageIcon, TimeoutIcon, UsersIcon, VolumeIcon } from './icons';
 import { MessagePane } from './MessagePane';
 import { Avatar, StyledName } from './ProfileCard';
 import { VoiceRoom } from './VoiceRoom';
@@ -33,7 +34,6 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut, me, serv
   const showProfile = useUiStore((s) => s.showProfile);
   const userMenu = useUserMenu(me);
   const status = usePresenceMap().get(userId) ?? 'offline';
-  const playing = useActivityOf(userId);
   const customStatus = activeCustomStatus(p);
   return (
     <li>
@@ -41,7 +41,8 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut, me, serv
         type="button"
         onClick={() => showProfile(userId)}
         onContextMenu={(e) => userMenu(e, userId, [], serverId)}
-        className={`flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left hover:bg-ae-hover ${offline ? 'opacity-45' : ''}`}
+        data-plate={(!offline && p?.nameplate) || 'none'}
+        className={`ae-plate flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left hover:bg-ae-hover ${offline ? 'opacity-45' : ''}`}
       >
         <span className="relative">
           <Avatar profile={p && avatarOverride ? { ...p, avatar_url: avatarOverride } : p} size={32} showFrame={!offline} />
@@ -51,12 +52,14 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut, me, serv
           <span className="block truncate text-sm">
             <StyledName profile={p} text={nickname || p?.display_name || p?.username || '…'} color={color} />
           </span>
-          {!offline && (playing || customStatus) && (
-            <span className="block truncate text-xs text-ae-muted">{playing ? <>Playing <b>{playing}</b></> : customStatus}</span>
+          {!offline && (
+            <span className="block truncate text-xs text-ae-muted empty:hidden">
+              <ActivityLine userId={userId} fallback={customStatus || undefined} />
+            </span>
           )}
         </span>
-        {timedOut && <span title="Timed out">⏳</span>}
-        {owner && <span title="Server owner">👑</span>}
+        {timedOut && <span title="Timed out"><TimeoutIcon size={15} className="ae-ico" /></span>}
+        {owner && <span title="Server owner"><CrownIcon size={15} className="ae-ico" /></span>}
       </button>
     </li>
   );
@@ -137,7 +140,7 @@ function LiveBanner({ streams, channels, userId }: { streams: VoiceState[]; chan
       <span className="min-w-0 flex-1 truncate">
         <b>{first.user_id === userId ? 'You are' : `${p?.display_name || p?.username || 'Someone'} is`}</b> streaming in{' '}
         <b>
-          {ch.type === 'stream' ? '🎙' : '🔊'} {ch.name}
+          {ch.type === 'stream' ? <StageIcon size={14} className="ae-ico" /> : <VolumeIcon size={14} className="ae-ico" />} {ch.name}
         </b>
         {streams.length > 1 && <span className="text-ae-muted"> and {streams.length - 1} other stream{streams.length > 2 ? 's' : ''}</span>}
       </span>
@@ -177,7 +180,7 @@ function NsfwGate({ channel, onAccept }: { channel: Channel; onAccept: () => voi
   return (
     <section className="grid flex-1 place-items-center p-6">
       <div className="max-w-md space-y-4 text-center">
-        <p className="text-5xl">🔞</p>
+        <p className="text-5xl"><NsfwIcon size={15} className="ae-ico" /></p>
         <h2 className="text-xl font-bold">#{channel.name} is age-restricted</h2>
         <p className="text-sm text-ae-muted">This channel may contain content not suitable for everyone. You must be 18 or older to view it.</p>
         <div className="flex justify-center gap-3">

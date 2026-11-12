@@ -14,17 +14,7 @@ import { BUILTIN_SOUNDS, builtinBuffer, decodeClip } from '../lib/soundboard';
 import { useSettingsStore } from '../stores/settingsStore';
 import type { Server, VoiceState } from '../types/db';
 import { useCall } from './CallContext';
-import {
-  CameraIcon,
-  CameraOffIcon,
-  HeadphonesIcon,
-  HeadphonesOffIcon,
-  MicIcon,
-  MicOffIcon,
-  PhoneOffIcon,
-  ScreenIcon,
-  VolumeIcon,
-} from './icons';
+import { CameraIcon, CameraOffIcon, FullscreenIcon, HandIcon, HeadphonesIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, PhoneOffIcon, ScreenIcon, SoundboardIcon, StageIcon, UsersIcon, VolumeIcon } from './icons';
 import { Avatar } from './ProfileCard';
 
 export function VideoView({ stream, className, mirror, controls }: { stream: MediaStream; className?: string; mirror?: boolean; controls?: boolean }) {
@@ -57,7 +47,7 @@ export function VideoView({ stream, className, mirror, controls }: { stream: Med
           className="rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
           onClick={() => void ref.current?.requestFullscreen().catch(() => undefined)}
         >
-          ⛶
+          <FullscreenIcon size={15} className="ae-ico" />
         </button>
       </div>
     </div>
@@ -256,7 +246,7 @@ function Soundboard({ voice, server, canUse, onClose }: { voice: VoiceEngine; se
               <div className="mb-3 grid grid-cols-3 gap-1.5">
                 {custom.map((s) => (
                   <button key={s.id} type="button" disabled={busy === s.id} className={btn} onClick={() => void play(s.id, () => decodeClip(s.url), s.volume)}>
-                    <span>{s.emoji || '🔊'}</span>
+                    <span>{s.emoji || <VolumeIcon size={15} />}</span>
                     <span className="truncate">{s.name}</span>
                   </button>
                 ))}
@@ -297,7 +287,7 @@ export function CallControls({ voice, onShareScreen, onToggleCamera, onLeave, se
     <div className="relative flex flex-wrap justify-center gap-3">
       {audience ? (
         <RoundButton title={stage!.handRaised ? 'Lower hand' : 'Request to speak'} active={stage!.handRaised} onClick={stage!.onHand}>
-          ✋
+          <HandIcon size={15} className="ae-ico" />
         </RoundButton>
       ) : (
         <RoundButton title={voice.isMuted ? 'Unmute' : 'Mute'} danger={voice.isMuted} onClick={voice.toggleMute}>
@@ -316,13 +306,13 @@ export function CallControls({ voice, onShareScreen, onToggleCamera, onLeave, se
             <ScreenIcon />
           </RoundButton>
           <RoundButton title="Soundboard" active={board} onClick={() => setBoard((v) => !v)}>
-            🎵
+            <SoundboardIcon size={15} className="ae-ico" />
           </RoundButton>
         </>
       )}
       {stage && !audience && (
         <RoundButton title="Move to audience" onClick={stage.onStepDown}>
-          👥
+          <UsersIcon size={15} className="ae-ico" />
         </RoundButton>
       )}
       <RoundButton title="Disconnect" danger onClick={onLeave}>
@@ -480,7 +470,7 @@ export function VoiceRoom({ userId, voice, compact = false, server = null, onSha
             {l}
           </button>
         ))}
-        {isStage && <span className="ml-auto text-ae-muted">🎙 Stage · {speakerTiles.length} speaking · {audience.length} listening</span>}
+        {isStage && <span className="ml-auto text-ae-muted"><StageIcon size={15} className="ae-ico" /> Stage · {speakerTiles.length} speaking · {audience.length} listening</span>}
       </div>
 
       <div className="ae-scroll flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
@@ -517,7 +507,7 @@ export function VoiceRoom({ userId, voice, compact = false, server = null, onSha
           <section className="space-y-2">
             {isStageMod && hands.length > 0 && (
               <div className="ae-enter rounded-ae border border-ae-border bg-ae-surface/50 p-3">
-                <p className="mb-2 text-xs font-bold tracking-wide text-ae-muted uppercase">✋ Requests to speak — {hands.length}</p>
+                <p className="mb-2 text-xs font-bold tracking-wide text-ae-muted uppercase"><HandIcon size={15} className="ae-ico" /> Requests to speak — {hands.length}</p>
                 <ul className="space-y-1">
                   {hands.map((h) => (
                     <HandRow key={h.user_id} state={h} onInvite={() => mod.setSpeaker.mutate({ userId: h.user_id, speaker: true })} />
@@ -559,7 +549,7 @@ function AudienceMember({ userId, hand }: { userId: string; hand: boolean }) {
     <div className="ae-enter flex w-16 flex-col items-center gap-1 text-center">
       <span className="relative">
         <Avatar profile={p} size={44} showFrame={false} />
-        {hand && <span className="absolute -top-1 -right-1 animate-bounce text-sm">✋</span>}
+        {hand && <span className="absolute -top-1 -right-1 animate-bounce text-sm"><HandIcon size={15} className="ae-ico" /></span>}
       </span>
       <span className="w-full truncate text-[11px] text-ae-muted">{p?.display_name || p?.username || '…'}</span>
     </div>

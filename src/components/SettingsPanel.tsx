@@ -10,6 +10,8 @@
  */
 import { AccountTab, PrivacyTab } from './SettingsAccount';
 import { ProfileEditor } from './ProfileEditor';
+import { AdminTab } from './AdminPanel';
+import { useProfile } from '../hooks/useChatData';
 import { useEffect, useState, type ReactNode } from 'react';
 import { listAudioDevices, type BandwidthProfile, type ScreenFrameRate, type ScreenResolution } from '../hooks/useVoiceEngine';
 import { comboFromEvent, formatCombo } from '../lib/keybinds';
@@ -17,7 +19,7 @@ import { ALL_SOUNDS, playSound, SOUND_INFO } from '../lib/sounds';
 import { useSettingsStore, type Keybinds } from '../stores/settingsStore';
 import { useUiStore, type SettingsTab } from '../stores/uiStore';
 import { isHexColor, PRESET_ORDER, THEME_PRESETS } from '../theme/presets';
-import { CloseIcon } from './icons';
+import { AdminIcon, AppWindowIcon, BellIcon, CloseIcon, GameIcon, IdCardIcon, KeyboardIcon, LogOutIcon, NetworkIcon, PaletteIcon, ShieldIcon, StageIcon, UserIcon } from './icons';
 import { ActivityTab, BackgroundShortcutsSection, DesktopNotificationsSection, WindowsTab } from './SettingsDesktop';
 import { useTheme } from './ThemeEngine';
 
@@ -47,8 +49,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
   );
 }
 
-export const inputCls =
-  'w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm text-ae-text outline-none focus:border-ae-accent';
+export const inputCls = 'ae-input w-full';
 
 export function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
   return (
@@ -210,6 +211,12 @@ function AppearanceTab() {
             onChange={(v) => setTheme({ animations: v })}
           />
         </Field>
+        <Toggle
+          label="Animate status icons"
+          hint="Online, Idle, Do Not Disturb and Offline icons morph when they change and glow gently."
+          checked={theme.animateStatus}
+          onChange={(v) => setTheme({ animateStatus: v })}
+        />
         <Toggle
           label="Ambient background"
           hint="A slow, faint aurora in your accent colour drifting behind everything."
@@ -688,35 +695,38 @@ function BandwidthTab() {
 // Shell
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-const TAB_GROUPS: { title: string; tabs: { id: SettingsTab; label: string; icon: string }[] }[] = [
+const TAB_GROUPS: { title: string; tabs: { id: SettingsTab; label: string; icon: ReactNode }[] }[] = [
   {
     title: 'User settings',
     tabs: [
-      { id: 'account', label: 'My Account', icon: '👤' },
-      { id: 'profile', label: 'Profiles', icon: '🪪' },
-      { id: 'privacy', label: 'Privacy & Safety', icon: '🛡️' },
+      { id: 'account', label: 'My Account', icon: <UserIcon size={15} /> },
+      { id: 'profile', label: 'Profiles', icon: <IdCardIcon size={15} /> },
+      { id: 'privacy', label: 'Privacy & Safety', icon: <ShieldIcon size={15} /> },
     ],
   },
   {
     title: 'App settings',
     tabs: [
-      { id: 'appearance', label: 'Appearance', icon: '🎨' },
-      { id: 'voice', label: 'Voice & Audio', icon: '🎙️' },
-      { id: 'notifications', label: 'Notifications & Sounds', icon: '🔔' },
-      { id: 'keybinds', label: 'Keybinds', icon: '⌨️' },
-      { id: 'bandwidth', label: 'Streaming & Bandwidth', icon: '📡' },
-      { id: 'activity', label: 'Activity Privacy', icon: '🎮' },
-      { id: 'windows', label: 'Windows Settings', icon: '🪟' },
+      { id: 'appearance', label: 'Appearance', icon: <PaletteIcon size={15} /> },
+      { id: 'voice', label: 'Voice & Audio', icon: <StageIcon size={15} /> },
+      { id: 'notifications', label: 'Notifications & Sounds', icon: <BellIcon size={15} /> },
+      { id: 'keybinds', label: 'Keybinds', icon: <KeyboardIcon size={15} /> },
+      { id: 'bandwidth', label: 'Streaming & Bandwidth', icon: <NetworkIcon size={15} /> },
+      { id: 'activity', label: 'Activity Privacy', icon: <GameIcon size={15} /> },
+      { id: 'windows', label: 'Windows Settings', icon: <AppWindowIcon size={15} /> },
     ],
   },
 ];
-const TABS = TAB_GROUPS.flatMap((g) => g.tabs);
+const ADMIN_GROUP = { title: 'Staff', tabs: [{ id: 'admin' as SettingsTab, label: 'Admin Panel', icon: <AdminIcon size={15} /> }] };
+const TABS = [...TAB_GROUPS, ADMIN_GROUP].flatMap((g) => g.tabs);
 
 export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
   const open = useUiStore((s) => s.settingsOpen);
   const tab = useUiStore((s) => s.settingsTab);
   const openSettings = useUiStore((s) => s.openSettings);
   const close = useUiStore((s) => s.closeSettings);
+  const { data: me } = useProfile(userId);
+  const groups = me?.is_admin ? [...TAB_GROUPS, ADMIN_GROUP] : TAB_GROUPS;
 
   useEffect(() => {
     if (!open) return;
@@ -730,7 +740,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
   return (
     <div className="ae-zoom-in fixed inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Settings">
       <nav className="ae-panel ae-scroll flex w-64 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-ae-border p-4">
-        {TAB_GROUPS.map((g) => (
+        {groups.map((g) => (
           <div key={g.title} className="mb-3">
             <p className="mb-1 px-3 text-[11px] font-bold tracking-wide text-ae-muted uppercase">{g.title}</p>
             {g.tabs.map((t) => (
@@ -750,7 +760,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
         ))}
         <div className="mt-auto border-t border-ae-border pt-3">
           <button type="button" onClick={onSignOut} className="flex w-full items-center gap-2.5 rounded-ae px-3 py-2 text-left text-sm text-ae-danger hover:bg-ae-hover">
-            <span className="w-5 text-center">⎋</span> Sign out
+            <span className="w-5 text-center"><LogOutIcon size={15} className="ae-ico" /></span> Sign out
           </button>
           <p className="mt-2 px-3 text-[11px] text-ae-muted">aether.chat v{__APP_VERSION__}</p>
         </div>
@@ -769,6 +779,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
           {tab === 'bandwidth' && <BandwidthTab />}
           {tab === 'activity' && <ActivityTab userId={userId} />}
           {tab === 'windows' && <WindowsTab />}
+          {tab === 'admin' && me?.is_admin && <AdminTab userId={userId} />}
         </div>
         <button
           type="button"

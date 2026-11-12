@@ -8,43 +8,50 @@
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { activeCustomStatus } from '../hooks/useDesktop';
-import { useActivityOf } from '../hooks/usePresence';
 import { Markdown } from '../lib/markdown';
 import { isHexColor } from '../theme/presets';
 import type { ProfileEffect, UserProfile } from '../types/db';
 import { openExternal } from '../lib/platform';
-import { PauseIcon, PlayIcon } from './icons';
+import type { LucideIcon } from 'lucide-react';
+import { AdminIcon, BadgeIcon, BrushIcon, BugIcon, CodeIcon, CrownIcon, FlaskIcon, GavelIcon, GemIcon, HeadsetIcon, HeartIcon, LinkIcon, PauseIcon, PlayIcon, RocketIcon, TrophyIcon, ZapIcon } from './icons';
+import { ActivitySections } from './ActivityCards';
 import { ScopedCss } from './ThemeEngine';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Badges
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-export const BADGE_CATALOG: Record<string, { label: string; glyph: string; color: string }> = {
-  founder: { label: 'Founder', glyph: '✦', color: '#f5c542' },
-  staff: { label: 'aether.chat Staff', glyph: '◆', color: '#7c5cff' },
-  'early-supporter': { label: 'Early Supporter', glyph: '❖', color: '#ff7ab6' },
-  developer: { label: 'Developer', glyph: '⌘', color: '#00d4ff' },
-  moderator: { label: 'Moderator', glyph: '⛨', color: '#2ecc71' },
-  'bug-hunter': { label: 'Bug Hunter', glyph: '✱', color: '#ff9f43' },
-  'voice-veteran': { label: 'Voice Veteran', glyph: '♪', color: '#a29bfe' },
-  velox: { label: 'velox Native', glyph: '⟁', color: '#5ee6a8' },
+export const BADGE_CATALOG: Record<string, { label: string; Icon: LucideIcon; color: string }> = {
+  founder: { label: 'Founder', Icon: CrownIcon, color: '#f5c542' },
+  staff: { label: 'aether.chat Staff', Icon: AdminIcon, color: '#7c5cff' },
+  'early-supporter': { label: 'Early Supporter', Icon: HeartIcon, color: '#ff7ab6' },
+  developer: { label: 'Developer', Icon: CodeIcon, color: '#00d4ff' },
+  moderator: { label: 'Moderator', Icon: GavelIcon, color: '#2ecc71' },
+  'bug-hunter': { label: 'Bug Hunter', Icon: BugIcon, color: '#ff9f43' },
+  'voice-veteran': { label: 'Voice Veteran', Icon: HeadsetIcon, color: '#a29bfe' },
+  velox: { label: 'velox Native', Icon: ZapIcon, color: '#5ee6a8' },
+  supporter: { label: 'Supporter', Icon: GemIcon, color: '#ff5ac8' },
+  artist: { label: 'Artist', Icon: BrushIcon, color: '#ffb86b' },
+  tester: { label: 'Beta Tester', Icon: FlaskIcon, color: '#7bd88f' },
+  pioneer: { label: 'Pioneer', Icon: RocketIcon, color: '#5ab0ff' },
+  champion: { label: 'Champion', Icon: TrophyIcon, color: '#ffd166' },
 };
 
-export function BadgeRow({ badgeIds }: { badgeIds: string[] }) {
+export function BadgeRow({ badgeIds, size = 24 }: { badgeIds: string[]; size?: number }) {
   if (!badgeIds.length) return null;
   return (
     <ul className="flex flex-wrap gap-1" aria-label="Badges">
       {badgeIds.map((id) => {
-        const badge = BADGE_CATALOG[id] ?? { label: id, glyph: '•', color: 'var(--ae-text-muted)' };
+        const badge = BADGE_CATALOG[id] ?? { label: id, Icon: BadgeIcon, color: 'var(--ae-text-muted)' };
         return (
           <li
             key={id}
-            title={badge.label}
-            className="grid h-6 w-6 place-items-center rounded-md bg-ae-sunken text-sm"
-            style={{ color: badge.color }}
+            data-tip={badge.label}
+            aria-label={badge.label}
+            className="ae-lift grid place-items-center rounded-md bg-ae-sunken/80"
+            style={{ color: badge.color, width: size, height: size, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${badge.color} 35%, transparent)` }}
           >
-            {badge.glyph}
+            <badge.Icon size={size * 0.6} strokeWidth={2.2} />
           </li>
         );
       })}
@@ -145,6 +152,10 @@ const EFFECTS: Record<Exclude<ProfileEffect, 'none'>, { glyphs: string[]; count:
   stars: { glyphs: ['★', '☆', '✶'], count: 14, motion: 'twinkle', size: [8, 16] },
   bubbles: { glyphs: ['○', '◯'], count: 14, motion: 'rise', size: [10, 22] },
   petals: { glyphs: ['🌸', '🌺', '❀'], count: 12, motion: 'fall', size: [12, 18] },
+  embers: { glyphs: ['●', '•'], count: 22, motion: 'rise', size: [3, 7] },
+  leaves: { glyphs: ['🍂', '🍁', '🍃'], count: 12, motion: 'fall', size: [12, 18] },
+  music: { glyphs: ['♪', '♫', '♬'], count: 14, motion: 'rise', size: [12, 20] },
+  lightning: { glyphs: ['ϟ'], count: 8, motion: 'twinkle', size: [14, 26] },
 };
 const CONFETTI_COLORS = ['#ff5f6d', '#ffc371', '#5ee6a8', '#4facfe', '#a18cd1', '#f9f871'];
 
@@ -171,12 +182,16 @@ export function ProfileEffectLayer({ effect, color }: { effect: ProfileEffect | 
             ? CONFETTI_COLORS[i % CONFETTI_COLORS.length]
             : effect === 'fireflies'
               ? '#ffe96b'
-              : effect === 'rain'
+              : effect === 'embers'
+                ? ['#ff6a00', '#ffb347', '#ff3d00'][i % 3]
+                : effect === 'lightning'
+                  ? '#c9e6ff'
+                  : effect === 'rain'
                 ? 'rgba(160, 200, 255, 0.6)'
                 : effect === 'snow' || effect === 'bubbles'
                   ? 'rgba(255,255,255,0.85)'
                   : (color ?? '#ffe08a'),
-        textShadow: effect === 'fireflies' ? '0 0 8px #ffe96b' : undefined,
+        textShadow: effect === 'fireflies' ? '0 0 8px #ffe96b' : effect === 'embers' ? '0 0 6px #ff6a00' : effect === 'lightning' ? '0 0 10px #8ecbff' : undefined,
       } as CSSProperties;
       return { glyph: fx.glyphs[i % fx.glyphs.length]!, style };
     });
@@ -256,7 +271,6 @@ interface ProfileCardProps {
 export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
   const scopeId = `p-${profile.id.replace(/[^a-z0-9-]/gi, '')}`;
   const customStatus = activeCustomStatus(profile);
-  const playing = useActivityOf(profile.id);
   const primary = isHexColor(profile.primary_color) ? profile.primary_color : 'var(--ae-surface)';
   const accent = isHexColor(profile.accent_color) ? profile.accent_color : 'var(--ae-accent)';
   const memberSince = new Date(profile.created_at).toLocaleDateString(undefined, {
@@ -270,6 +284,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
       data-ae-profile={scopeId}
       className={`ae-profile-card ae-card relative w-[340px] overflow-hidden rounded-ae border border-ae-border text-ae-text shadow-2xl ${className}`}
       data-card={profile.card_style ?? 'solid'}
+      data-cardframe={profile.card_frame || 'none'}
       style={
         {
           '--pf-primary': primary,
@@ -314,15 +329,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
             )}
           </header>
 
-          {playing && (
-            <section>
-              <h3 className="mb-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Playing a game</h3>
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <span className="grid h-8 w-8 place-items-center rounded-ae bg-ae-surface text-base">🎮</span>
-                {playing}
-              </p>
-            </section>
-          )}
+          <ActivitySections userId={profile.id} />
 
           {profile.bio && (
             <section>
@@ -345,7 +352,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
                     onClick={() => void openExternal(l.url)}
                     className="ae-press rounded-full border border-ae-border bg-ae-surface px-2.5 py-1 text-xs hover:border-ae-accent"
                   >
-                    🔗 {l.label}
+                    <LinkIcon size={12} className="ae-ico" /> {l.label}
                   </button>
                 ))}
               </div>

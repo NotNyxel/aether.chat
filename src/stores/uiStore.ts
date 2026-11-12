@@ -1,7 +1,7 @@
 /** Ephemeral UI state: Home vs server view, selections, panels, dialogs, jump targets, lightbox. */
 import { create } from 'zustand';
 
-export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows';
+export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows' | 'admin';
 
 export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit' | 'soundboard' | 'moderation' | 'automod';
 
@@ -29,6 +29,7 @@ interface UiState {
   settingsOpen: boolean;
   settingsTab: SettingsTab;
   profilePopoverUserId: string | null;
+  studioOpen: boolean;
   jumpTarget: JumpTarget | null;
   lightbox: LightboxImage | null;
   forwardMessageId: string | null;
@@ -52,6 +53,8 @@ interface UiState {
   openSettings: (tab?: SettingsTab) => void;
   closeSettings: () => void;
   showProfile: (userId: string | null) => void;
+  openStudio: () => void;
+  closeStudio: () => void;
   openLightbox: (image: LightboxImage | null) => void;
   openForward: (messageId: string | null) => void;
   openServerSettings: (target: { serverId: string; tab: ServerSettingsTab } | null) => void;
@@ -67,6 +70,7 @@ export const useUiStore = create<UiState>()((set) => ({
   settingsOpen: false,
   settingsTab: 'profile',
   profilePopoverUserId: null,
+  studioOpen: false,
   jumpTarget: null,
   lightbox: null,
   forwardMessageId: null,
@@ -94,6 +98,8 @@ export const useUiStore = create<UiState>()((set) => ({
   openSettings: (tab) => set((s) => ({ settingsOpen: true, settingsTab: tab ?? s.settingsTab })),
   closeSettings: () => set({ settingsOpen: false }),
   showProfile: (profilePopoverUserId) => set({ profilePopoverUserId }),
+  openStudio: () => set({ studioOpen: true, settingsOpen: false }),
+  closeStudio: () => set({ studioOpen: false }),
   openLightbox: (lightbox) => set({ lightbox }),
   openForward: (forwardMessageId) => set({ forwardMessageId }),
   openServerSettings: (serverSettings) => set({ serverSettings }),

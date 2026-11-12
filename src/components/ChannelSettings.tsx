@@ -11,7 +11,7 @@ import { useUiStore } from '../stores/uiStore';
 import type { Channel, Server } from '../types/db';
 import { ChannelGlyph } from './ChannelSidebar';
 import { useProfiles } from './ConversationBits';
-import { CloseIcon } from './icons';
+import { CheckIcon, CloseIcon, UserIcon } from './icons';
 import { useRank } from './ServerSettings';
 import { Field, inputCls, Section, Toggle } from './SettingsPanel';
 
@@ -57,7 +57,7 @@ function OverviewTab({ channel, server, editable, onDeleted }: { channel: Channe
         </Field>
         {channel.type === 'text' && (
           <>
-            <Field label={isForum ? 'Post guidelines' : 'Topic'} hint={isForum ? 'Markdown. Shown to everyone from the 📜 button.' : 'Shown in the channel header.'}>
+            <Field label={isForum ? 'Post guidelines' : 'Topic'} hint={isForum ? 'Markdown. Shown to everyone from the Guidelines button.' : 'Shown in the channel header.'}>
               <textarea className={`${inputCls} min-h-16`} disabled={!editable} maxLength={1024} value={d.topic} onChange={(e) => setD({ ...d, topic: e.target.value })} />
             </Field>
             <Field label={`Slow mode: ${fmtSlow(d.rate)}`} hint="Members must wait this long between messages. People with Manage Messages are exempt.">
@@ -96,7 +96,7 @@ function OverviewTab({ channel, server, editable, onDeleted }: { channel: Channe
                     {t.emoji} {t.name}
                     {editable && (
                       <button type="button" className="text-ae-muted hover:text-ae-danger" onClick={() => setD({ ...d, tags: d.tags.filter((x) => x.id !== t.id) })}>
-                        ×
+                        <CloseIcon size={12} />
                       </button>
                     )}
                   </span>
@@ -257,7 +257,7 @@ function PermissionsTab({ channel, server, editable }: { channel: Channel; serve
                 onClick={() => setSelected(t)}
                 className={`w-full truncate rounded-ae px-2 py-1.5 text-left text-sm ${current?.id === t.id ? 'bg-ae-surface' : 'hover:bg-ae-hover'}`}
               >
-                {t.type === 'role' ? `@${nameOf('role', t.id).replace(/^@/, '')}` : `👤 ${nameOf('member', t.id)}`}
+                {t.type === 'role' ? `@${nameOf('role', t.id).replace(/^@/, '')}` : <><UserIcon size={13} className="ae-ico" /> {nameOf('member', t.id)}</>}
               </button>
             </li>
           ))}
@@ -285,8 +285,8 @@ function PermissionsTab({ channel, server, editable }: { channel: Channel; serve
         <div className="space-y-6">
           <p className="text-sm text-ae-muted">
             Overrides for <strong className="text-ae-text">{current.type === 'role' ? `@${nameOf('role', current.id).replace(/^@/, '')}` : nameOf('member', current.id)}</strong> in this{' '}
-            {channel.type === 'category' ? 'category' : 'channel'}. <span className="text-ae-danger">✕ deny</span> beats role grants;{' '}
-            <span className="text-ae-success">✓ allow</span> grants it here even if roles don't; <strong>/</strong> inherits.
+            {channel.type === 'category' ? 'category' : 'channel'}. <span className="text-ae-danger"><CloseIcon size={15} className="ae-ico" /> deny</span> beats role grants;{' '}
+            <span className="text-ae-success"><CheckIcon size={15} className="ae-ico" /> allow</span> grants it here even if roles don't; <strong>/</strong> inherits.
           </p>
           {PERMISSION_GROUPS.map((g) => {
             const items = g.items.filter((i) => i.channel);
@@ -321,7 +321,7 @@ function PermissionsTab({ channel, server, editable }: { channel: Channel; serve
                                   : 'hover:bg-ae-hover'
                               }`}
                             >
-                              {opt === 'deny' ? '✕' : opt === 'allow' ? '✓' : '/'}
+                              {opt === 'deny' ? <CloseIcon size={14} /> : opt === 'allow' ? <CheckIcon size={14} /> : '/'}
                             </button>
                           ))}
                         </div>

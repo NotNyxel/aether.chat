@@ -31,7 +31,7 @@ export function PollDialog({ onClose, onSubmit, pending, error }: {
 
   const filled = options.filter((o) => o.text.trim());
   const valid = question.trim().length > 0 && filled.length >= 2;
-  const input = 'w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm outline-none focus:border-ae-accent';
+  const input = 'ae-input w-full';
 
   return (
     <Dialog title="Create a poll" onClose={onClose}>

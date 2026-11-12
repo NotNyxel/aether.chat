@@ -1,16 +1,16 @@
 /** Vertical server list with create-server and join-by-invite actions. */
+import { useAddServer } from './Invites';
+import { inviteLink } from '../lib/invites';
 import { ask } from './ConfirmDialog';
 import { toast } from './Toaster';
 import { openContextMenu } from './ContextMenu';
-import { useMemo, useState } from 'react';
-import { useCreateInvite, useCreateServer, useJoinServer, useLeaveServer } from '../hooks/useChatData';
+import { useMemo } from 'react';
+import { useCreateInvite, useLeaveServer } from '../hooks/useChatData';
 import { isRowUnread, useMarkRead, useUnreadSummary } from '../hooks/useMessageExtras';
 import { muteUntil, resolveNotify, useNotifyResolver, useSetNotificationSetting } from '../hooks/useNotifications';
 import { useUiStore } from '../stores/uiStore';
 import type { Server } from '../types/db';
-import { Dialog, PromptForm } from './Dialog';
-import { PlusIcon } from './icons';
-import { InboxButton } from './Inbox';
+import { BellIcon, BellOffIcon, CheckIcon, CompassIcon, LogOutIcon, MailIcon, PlusIcon, SettingsIcon } from './icons';
 
 function initials(name: string): string {
   return name
@@ -31,8 +31,7 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
 }) {
   const selectServer = useUiStore((s) => s.selectServer);
   const openHome = useUiStore((s) => s.openHome);
-  const [dialog, setDialog] = useState<null | 'create' | 'join'>(null);
-  const create = useCreateServer(userId);
+  const addServer = useAddServer((s) => s.set);
   const leave = useLeaveServer(userId);
   const invite = useCreateInvite();
   const markRead = useMarkRead();
@@ -44,36 +43,35 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
     openContextMenu(e, [
       {
         label: 'Mark as read',
-        icon: '✓',
+        icon: <CheckIcon size={15} />,
         disabled: unreadRows.length === 0,
         onClick: () => unreadRows.forEach((r) => markRead({ kind: 'channel', id: r.scope_id })),
       },
       'divider',
       {
         label: 'Invite people',
-        icon: '✉',
+        icon: <MailIcon size={15} />,
         onClick: () =>
           invite.mutate(s.id, {
-            onSuccess: (code) => void navigator.clipboard.writeText(code).then(() => toast.success(`Invite code ${code} copied (valid 7 days).`, '✉')),
+            onSuccess: (code) => void navigator.clipboard.writeText(inviteLink(code)).then(() => toast.success(`Copied ${inviteLink(code)} (valid 7 days).`, <MailIcon size={14} />)),
             onError: (err) => toast.error(err.message),
           }),
       },
       muted
-        ? { label: 'Unmute server', icon: '🔔', onClick: () => setNotify.mutate({ scopeId: s.id, kind: 'server', patch: { muted_until: null } }) }
-        : { label: 'Mute server for 1 hour', icon: '🔕', onClick: () => setNotify.mutate({ scopeId: s.id, kind: 'server', patch: { muted_until: muteUntil(60) } }) },
-      !muted && { label: 'Mute until I turn it back on', icon: '🔕', onClick: () => setNotify.mutate({ scopeId: s.id, kind: 'server', patch: { muted_until: muteUntil(null) } }) },
-      { label: 'Server settings', icon: '⚙', onClick: () => openServerSettings({ serverId: s.id, tab: 'overview' }) },
+        ? { label: 'Unmute server', icon: <BellIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: s.id, kind: 'server', patch: { muted_until: null } }) }
+        : { label: 'Mute server for 1 hour', icon: <BellOffIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: s.id, kind: 'server', patch: { muted_until: muteUntil(60) } }) },
+      !muted && { label: 'Mute until I turn it back on', icon: <BellOffIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: s.id, kind: 'server', patch: { muted_until: muteUntil(null) } }) },
+      { label: 'Server settings', icon: <SettingsIcon size={15} />, onClick: () => openServerSettings({ serverId: s.id, tab: 'overview' }) },
       'divider',
       { label: 'Copy server ID', icon: '#', onClick: () => void navigator.clipboard.writeText(s.id).then(() => toast('ID copied', '#')) },
       s.owner_id !== userId && {
         label: 'Leave server',
-        icon: '⎋',
+        icon: <LogOutIcon size={15} />,
         danger: true,
         onClick: async () => (await ask(`Leave ${s.name}?`)) && leave.mutate(s.id, { onSuccess: () => openHome(), onError: (err) => toast.error(err.message) }),
       },
     ]);
   };
-  const join = useJoinServer(userId);
   const { data: unread = [] } = useUnreadSummary();
   const { map: notifyMap } = useNotifyResolver();
   const perServer = useMemo(() => {
@@ -106,7 +104,6 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
           </span>
         )}
       </button>
-      <InboxButton userId={userId} servers={servers} />
       <div className="my-1 h-px w-8 bg-ae-border" />
       {servers.map((s) => {
         const active = s.id === activeId;
@@ -145,63 +142,24 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
       <div className="my-1 h-px w-8 bg-ae-border" />
       <button
         type="button"
-        data-tip="Create a server"
+        data-tip="Add a server"
         data-tip-side="right"
-        aria-label="Create a server"
-        onClick={() => setDialog('create')}
-        className="grid h-12 w-12 place-items-center rounded-[24px] bg-ae-surface text-ae-success hover:rounded-[16px] hover:bg-ae-success hover:text-black"
+        aria-label="Add a server"
+        onClick={() => addServer('menu')}
+        className="grid h-12 w-12 place-items-center rounded-[24px] bg-ae-surface text-ae-success transition-all hover:rounded-[16px] hover:bg-ae-success hover:text-black"
       >
-        <PlusIcon />
+        <PlusIcon size={22} />
       </button>
       <button
         type="button"
-        data-tip="Join with an invite code"
+        data-tip="Join a server"
         data-tip-side="right"
         aria-label="Join a server"
-        onClick={() => setDialog('join')}
-        className="grid h-12 w-12 place-items-center rounded-[24px] bg-ae-surface text-xs font-semibold text-ae-muted hover:rounded-[16px] hover:bg-ae-hover hover:text-ae-text"
+        onClick={() => addServer('join')}
+        className="grid h-12 w-12 place-items-center rounded-[24px] bg-ae-surface text-ae-success transition-all hover:rounded-[16px] hover:bg-ae-success hover:text-black"
       >
-        Join
+        <CompassIcon size={22} />
       </button>
-
-      {dialog === 'create' && (
-        <Dialog title="Create a server" onClose={() => setDialog(null)}>
-          <PromptForm
-            label="Server name"
-            placeholder="My awesome server"
-            submitLabel="Create"
-            pending={create.isPending}
-            error={create.error?.message}
-            onSubmit={(name) =>
-              create.mutate(name, {
-                onSuccess: (server) => {
-                  selectServer(server.id);
-                  setDialog(null);
-                },
-              })
-            }
-          />
-        </Dialog>
-      )}
-      {dialog === 'join' && (
-        <Dialog title="Join a server" onClose={() => setDialog(null)}>
-          <PromptForm
-            label="Invite code"
-            placeholder="a1b2c3d4e5"
-            submitLabel="Join"
-            pending={join.isPending}
-            error={join.error?.message}
-            onSubmit={(code) =>
-              join.mutate(code, {
-                onSuccess: (serverId) => {
-                  selectServer(serverId);
-                  setDialog(null);
-                },
-              })
-            }
-          />
-        </Dialog>
-      )}
     </nav>
   );
 }

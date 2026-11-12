@@ -1,14 +1,19 @@
 /** Root gating: email links → session → two-factor check → main shell. */
+import { MailIcon, PartyIcon } from './components/icons';
 import type { Session } from '@supabase/supabase-js';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { AuthScreen, MfaChallenge, NewPasswordScreen } from './components/AuthScreen';
 import { ConfirmLayer } from './components/ConfirmDialog';
+import { ContextMenuLayer } from './components/ContextMenu';
+import { NativeUiShim } from './components/NativeUiShim';
 import { MainLayout } from './components/MainLayout';
 import { toast, Toaster } from './components/Toaster';
 import { TooltipLayer } from './components/TooltipLayer';
+import { WindowFrame } from './components/TitleBar';
 import { UpdateBanner } from './components/UpdateBanner';
 import { listenForAuthLinks } from './lib/authLinks';
+import { trackAccounts } from './lib/accounts';
 import { isTauri } from './lib/platform';
 import { resolveBackendConfig, SupabaseProvider, useSupabase } from './lib/supabase';
 
@@ -46,6 +51,8 @@ function AuthGate() {
     return () => data.subscription.unsubscribe();
   }, [sb]);
 
+  useEffect(() => trackAccounts(sb), [sb]);
+
   // Password reset / email confirmation / email change links.
   useEffect(
     () =>
@@ -57,8 +64,8 @@ function AuthGate() {
           return;
         }
         if (kind === 'recovery') setRecovering(true);
-        else if (kind === 'signup') toast.success('Email confirmed. Welcome to aether.chat!', '🎉');
-        else if (kind === 'email_change') toast.success('Email change confirmed.', '✉');
+        else if (kind === 'signup') toast.success('Email confirmed. Welcome to aether.chat!', <PartyIcon size={14} />);
+        else if (kind === 'email_change') toast.success('Email change confirmed.', <MailIcon size={14} />);
       }),
     [sb],
   );
@@ -83,18 +90,20 @@ function AuthGate() {
     qc.clear();
   };
 
-  if (session === undefined) return <Splash />;
-  if (!session) return <AuthScreen linkError={linkError} />;
-  if (needsMfa === null) return <Splash />;
-  if (needsMfa) return <MfaChallenge onDone={() => setNeedsMfa(false)} onCancel={signOut} />;
+  if (session === undefined) return <WindowFrame><Splash /></WindowFrame>;
+  if (!session) return <WindowFrame><AuthScreen linkError={linkError} /></WindowFrame>;
+  if (needsMfa === null) return <WindowFrame><Splash /></WindowFrame>;
+  if (needsMfa) return <WindowFrame><MfaChallenge onDone={() => setNeedsMfa(false)} onCancel={signOut} /></WindowFrame>;
   if (recovering)
     return (
-      <NewPasswordScreen
-        onDone={() => {
-          setRecovering(false);
-          toast.success('Password changed.');
-        }}
-      />
+      <WindowFrame>
+        <NewPasswordScreen
+          onDone={() => {
+            setRecovering(false);
+            toast.success('Password changed.');
+          }}
+        />
+      </WindowFrame>
     );
 
   return <MainLayout key={session.user.id} userId={session.user.id} onSignOut={signOut} />;
@@ -111,6 +120,8 @@ export function App() {
         <Toaster />
         <TooltipLayer />
         <ConfirmLayer />
+        <ContextMenuLayer />
+        <NativeUiShim />
       </QueryClientProvider>
     </SupabaseProvider>
   );

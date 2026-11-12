@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Join on aether.chat</title>
+    <meta name="description" content="You've been invited to a server on aether.chat." />
+    <link rel="icon" href="../icon.svg" />
+    <style>
+      :root { color-scheme: dark; --accent: #7c5cff; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px;
+        font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif; color: #eef; background: #07070c;
+        background-image: radial-gradient(800px 500px at 15% 0%, #2a1b6b 0%, transparent 60%), radial-gradient(700px 500px at 100% 100%, #0f4b6b 0%, transparent 55%);
+      }
+      .card { width: 100%; max-width: 420px; background: rgba(18, 18, 28, 0.85); border: 1px solid rgba(255,255,255,.1); border-radius: 18px; padding: 32px; text-align: center; backdrop-filter: blur(16px); box-shadow: 0 30px 80px -30px #000; }
+      img.logo { width: 64px; height: 64px; filter: drop-shadow(0 0 20px var(--accent)); }
+      h1 { margin: 16px 0 6px; font-size: 24px; }
+      p { margin: 0 0 20px; color: #a9abc6; line-height: 1.5; }
+      code { display: inline-block; margin: 0 0 22px; padding: 8px 14px; border-radius: 10px; background: #0d0d16; border: 1px solid rgba(255,255,255,.08); font-size: 16px; letter-spacing: .5px; }
+      a.btn { display: block; padding: 12px; border-radius: 12px; font-weight: 600; text-decoration: none; margin-top: 10px; transition: transform .12s ease, filter .12s ease; }
+      a.btn:active { transform: scale(.97); }
+      .primary { background: var(--accent); color: #fff; }
+      .primary:hover { filter: brightness(1.1); }
+      .secondary { background: rgba(255,255,255,.06); color: #dde; }
+      small { display: block; margin-top: 18px; color: #6f7192; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <img class="logo" src="../icon.svg" alt="" />
+      <h1>You've been invited</h1>
+      <p>Open this invite in aether.chat to join the server.</p>
+      <code id="code">…</code>
+      <a class="btn primary" id="open" href="#">Open in aether.chat</a>
+      <a class="btn secondary" href="https://github.com/NotNyxel/aether.chat-releases/releases/latest">Download aether.chat for Windows</a>
+      <small>Already have it open? You can also paste the code into “Join a server”.</small>
+    </main>
+    <script>
+      // Invite code from #code, ?c=code or ?code=code
+      var q = new URLSearchParams(location.search);
+      var raw = (location.hash.slice(1) || q.get('c') || q.get('code') || '').trim();
+      var code = raw.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
+      document.getElementById('code').textContent = code ? 'aether.chat/inv/' + code : 'No invite code in this link';
+      var open = document.getElementById('open');
+      if (code) {
+        open.href = 'aetherchat://inv/' + encodeURIComponent(code);
+        // Try to open the app straight away.
+        setTimeout(function () { location.href = open.href; }, 300);
+      } else {
+        open.style.display = 'none';
+      }
+    </script>
+  </body>
+</html>

@@ -1,21 +1,13 @@
 /** Bottom-of-sidebar area: voice connection dock and the user panel with status picker and controls. */
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useProfile, useUpdateProfile } from '../hooks/useChatData';
 import { activeCustomStatus } from '../hooks/useDesktop';
-import { PresenceDot, STATUS_LABELS, useActivityOf, usePresenceOf } from '../hooks/usePresence';
+import { PresenceDot, STATUS_LABELS, usePresenceOf } from '../hooks/usePresence';
+import { ActivityLine } from './ActivityCards';
+import { UserPopout } from './UserPopout';
 import { useUiStore } from '../stores/uiStore';
-import type { PresenceStatus } from '../types/db';
 import { useCall } from './CallContext';
-import {
-  CameraIcon,
-  HeadphonesIcon,
-  HeadphonesOffIcon,
-  MicIcon,
-  MicOffIcon,
-  PhoneOffIcon,
-  ScreenIcon,
-  SettingsIcon,
-} from './icons';
+import { BellOffIcon, CameraIcon, HeadphonesIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, PhoneOffIcon, ScreenIcon, SettingsIcon, UsersIcon } from './icons';
 import { Dialog } from './Dialog';
 import { Avatar } from './ProfileCard';
 
@@ -75,15 +67,14 @@ export function VoiceDock() {
           </IconButton>
         </div>
       </div>
-      {myVoiceState?.server_mute && <p className="mt-1 text-xs text-ae-danger">🔇 Server muted by a moderator</p>}
-      {myVoiceState?.server_deaf && <p className="mt-1 text-xs text-ae-danger">🔕 Server deafened by a moderator</p>}
-      {room.stage && myVoiceState?.suppressed && <p className="mt-1 text-xs text-ae-muted">👥 You&apos;re in the audience</p>}
+      {myVoiceState?.server_mute && <p className="mt-1 text-xs text-ae-danger"><MicOffIcon size={15} className="ae-ico" /> Server muted by a moderator</p>}
+      {myVoiceState?.server_deaf && <p className="mt-1 text-xs text-ae-danger"><BellOffIcon size={15} className="ae-ico" /> Server deafened by a moderator</p>}
+      {room.stage && myVoiceState?.suppressed && <p className="mt-1 text-xs text-ae-muted"><UsersIcon size={15} className="ae-ico" /> You&apos;re in the audience</p>}
       {voice.error && <p className="mt-1 text-xs text-ae-danger">{voice.error}</p>}
     </div>
   );
 }
 
-const STATUSES: PresenceStatus[] = ['online', 'idle', 'dnd', 'invisible'];
 
 const CLEAR_AFTER: { label: string; value: string }[] = [
   { label: 'Today', value: 'today' },
@@ -111,7 +102,7 @@ function CustomStatusDialog({ userId, onClose }: { userId: string; onClose: () =
   const [text, setText] = useState(current ?? '');
   const [emoji, setEmoji] = useState(current ? (me?.status_emoji ?? '') : '');
   const [clearAfter, setClearAfter] = useState('today');
-  const input = 'w-full rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm outline-none focus:border-ae-accent';
+  const input = 'ae-input w-full';
   return (
     <Dialog title="Set a custom status" onClose={onClose}>
       <form
@@ -167,23 +158,10 @@ function CustomStatusDialog({ userId, onClose }: { userId: string; onClose: () =
 export function UserPanel({ userId }: { userId: string }) {
   const { voice } = useCall();
   const { data: me } = useProfile(userId);
-  const update = useUpdateProfile(userId);
   const openSettings = useUiStore((s) => s.openSettings);
-  const showProfile = useUiStore((s) => s.showProfile);
   const live = usePresenceOf(userId);
   const [menu, setMenu] = useState(false);
   const [statusDialog, setStatusDialog] = useState(false);
-  const playing = useActivityOf(userId);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menu) return;
-    const close = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenu(false);
-    };
-    window.addEventListener('mousedown', close);
-    return () => window.removeEventListener('mousedown', close);
-  }, [menu]);
 
   const status = me?.presence_status ?? 'online';
   const shownStatus = status === 'invisible' ? 'offline' : live;
@@ -194,7 +172,9 @@ export function UserPanel({ userId }: { userId: string }) {
       <footer className="relative flex items-center gap-1 bg-ae-sunken/60 px-2 py-2">
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-ae p-1 text-left hover:bg-ae-hover"
+          data-user-panel
+          className="ae-plate flex min-w-0 flex-1 items-center gap-2 rounded-ae p-1 text-left hover:bg-ae-hover"
+          data-plate={me?.nameplate || 'none'}
           onClick={() => setMenu((m) => !m)}
         >
           <span className="relative">
@@ -204,7 +184,7 @@ export function UserPanel({ userId }: { userId: string }) {
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold">{me?.display_name || me?.username || '…'}</span>
             <span className="block truncate text-xs text-ae-muted">
-              {playing ? `Playing ${playing}` : (me?.status_emoji && activeCustomStatus(me) ? `${me.status_emoji} ` : '') + (activeCustomStatus(me) || STATUS_LABELS[status])}
+              <ActivityLine userId={userId} fallback={(me?.status_emoji && activeCustomStatus(me) ? `${me.status_emoji} ` : '') + (activeCustomStatus(me) || STATUS_LABELS[status])} />
             </span>
           </span>
         </button>
@@ -218,45 +198,7 @@ export function UserPanel({ userId }: { userId: string }) {
           <SettingsIcon size={16} />
         </IconButton>
 
-        {menu && (
-          <div ref={menuRef} className="absolute bottom-full left-2 z-30 mb-2 w-56 rounded-ae border border-ae-border bg-ae-elevated p-1.5 shadow-2xl">
-            <button
-              type="button"
-              className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-ae-hover"
-              onClick={() => {
-                showProfile(userId);
-                setMenu(false);
-              }}
-            >
-              View my profile
-            </button>
-            <button
-              type="button"
-              className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-ae-hover"
-              onClick={() => {
-                setStatusDialog(true);
-                setMenu(false);
-              }}
-            >
-              {activeCustomStatus(me) ? 'Edit custom status' : 'Set custom status'}
-            </button>
-            <div className="my-1 h-px bg-ae-border" />
-            {STATUSES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-ae-hover ${status === s ? 'bg-ae-surface' : ''}`}
-                onClick={() => {
-                  update.mutate({ presence_status: s });
-                  setMenu(false);
-                }}
-              >
-                <PresenceDot status={s === 'invisible' ? 'offline' : s} size={10} />
-                {STATUS_LABELS[s]}
-              </button>
-            ))}
-          </div>
-        )}
+        {menu && <UserPopout userId={userId} shownStatus={shownStatus} onClose={() => setMenu(false)} onEditStatus={() => setStatusDialog(true)} />}
       </footer>
       {statusDialog && <CustomStatusDialog userId={userId} onClose={() => setStatusDialog(false)} />}
     </>

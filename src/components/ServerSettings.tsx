@@ -3,7 +3,8 @@
  * Every tab and control is gated by the caller's permissions and role rank; the database
  * enforces the same rules (RLS + RPC checks), so the UI only hides what would fail anyway.
  */
-import { ask } from './ConfirmDialog';
+import { inviteLink } from '../lib/invites';
+import { ask, promptText } from './ConfirmDialog';
 import { AutomodTab, ModerationTab, TransferOwnership } from './ServerModeration';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useChannels, useProfile, useServerMembers, useServerPermissions, useUploadProfileMedia } from '../hooks/useChatData';
@@ -22,7 +23,7 @@ import { hasPermission, Permission, PERMISSION_GROUPS, toMask, type PermissionNa
 import { useUiStore, type ServerSettingsTab } from '../stores/uiStore';
 import type { AuditEntry, Server, ServerMember, ServerRole } from '../types/db';
 import { useProfiles } from './ConversationBits';
-import { CloseIcon, PlusIcon } from './icons';
+import { ArchiveIcon, BellIcon, BellOffIcon, BlockIcon, CalendarIcon, CheckIcon, CloseIcon, CrownIcon, FlagIcon, GavelIcon, GripIcon, LockIcon, MailIcon, MegaphoneIcon, MicIcon, MicOffIcon, MinusIcon, PartyIcon, PhoneOffIcon, PlayIcon, PlusIcon, SettingsIcon, SoundboardIcon, SquareIcon, TagIcon, TimeoutIcon, TrashIcon, UnlockIcon, UserCheckIcon, UserCogIcon, UserXIcon } from './icons';
 import { DisplayName, formatTime } from './MessageItem';
 import { Avatar } from './ProfileCard';
 import { SoundboardTab } from './SoundboardSettings';
@@ -386,10 +387,10 @@ function RolesTab({ server, rank }: { server: Server; rank: Rank }) {
                   onClick={() => setSelectedId(r.id)}
                   className={`flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left text-sm ${selected?.id === r.id ? 'bg-ae-surface' : 'hover:bg-ae-hover'}`}
                 >
-                  {movable && <span className="cursor-grab text-ae-muted">⠿</span>}
+                  {movable && <GripIcon size={14} className="cursor-grab text-ae-muted" />}
                   <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: r.color ?? 'var(--ae-text-muted)' }} />
                   <span className="truncate">{r.name}</span>
-                  {!movable && canManage && <span className="ml-auto text-xs text-ae-muted" title="Above your highest role">🔒</span>}
+                  {!movable && canManage && <span className="ml-auto text-xs text-ae-muted" title="Above your highest role"><LockIcon size={15} className="ae-ico" /></span>}
                 </button>
               </li>
             );
@@ -465,7 +466,7 @@ export function MemberModeration({ server, member, rank, compact = false }: { se
       </div>
       {timedOut && (
         <p className="text-xs text-ae-warning">
-          ⏳ Timed out until {new Date(member.timed_out_until!).toLocaleString()}
+          <TimeoutIcon size={15} className="ae-ico" /> Timed out until {new Date(member.timed_out_until!).toLocaleString()}
           {rank.can(Permission.MODERATE_MEMBERS) && outranks && (
             <button type="button" className="ml-2 text-ae-accent hover:underline" onClick={() => mod.timeout.mutate({ userId: member.user_id, minutes: 0 })}>
               Remove timeout
@@ -479,8 +480,8 @@ export function MemberModeration({ server, member, rank, compact = false }: { se
             <button
               type="button"
               className="rounded-ae bg-ae-surface px-2.5 py-1 text-xs hover:bg-ae-hover"
-              onClick={() => {
-                const nick = window.prompt('Nickname (leave empty to reset)', member.nickname ?? '');
+              onClick={async () => {
+                const nick = await promptText('Nickname', { title: 'Change nickname', initial: member.nickname ?? '', maxLength: 32, placeholder: 'Leave empty to reset' });
                 if (nick !== null) mod.nickname.mutate({ userId: member.user_id, nickname: nick });
               }}
             >
@@ -491,11 +492,12 @@ export function MemberModeration({ server, member, rank, compact = false }: { se
             <select
               className="rounded-ae bg-ae-surface px-2 py-1 text-xs hover:bg-ae-hover"
               value=""
-              onChange={(e) => {
+              onChange={async (e) => {
                 const minutes = Number(e.target.value);
                 if (!minutes) return;
-                const reason = window.prompt('Reason (optional, shown in the audit log)') ?? undefined;
-                mod.timeout.mutate({ userId: member.user_id, minutes, reason });
+                const reason = await promptText('Shown in the audit log.', { title: 'Reason (optional)', maxLength: 300, confirmLabel: 'Time out', danger: true });
+                if (reason === null) return;
+                mod.timeout.mutate({ userId: member.user_id, minutes, reason: reason || undefined });
               }}
             >
               <option value="">Timeout…</option>
@@ -510,8 +512,8 @@ export function MemberModeration({ server, member, rank, compact = false }: { se
             <button
               type="button"
               className="rounded-ae bg-ae-surface px-2.5 py-1 text-xs text-ae-danger hover:bg-ae-hover"
-              onClick={() => {
-                const reason = window.prompt('Kick this member? Reason (optional):');
+              onClick={async () => {
+                const reason = await promptText('They can rejoin with an invite. Add a reason for the audit log (optional).', { title: 'Kick this member?', maxLength: 300, confirmLabel: 'Kick', danger: true });
                 if (reason !== null) mod.kick.mutate({ userId: member.user_id, reason: reason || undefined });
               }}
             >
@@ -522,8 +524,8 @@ export function MemberModeration({ server, member, rank, compact = false }: { se
             <button
               type="button"
               className="rounded-ae bg-ae-danger px-2.5 py-1 text-xs font-semibold text-white"
-              onClick={() => {
-                const reason = window.prompt('Ban this member? They cannot rejoin until unbanned. Reason (optional):');
+              onClick={async () => {
+                const reason = await promptText('They can’t rejoin until unbanned. Add a reason for the audit log (optional).', { title: 'Ban this member?', maxLength: 300, confirmLabel: 'Ban', danger: true });
                 if (reason !== null) mod.ban.mutate({ userId: member.user_id, reason: reason || undefined });
               }}
             >
@@ -559,7 +561,7 @@ function MembersTab({ server, rank }: { server: Server; rank: Rank }) {
               <p className="text-sm font-semibold">
                 {m.nickname || p?.display_name || p?.username || '…'}{' '}
                 <span className="font-normal text-ae-muted">@{p?.username}</span>
-                {m.user_id === server.owner_id && <span title="Owner"> 👑</span>}
+                {m.user_id === server.owner_id && <span title="Owner"> <CrownIcon size={15} className="ae-ico" /></span>}
               </p>
               <p className="text-xs text-ae-muted">Joined {new Date(m.joined_at).toLocaleDateString()}</p>
               <MemberModeration server={server} member={m} rank={rank} />
@@ -652,9 +654,9 @@ function InvitesTab({ server, rank, userId }: { server: Server; rank: Rank; user
                       type="button"
                       title="Copy"
                       className="hover:text-ae-accent"
-                      onClick={() => void navigator.clipboard.writeText(inv.code).then(() => setCopied(inv.code))}
+                      onClick={() => void navigator.clipboard.writeText(inviteLink(inv.code)).then(() => setCopied(inv.code))}
                     >
-                      {inv.code} {copied === inv.code ? '✓' : ''}
+                      aether.chat/inv/{inv.code} {copied === inv.code && <CheckIcon size={13} className="ae-ico" />}
                     </button>
                   </td>
                   <td className="truncate">
@@ -689,7 +691,7 @@ function BansTab({ server }: { server: Server }) {
   return (
     <Section title={`Bans (${bans.length})`} description="Banned users can't rejoin with any invite until unbanned.">
       {isLoading && <p className="text-sm text-ae-muted">Loading…</p>}
-      {!isLoading && bans.length === 0 && <p className="text-sm text-ae-muted">Nobody is banned. 🎉</p>}
+      {!isLoading && bans.length === 0 && <p className="text-sm text-ae-muted">Nobody is banned. <PartyIcon size={15} className="ae-ico" /></p>}
       <ul className="divide-y divide-ae-border">
         {bans.map((b, i) => (
           <li key={b.user_id} className="flex items-center gap-3 py-2">
@@ -715,52 +717,52 @@ function BansTab({ server }: { server: Server }) {
 // Audit log
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-const ACTION_LABELS: Record<string, { icon: string; text: string }> = {
-  server_update: { icon: '⚙️', text: 'updated the server' },
-  role_create: { icon: '🎭', text: 'created a role' },
-  role_update: { icon: '🎭', text: 'updated a role' },
-  role_delete: { icon: '🗑️', text: 'deleted a role' },
+const ACTION_LABELS: Record<string, { icon: ReactNode; text: string }> = {
+  server_update: { icon: <SettingsIcon size={15} />, text: 'updated the server' },
+  role_create: { icon: <UserCogIcon size={15} />, text: 'created a role' },
+  role_update: { icon: <UserCogIcon size={15} />, text: 'updated a role' },
+  role_delete: { icon: <TrashIcon size={15} />, text: 'deleted a role' },
   role_reorder: { icon: '↕️', text: 'reordered roles' },
-  member_role_add: { icon: '➕', text: 'added a role to' },
-  member_role_remove: { icon: '➖', text: 'removed a role from' },
+  member_role_add: { icon: <PlusIcon size={15} />, text: 'added a role to' },
+  member_role_remove: { icon: <MinusIcon size={15} />, text: 'removed a role from' },
   channel_create: { icon: '#️⃣', text: 'created a channel' },
   channel_update: { icon: '#️⃣', text: 'updated a channel' },
-  channel_delete: { icon: '🗑️', text: 'deleted a channel' },
+  channel_delete: { icon: <TrashIcon size={15} />, text: 'deleted a channel' },
   channel_reorder: { icon: '↕️', text: 'reordered channels' },
-  overwrite_create: { icon: '🔐', text: 'added channel permissions in' },
-  overwrite_update: { icon: '🔐', text: 'changed channel permissions in' },
-  overwrite_delete: { icon: '🔐', text: 'removed channel permissions in' },
-  member_kick: { icon: '👢', text: 'kicked' },
-  member_ban: { icon: '🔨', text: 'banned' },
-  member_unban: { icon: '🕊️', text: 'unbanned' },
-  member_timeout: { icon: '⏳', text: 'timed out' },
-  member_timeout_remove: { icon: '⌛', text: 'removed the timeout for' },
-  member_nickname: { icon: '🏷️', text: 'changed the nickname of' },
-  invite_create: { icon: '✉️', text: 'created invite' },
-  invite_delete: { icon: '✉️', text: 'revoked invite' },
-  voice_server_mute: { icon: '🔇', text: 'server-muted' },
-  voice_server_unmute: { icon: '🎤', text: 'removed the server mute for' },
-  voice_server_deafen: { icon: '🔕', text: 'server-deafened' },
-  voice_server_undeafen: { icon: '🔔', text: 'removed the server deafen for' },
+  overwrite_create: { icon: <LockIcon size={15} />, text: 'added channel permissions in' },
+  overwrite_update: { icon: <LockIcon size={15} />, text: 'changed channel permissions in' },
+  overwrite_delete: { icon: <LockIcon size={15} />, text: 'removed channel permissions in' },
+  member_kick: { icon: <UserXIcon size={15} />, text: 'kicked' },
+  member_ban: { icon: <GavelIcon size={15} />, text: 'banned' },
+  member_unban: { icon: <UserCheckIcon size={15} />, text: 'unbanned' },
+  member_timeout: { icon: <TimeoutIcon size={15} />, text: 'timed out' },
+  member_timeout_remove: { icon: <TimeoutIcon size={15} />, text: 'removed the timeout for' },
+  member_nickname: { icon: <TagIcon size={15} />, text: 'changed the nickname of' },
+  invite_create: { icon: <MailIcon size={15} />, text: 'created invite' },
+  invite_delete: { icon: <MailIcon size={15} />, text: 'revoked invite' },
+  voice_server_mute: { icon: <MicOffIcon size={15} />, text: 'server-muted' },
+  voice_server_unmute: { icon: <MicIcon size={15} />, text: 'removed the server mute for' },
+  voice_server_deafen: { icon: <BellOffIcon size={15} />, text: 'server-deafened' },
+  voice_server_undeafen: { icon: <BellIcon size={15} />, text: 'removed the server deafen for' },
   voice_move: { icon: '↪️', text: 'moved' },
-  voice_disconnect: { icon: '📴', text: 'disconnected' },
-  sound_create: { icon: '🎵', text: 'added the sound' },
-  sound_update: { icon: '🎵', text: 'updated the sound' },
-  sound_delete: { icon: '🗑️', text: 'removed the sound' },
-  server_transfer: { icon: '👑', text: 'transferred ownership to' },
-  report_resolved: { icon: '✅', text: 'resolved a report about' },
-  report_dismissed: { icon: '🗂️', text: 'dismissed a report about' },
-  report_open: { icon: '⚑', text: 'reopened a report about' },
-  thread_lock: { icon: '🔒', text: 'locked the thread' },
-  thread_unlock: { icon: '🔓', text: 'unlocked the thread' },
-  thread_delete: { icon: '🗑️', text: 'deleted the thread' },
-  channel_follow: { icon: '📢', text: 'followed an announcement channel into' },
-  event_create: { icon: '📅', text: 'scheduled the event' },
-  event_update: { icon: '📅', text: 'edited the event' },
-  event_delete: { icon: '🗑️', text: 'deleted the event' },
-  event_active: { icon: '▶️', text: 'started the event' },
-  event_completed: { icon: '⏹️', text: 'ended the event' },
-  event_canceled: { icon: '🚫', text: 'canceled the event' },
+  voice_disconnect: { icon: <PhoneOffIcon size={15} />, text: 'disconnected' },
+  sound_create: { icon: <SoundboardIcon size={15} />, text: 'added the sound' },
+  sound_update: { icon: <SoundboardIcon size={15} />, text: 'updated the sound' },
+  sound_delete: { icon: <TrashIcon size={15} />, text: 'removed the sound' },
+  server_transfer: { icon: <CrownIcon size={15} />, text: 'transferred ownership to' },
+  report_resolved: { icon: <CheckIcon size={15} />, text: 'resolved a report about' },
+  report_dismissed: { icon: <ArchiveIcon size={15} />, text: 'dismissed a report about' },
+  report_open: { icon: <FlagIcon size={15} />, text: 'reopened a report about' },
+  thread_lock: { icon: <LockIcon size={15} />, text: 'locked the thread' },
+  thread_unlock: { icon: <UnlockIcon size={15} />, text: 'unlocked the thread' },
+  thread_delete: { icon: <TrashIcon size={15} />, text: 'deleted the thread' },
+  channel_follow: { icon: <MegaphoneIcon size={15} />, text: 'followed an announcement channel into' },
+  event_create: { icon: <CalendarIcon size={15} />, text: 'scheduled the event' },
+  event_update: { icon: <CalendarIcon size={15} />, text: 'edited the event' },
+  event_delete: { icon: <TrashIcon size={15} />, text: 'deleted the event' },
+  event_active: { icon: <PlayIcon size={15} />, text: 'started the event' },
+  event_completed: { icon: <SquareIcon size={15} />, text: 'ended the event' },
+  event_canceled: { icon: <BlockIcon size={15} />, text: 'canceled the event' },
 };
 
 function AuditRow({ e }: { e: AuditEntry }) {

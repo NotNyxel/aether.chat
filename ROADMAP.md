@@ -93,7 +93,19 @@ Legend: ✅ shipped · 🚧 in progress · ⬜ planned · 💤 deferred (needs p
 - ✅ Data export and account deletion (plus server ownership transfer)
 - ✅ **Bonus:** profile editor redesign with live-preview pickers; app-wide polish (context menus, tooltips, toasts, confirm dialogs)
 
-## Batch 7: Community & integrations → 0.10.0
+## Final Batch → 1.0.0 ✅
+- ✅ Zero default UI: custom title bar, context menus, pickers, players, prompts and scrollbars
+- ✅ Real icons everywhere, Twemoji for emoji, new status icons with an animation toggle
+- ✅ Invite rework (`aether.chat/inv/CODE`, join by code, previews, invite cards, web link), Add/Join server buttons
+- ✅ Inbox in the title bar, Ctrl+K quick switcher, server header redesign
+- ✅ People search and limited message requests (Accept / Ignore / Block / Block & report)
+- ✅ Spotify listening status and real game art
+- ✅ User popout, Switch Accounts, Profile Studio with a profile board, full profiles
+- ✅ Nameplates, profile frames, more profile themes, effects and name styles, 16 new app themes
+- ✅ Cleaner composer and message layout
+- ✅ Admin panel (stats, users, admins, badges, app settings, reports)
+
+## Batch 7: Community & integrations → 1.1
 - ⬜ Server discovery (opt-in public directory, categories, search)
 - ⬜ Server templates, welcome screen, rules screening
 - ⬜ Incoming webhooks (Edge Function endpoint per channel)

@@ -3,6 +3,7 @@
  * guidelines. Each post is a thread; opening one shows it in the side panel. Media channels use
  * the gallery layout and every post needs an image or video.
  */
+import { AttachIcon, EyeOffIcon, ForumIcon, GridIcon, ImageIcon, ListIcon, LockIcon, MessageIcon, RulesIcon } from './icons';
 import { useMemo, useRef, useState } from 'react';
 import { uploadAttachmentTo, useProfile } from '../hooks/useChatData';
 import { isArchived, useChannelPermissions, useForumStarters, useThreadActions, useThreads } from '../hooks/useThreads';
@@ -48,7 +49,7 @@ function PostCard({ post, starter, forum, layout, onOpen }: { post: Channel; sta
               <video src={media.url} muted className="h-full w-full object-cover" />
             )
           ) : (
-            <div className="grid h-full place-items-center text-4xl opacity-40">{media?.spoiler ? '🙈' : '🖼️'}</div>
+            <div className="grid h-full place-items-center text-4xl opacity-40">{media?.spoiler ? <EyeOffIcon size={36} /> : <ImageIcon size={36} />}</div>
           )}
           {archived && <span className="absolute top-2 left-2 rounded bg-black/60 px-1.5 text-[10px] text-white uppercase">archived</span>}
         </div>
@@ -56,7 +57,7 @@ function PostCard({ post, starter, forum, layout, onOpen }: { post: Channel; sta
           <p className="truncate text-sm font-semibold">{post.name}</p>
           <div className="flex items-center justify-between text-xs text-ae-muted">
             <PostAuthor userId={post.thread_owner_id} />
-            <span className="shrink-0">💬 {replies}</span>
+            <span className="shrink-0"><MessageIcon size={15} className="ae-ico" /> {replies}</span>
           </div>
         </div>
       </button>
@@ -74,7 +75,7 @@ function PostCard({ post, starter, forum, layout, onOpen }: { post: Channel; sta
           </div>
         )}
         <p className="font-semibold">
-          {post.thread_locked && '🔒 '}
+          {post.thread_locked && <LockIcon size={14} className="ae-ico mr-1" />}
           {post.name}
           {archived && <span className="ml-2 rounded bg-ae-surface px-1.5 text-[10px] font-normal text-ae-muted uppercase">archived</span>}
         </p>
@@ -82,7 +83,7 @@ function PostCard({ post, starter, forum, layout, onOpen }: { post: Channel; sta
         <div className="flex items-center gap-3 text-xs text-ae-muted">
           <PostAuthor userId={post.thread_owner_id} />
           <span>
-            💬 {replies} {replies === 1 ? 'reply' : 'replies'}
+            <MessageIcon size={15} className="ae-ico" /> {replies} {replies === 1 ? 'reply' : 'replies'}
           </span>
           <span>{timeAgo(post.last_message_at ?? post.created_at)}</span>
         </div>
@@ -166,7 +167,7 @@ function NewPostDialog({ forum, onClose }: { forum: Channel; onClose: (postId?: 
           onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 10))}
         />
         <button type="button" className="ae-press rounded-ae bg-ae-surface px-3 py-2 text-sm hover:bg-ae-hover" onClick={() => fileRef.current?.click()}>
-          📎 {files.length ? `${files.length} file${files.length > 1 ? 's' : ''} attached` : media ? 'Add an image or video' : 'Attach files'}
+          <AttachIcon size={15} className="ae-ico" /> {files.length ? `${files.length} file${files.length > 1 ? 's' : ''} attached` : media ? 'Add an image or video' : 'Attach files'}
         </button>
         {error && <p className="text-xs text-ae-danger">{error}</p>}
         <div className="flex justify-end gap-2">
@@ -221,14 +222,14 @@ export function ForumView({ forum, server, userId, channels }: { forum: Channel;
           <h1 className="font-semibold">{forum.name}</h1>
           {forum.topic && (
             <button type="button" className="truncate border-l border-ae-border pl-3 text-left text-sm text-ae-muted hover:text-ae-text" onClick={() => setGuidelinesOpen(true)}>
-              📜 Guidelines
+              <RulesIcon size={15} className="ae-ico" /> Guidelines
             </button>
           )}
         </header>
 
         <div className="flex flex-wrap items-center gap-2 border-b border-ae-border px-4 py-2">
           <input
-            className="w-56 rounded-ae border border-ae-border bg-ae-sunken px-2 py-1 text-sm outline-none focus:border-ae-accent"
+            className="ae-input w-56 text-sm"
             placeholder="Search posts"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -240,7 +241,7 @@ export function ForumView({ forum, server, userId, channels }: { forum: Channel;
           <div className="flex rounded-ae border border-ae-border text-xs">
             {(['list', 'gallery'] as const).map((l) => (
               <button key={l} type="button" onClick={() => setLayout(l)} className={`px-2 py-1 capitalize ${layout === l ? 'bg-ae-surface font-semibold' : 'text-ae-muted'}`}>
-                {l === 'list' ? '☰ List' : '▦ Gallery'}
+                {l === 'list' ? <><ListIcon size={13} className="ae-ico" /> List</> : <><GridIcon size={13} className="ae-ico" /> Gallery</>}
               </button>
             ))}
           </div>
@@ -273,7 +274,7 @@ export function ForumView({ forum, server, userId, channels }: { forum: Channel;
             <p className="p-8 text-center text-sm text-ae-muted">Loading posts…</p>
           ) : visible.length === 0 ? (
             <div className="ae-enter p-10 text-center">
-              <p className="mb-2 text-4xl">{forum.subtype === 'media' ? '🖼️' : '💬'}</p>
+              <p className="mb-2 text-4xl">{forum.subtype === 'media' ? <ImageIcon size={40} className="mx-auto" /> : <ForumIcon size={40} className="mx-auto" />}</p>
               <p className="font-semibold">{posts.length ? 'No posts match.' : 'No posts yet.'}</p>
               {canPost && !posts.length && <p className="text-sm text-ae-muted">Start the first conversation with “New post”.</p>}
             </div>

@@ -11,7 +11,7 @@ import { useUiStore } from '../stores/uiStore';
 import type { Channel, Server, ServerEvent } from '../types/db';
 import { useCall } from './CallContext';
 import { Dialog } from './Dialog';
-import { CalendarIcon } from './icons';
+import { CalendarIcon, MapPinIcon, PlayIcon, SquareIcon, StageIcon, StarIcon, VolumeIcon } from './icons';
 import { Avatar } from './ProfileCard';
 import { inputCls } from './SettingsPanel';
 
@@ -83,11 +83,11 @@ function EventCard({ e, server, channels, userId, canManage, interested, going, 
       <p className="text-base font-bold">{e.name}</p>
       {e.description && <p className="text-sm whitespace-pre-wrap text-ae-muted">{e.description}</p>}
       <div className="flex flex-wrap items-center gap-3 text-xs text-ae-muted">
-        <span>{channel ? `${channel.type === 'stream' ? '🎙' : '🔊'} ${channel.name}` : `📍 ${e.location}`}</span>
+        <span className="inline-flex items-center gap-1">{channel ? <>{channel.type === 'stream' ? <StageIcon size={13} /> : <VolumeIcon size={13} />} {channel.name}</> : <><MapPinIcon size={13} /> {e.location}</>}</span>
         <span className="flex items-center gap-1">
           <Avatar profile={host} size={16} showFrame={false} /> Hosted by {host?.display_name || host?.username || '…'}
         </span>
-        <span>⭐ {interested} interested</span>
+        <span><StarIcon size={15} className="ae-ico" /> {interested} interested</span>
       </div>
       <div className="flex flex-wrap gap-2">
         <button
@@ -95,7 +95,7 @@ function EventCard({ e, server, channels, userId, canManage, interested, going, 
           className={`${btn} ${going ? 'bg-ae-accent text-ae-on-accent' : 'bg-ae-surface hover:bg-ae-hover'}`}
           onClick={() => actions.rsvp.mutate({ id: e.id, going: !going, userId })}
         >
-          {going ? '⭐ Interested' : '☆ Interested'}
+          <StarIcon size={13} className="ae-ico" fill={going ? 'currentColor' : 'none'} /> Interested
         </button>
         {e.status === 'active' && channel && (
           <button
@@ -118,12 +118,12 @@ function EventCard({ e, server, channels, userId, canManage, interested, going, 
               if (channel) joinChannel(channel);
             }}
           >
-            ▶ Start event
+            <PlayIcon size={14} className="ae-ico" /> Start event
           </button>
         )}
         {canManage && e.status === 'active' && (
           <button type="button" className={`${btn} bg-ae-surface hover:bg-ae-hover`} onClick={() => actions.update.mutate({ id: e.id, patch: { status: 'completed' } })}>
-            ■ End event
+            <SquareIcon size={13} className="ae-ico" /> End event
           </button>
         )}
         {canManage && (
@@ -191,7 +191,7 @@ function EventForm({ server, channels, initial, onDone }: { server: Server; chan
             onClick={() => setWhere(w)}
             className={`ae-press flex-1 rounded-ae border px-3 py-2 ${where === w ? 'border-ae-accent bg-ae-accent/15' : 'border-ae-border'}`}
           >
-            {w === 'voice' ? '🔊 Voice or stage channel' : '📍 Somewhere else'}
+            {w === 'voice' ? <><VolumeIcon size={15} className="ae-ico" /> Voice or stage channel</> : <><MapPinIcon size={15} className="ae-ico" /> Somewhere else</>}
           </button>
         ))}
       </div>
@@ -199,7 +199,7 @@ function EventForm({ server, channels, initial, onDone }: { server: Server; chan
         <select className={inputCls} value={channelId} onChange={(e) => setChannelId(e.target.value)}>
           {voice.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.type === 'stream' ? '🎙' : '🔊'} {c.name}
+              {c.type === 'stream' ? 'Stage: ' : 'Voice: '}{c.name}
             </option>
           ))}
         </select>

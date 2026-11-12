@@ -4,6 +4,7 @@
  * drag-and-drop) with spoiler and alt text, replies, typing indicator, Enter to send.
  */
 import { toast } from './Toaster';
+import { promptText } from './ConfirmDialog';
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { useSendMessage, useUploadAttachment } from '../hooks/useChatData';
 import { searchEmoji, useEmojiData } from '../lib/emoji';
@@ -12,7 +13,7 @@ import type { Attachment, Channel, Message, MessageScope, ServerRole } from '../
 import { useProfiles } from './ConversationBits';
 import { EmojiPicker } from './EmojiPicker';
 import { DisplayName } from './MessageItem';
-import { CloseIcon, HashIcon, PlusIcon } from './icons';
+import { AttachIcon, ClockIcon, CloseIcon, EyeOffIcon, FileIcon, HashIcon, PlusIcon, PollIcon, ReplyIcon, SendIcon, SmileIcon, TimeoutIcon, TrashIcon, UploadIcon } from './icons';
 import { PollDialog } from './PollDialog';
 import { Avatar } from './ProfileCard';
 
@@ -269,13 +270,11 @@ export function Composer(props: ComposerProps) {
     }
   };
 
-  const hasTop = !!props.replyTo || pending.length > 0 || uploading > 0;
-
   if (props.timedOutUntil) {
     return (
       <div className="px-4 pb-1">
         <div className="rounded-ae border border-ae-warning/50 bg-ae-warning/10 px-4 py-3 text-sm">
-          ⏳ You&apos;re timed out until <strong>{new Date(props.timedOutUntil).toLocaleString()}</strong>. You can read, but not send,
+          <TimeoutIcon size={15} className="ae-ico" /> You&apos;re timed out until <strong>{new Date(props.timedOutUntil).toLocaleString()}</strong>. You can read, but not send,
           react or join voice.
         </div>
       </div>
@@ -309,135 +308,175 @@ export function Composer(props: ComposerProps) {
         </ul>
       )}
 
-      {props.replyTo && (
-        <div className="flex items-center justify-between rounded-t-ae border border-b-0 border-ae-border bg-ae-sunken px-3 py-1.5 text-xs text-ae-muted">
-          <span className="truncate">
-            Replying to <strong className="text-ae-text"><DisplayName userId={props.replyTo.author_id} /></strong>
-          </span>
-          <button type="button" onClick={props.onCancelReply} aria-label="Cancel reply">
-            <CloseIcon size={14} />
-          </button>
-        </div>
-      )}
+      <div className="ae-composer overflow-visible rounded-xl border border-transparent bg-ae-surface/90 shadow-[0_1px_0_rgba(0,0,0,0.15)] transition-[border-color,box-shadow] focus-within:border-ae-accent/50 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ae-accent)_18%,transparent)]">
+        {props.replyTo && (
+          <div className="ae-enter flex items-center gap-2 border-b border-ae-border/60 px-3 py-2 text-xs text-ae-muted">
+            <ReplyIcon size={14} className="shrink-0 text-ae-accent" />
+            <span className="min-w-0 flex-1 truncate">
+              Replying to <strong className="text-ae-text"><DisplayName userId={props.replyTo.author_id} /></strong>
+              {props.replyTo.content && <span className="ml-1.5 opacity-80">{props.replyTo.content.slice(0, 120)}</span>}
+            </span>
+            <button type="button" className="grid h-5 w-5 place-items-center rounded-full hover:bg-ae-hover hover:text-ae-text" onClick={props.onCancelReply} aria-label="Cancel reply">
+              <CloseIcon size={13} />
+            </button>
+          </div>
+        )}
 
-      {(pending.length > 0 || uploading > 0) && (
-        <div className={`flex flex-wrap gap-2 border border-b-0 border-ae-border bg-ae-sunken p-2 ${props.replyTo ? '' : 'rounded-t-ae'}`}>
-          {pending.map((a, i) => (
-            <div key={a.url} className="relative w-28 rounded-ae border border-ae-border bg-ae-surface p-2 text-xs">
-              {a.content_type.startsWith('image/') ? (
-                <img src={a.url} alt={a.alt ?? ''} className={`h-20 w-full rounded object-cover ${a.spoiler ? 'blur-md' : ''}`} />
-              ) : (
-                <span className="block h-20 truncate pt-6 text-center">📄 {a.name}</span>
-              )}
-              <div className="mt-1 flex justify-between gap-1">
-                <button
-                  type="button"
-                  title="Mark as spoiler"
-                  className={`rounded px-1 ${a.spoiler ? 'bg-ae-accent text-ae-on-accent' : 'bg-ae-sunken text-ae-muted hover:text-ae-text'}`}
-                  onClick={() => setPending((p) => p.map((x, j) => (j === i ? { ...x, spoiler: !x.spoiler } : x)))}
-                >
-                  Spoiler
-                </button>
-                <button
-                  type="button"
-                  title="Alt text (describe the file for screen readers)"
-                  className={`rounded px-1 ${a.alt ? 'bg-ae-accent text-ae-on-accent' : 'bg-ae-sunken text-ae-muted hover:text-ae-text'}`}
-                  onClick={() => {
-                    const alt = window.prompt('Describe this file (alt text)', a.alt ?? '');
-                    if (alt !== null) setPending((p) => p.map((x, j) => (j === i ? { ...x, alt: alt.slice(0, 1024) || undefined } : x)));
-                  }}
-                >
-                  ALT
-                </button>
+        {(pending.length > 0 || uploading > 0) && (
+          <div className="ae-scroll flex gap-2.5 overflow-x-auto border-b border-ae-border/60 p-3">
+            {pending.map((a, i) => (
+              <div key={a.url} className="ae-pop group relative w-36 shrink-0 overflow-hidden rounded-lg border border-ae-border bg-ae-sunken">
+                {a.content_type.startsWith('image/') ? (
+                  <img src={a.url} alt={a.alt ?? ''} className={`h-24 w-full object-cover ${a.spoiler ? 'blur-md' : ''}`} />
+                ) : (
+                  <span className="grid h-24 place-items-center text-ae-muted">
+                    <FileIcon size={28} />
+                  </span>
+                )}
+                <p className="truncate px-2 py-1.5 text-xs">{a.name}</p>
+                <div className="absolute top-1.5 right-1.5 flex gap-1 rounded-md bg-ae-elevated/95 p-0.5 opacity-0 shadow transition-opacity group-hover:opacity-100">
+                  <button
+                    type="button"
+                    data-tip={a.spoiler ? 'Remove spoiler' : 'Mark as spoiler'}
+                    className={`grid h-6 w-6 place-items-center rounded ${a.spoiler ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
+                    onClick={() => setPending((p) => p.map((x, j) => (j === i ? { ...x, spoiler: !x.spoiler } : x)))}
+                  >
+                    <EyeOffIcon size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    data-tip="Alt text"
+                    className={`grid h-6 w-6 place-items-center rounded text-[10px] font-bold ${a.alt ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
+                    onClick={async () => {
+                      const alt = await promptText('Describe this file for people using screen readers.', { title: 'Alt text', initial: a.alt ?? '', maxLength: 1024, multiline: true });
+                      if (alt !== null) setPending((p) => p.map((x, j) => (j === i ? { ...x, alt: alt.slice(0, 1024) || undefined } : x)));
+                    }}
+                  >
+                    ALT
+                  </button>
+                  <button
+                    type="button"
+                    data-tip="Remove"
+                    className="grid h-6 w-6 place-items-center rounded text-ae-danger hover:bg-ae-danger/15"
+                    onClick={() => setPending((p) => p.filter((_, j) => j !== i))}
+                    aria-label={`Remove ${a.name}`}
+                  >
+                    <TrashIcon size={14} />
+                  </button>
+                </div>
+                {a.spoiler && <span className="absolute bottom-8 left-1.5 rounded bg-black/70 px-1.5 text-[10px] font-bold text-white uppercase">Spoiler</span>}
               </div>
-              <button
-                type="button"
-                className="absolute -top-2 -right-2 grid h-5 w-5 place-items-center rounded-full bg-ae-danger text-white"
-                onClick={() => setPending((p) => p.filter((_, j) => j !== i))}
-                aria-label={`Remove ${a.name}`}
-              >
-                <CloseIcon size={12} />
-              </button>
-            </div>
-          ))}
-          {uploading > 0 && <span className="self-center text-xs text-ae-muted">Uploading {uploading}…</span>}
-        </div>
-      )}
+            ))}
+            {uploading > 0 && (
+              <div className="grid h-[124px] w-36 shrink-0 place-items-center rounded-lg border border-dashed border-ae-border text-xs text-ae-muted">
+                <span className="text-center">
+                  <span className="ae-skeleton mx-auto mb-2 block h-1.5 w-16 rounded-full" />
+                  Uploading {uploading}…
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
-      <div className={`relative flex items-end gap-2 border border-ae-border bg-ae-surface px-3 py-2 focus-within:border-ae-accent ${hasTop ? 'rounded-b-ae' : 'rounded-ae'}`}>
-        <input
-          ref={fileRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files) addFiles(e.target.files);
-            e.target.value = '';
-          }}
-        />
-        <div className="relative mb-0.5">
-          <button
-            type="button"
-            title="Upload a file or create a poll"
-            className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ae-muted/30 text-ae-text hover:bg-ae-accent hover:text-ae-on-accent"
-            onClick={() => setMenuOpen((o) => !o)}
-          >
-            <PlusIcon size={14} />
-          </button>
-          {menuOpen && (
-            <div className="absolute bottom-full left-0 z-30 mb-2 w-44 rounded-ae border border-ae-border bg-ae-elevated p-1 shadow-2xl" onMouseLeave={() => setMenuOpen(false)}>
-              <button
-                type="button"
-                className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-ae-hover"
-                onClick={() => {
-                  setMenuOpen(false);
-                  fileRef.current?.click();
-                }}
-              >
-                📎 Upload a file
-              </button>
-              <button
-                type="button"
-                className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-ae-hover"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setPollOpen(true);
-                }}
-              >
-                📊 Create a poll
-              </button>
-            </div>
-          )}
-        </div>
-        <textarea
-          ref={textRef}
-          rows={Math.min(8, Math.max(1, draft.split('\n').length))}
-          className="block w-full resize-none bg-transparent text-sm outline-none placeholder:text-ae-muted"
-          placeholder={props.placeholder}
-          maxLength={4000}
-          value={draft}
-          onChange={(e) => onChange(e.target.value, e.target.selectionStart)}
-          onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
-          onKeyDown={onKeyDown}
-          onPaste={onPaste}
-          onBlur={() => setTimeout(() => setDismissed(true), 120)}
-          onFocus={() => setDismissed(false)}
-        />
-        <button type="button" title="Emoji" className="mb-0.5 text-xl leading-none grayscale hover:grayscale-0" onClick={() => setPickerOpen((o) => !o)}>
-          😊
-        </button>
-        {pickerOpen && (
-          <EmojiPicker
-            onClose={() => setPickerOpen(false)}
-            onPick={(e) => {
-              insertAtCaret(e);
-              setPickerOpen(false);
+        <div className="relative flex items-end gap-1 px-2 py-1.5">
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) addFiles(e.target.files);
+              e.target.value = '';
             }}
           />
-        )}
+          <div className="relative">
+            <button
+              type="button"
+              data-tip="Upload or create"
+              aria-label="Upload a file or create a poll"
+              className={`ae-press grid h-8 w-8 shrink-0 place-items-center rounded-full text-ae-muted transition-[transform,color,background] hover:bg-ae-hover hover:text-ae-text ${menuOpen ? 'rotate-45 text-ae-text' : ''}`}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              <PlusIcon size={20} />
+            </button>
+            {menuOpen && (
+              <div className="ae-pop absolute bottom-full left-0 z-30 mb-2 w-52 rounded-ae border border-ae-border bg-ae-elevated p-1.5 shadow-2xl" onMouseLeave={() => setMenuOpen(false)}>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm hover:bg-ae-hover"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    fileRef.current?.click();
+                  }}
+                >
+                  <UploadIcon size={16} className="text-ae-muted" /> Upload a file
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm hover:bg-ae-hover"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setPollOpen(true);
+                  }}
+                >
+                  <PollIcon size={16} className="text-ae-muted" /> Create a poll
+                </button>
+              </div>
+            )}
+          </div>
+          <textarea
+            ref={textRef}
+            rows={Math.min(10, Math.max(1, draft.split('\n').length))}
+            className="ae-scroll block max-h-64 min-h-[32px] w-full resize-none bg-transparent px-1 py-[6px] text-[15px] leading-5 !shadow-none !outline-none placeholder:text-ae-muted/80"
+            placeholder={props.placeholder}
+            maxLength={4000}
+            value={draft}
+            onChange={(e) => onChange(e.target.value, e.target.selectionStart)}
+            onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
+            onKeyDown={onKeyDown}
+            onPaste={onPaste}
+            onBlur={() => setTimeout(() => setDismissed(true), 120)}
+            onFocus={() => setDismissed(false)}
+          />
+          {draft.length > 3600 && <span className={`mb-2 text-[11px] tabular-nums ${draft.length >= 4000 ? 'text-ae-danger' : 'text-ae-muted'}`}>{4000 - draft.length}</span>}
+          <div className="flex items-center">
+            <button type="button" data-tip="Attach" aria-label="Attach a file" className="ae-press grid h-8 w-8 place-items-center rounded-full text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={() => fileRef.current?.click()}>
+              <AttachIcon size={18} />
+            </button>
+            <button
+              type="button"
+              data-tip="Emoji"
+              aria-label="Emoji"
+              className={`ae-press group grid h-8 w-8 place-items-center rounded-full hover:bg-ae-hover ${pickerOpen ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
+              onClick={() => setPickerOpen((o) => !o)}
+            >
+              <SmileIcon size={19} className="transition-transform group-hover:scale-110 group-hover:rotate-12" />
+            </button>
+            {(draft.trim() || pending.length > 0) && (
+              <button
+                type="button"
+                data-tip="Send (Enter)"
+                aria-label="Send"
+                className="ae-pop ae-press ml-0.5 grid h-8 w-8 place-items-center rounded-full bg-ae-accent text-ae-on-accent"
+                onClick={submit}
+              >
+                <SendIcon size={16} />
+              </button>
+            )}
+          </div>
+          {pickerOpen && (
+            <EmojiPicker
+              onClose={() => setPickerOpen(false)}
+              onPick={(e) => {
+                insertAtCaret(e);
+                setPickerOpen(false);
+              }}
+            />
+          )}
+        </div>
       </div>
-      {cooldownLeft > 0 && <p className="text-xs text-ae-warning">🐢 Slow mode is on: you can send again in {cooldownLeft}s.</p>}
-      {!cooldownLeft && !!props.slowmodeSeconds && <p className="text-[11px] text-ae-muted">🐢 Slow mode: one message every {props.slowmodeSeconds}s.</p>}
+      {cooldownLeft > 0 && <p className="mt-1 flex items-center gap-1 px-1 text-xs text-ae-warning"><ClockIcon size={12} /> Slow mode is on: you can send again in {cooldownLeft}s.</p>}
+      {!cooldownLeft && !!props.slowmodeSeconds && <p className="mt-1 flex items-center gap-1 px-1 text-[11px] text-ae-muted"><ClockIcon size={12} /> Slow mode: one message every {props.slowmodeSeconds}s.</p>}
       {(send.isError || upload.isError) && <p className="text-xs text-ae-danger">{(send.error ?? upload.error)?.message}</p>}
 
       {pollOpen && (

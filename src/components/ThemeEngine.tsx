@@ -185,10 +185,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.dataset.aeReduceMotion = String(theme.reduceMotion);
     root.dataset.aeAmbient = String(theme.ambientBackground);
     root.dataset.aeAnimations = theme.animations;
+    root.dataset.aeStatusAnim = String(theme.animateStatus);
     const light = !!THEME_PRESETS[theme.presetId]?.light;
     root.dataset.aeLight = String(light);
     root.style.colorScheme = light ? 'light' : 'dark';
-  }, [tokens, theme.presetId, theme.reduceMotion, theme.ambientBackground, theme.animations]);
+  }, [tokens, theme.presetId, theme.reduceMotion, theme.ambientBackground, theme.animations, theme.animateStatus]);
 
   const customCss = useMemo(
     () =>

@@ -5,6 +5,7 @@
  * opens (or focuses) aether.chat, and we finish signing in here. Web: supabase-js reads the tokens
  * from the page URL by itself (detectSessionInUrl), and we only need to know the link type.
  */
+import { openJoinDialog } from './joinBus';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isTauri } from './platform';
 
@@ -59,6 +60,11 @@ export function listenForAuthLinks(sb: SupabaseClient, onLink: (kind: AuthLinkKi
   const handle = (urls: string[] | null | undefined) => {
     for (const url of urls ?? []) {
       if (!url.startsWith('aetherchat://')) continue;
+      const invite = /^aetherchat:\/\/inv\/([A-Za-z0-9_-]{2,64})/.exec(url);
+      if (invite) {
+        openJoinDialog(invite[1]!);
+        continue;
+      }
       void consume(sb, url).then(
         (kind) => onLink(kind, null),
         (e: unknown) => onLink(null, e instanceof Error ? e.message : String(e)),

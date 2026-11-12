@@ -11,7 +11,7 @@ import { hasPermission, Permission } from '../lib/permissions';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, VoiceState } from '../types/db';
 import { useCall } from './CallContext';
-import { CameraIcon, HeadphonesOffIcon, MicOffIcon } from './icons';
+import { CameraIcon, HandIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, SlidersIcon, StageIcon, UsersIcon, VolumeIcon } from './icons';
 import { Avatar } from './ProfileCard';
 
 function MemberMenu({ state, channels, perms, isOwner, onClose }: {
@@ -41,7 +41,7 @@ function MemberMenu({ state, channels, perms, isOwner, onClose }: {
     <div ref={ref} className="ae-pop absolute top-full left-6 z-40 mt-1 w-52 rounded-ae border border-ae-border bg-ae-elevated p-1.5 shadow-2xl">
       {channel?.type === 'stream' && can(Permission.MUTE_MEMBERS) && (
         <button type="button" className={item} onClick={() => run(() => mod.setSpeaker.mutate({ userId: state.user_id, speaker: state.suppressed }))}>
-          {state.suppressed ? '🎤 Invite to speak' : '👥 Move to audience'}
+          {state.suppressed ? <><MicIcon size={14} className="ae-ico" /> Invite to speak</> : <><UsersIcon size={14} className="ae-ico" /> Move to audience</>}
         </button>
       )}
       {can(Permission.MUTE_MEMBERS) && (
@@ -64,7 +64,7 @@ function MemberMenu({ state, channels, perms, isOwner, onClose }: {
               .filter((c) => (c.type === 'voice' || c.type === 'stream') && c.id !== state.channel_id)
               .map((c) => (
                 <button key={c.id} type="button" className={`${item} pl-5 text-ae-muted`} onClick={() => run(() => mod.move.mutate({ userId: state.user_id, channelId: c.id }))}>
-                  {c.type === 'stream' ? '🎙' : '🔊'} {c.name}
+                  {c.type === 'stream' ? <StageIcon size={14} className="ae-ico" /> : <VolumeIcon size={14} className="ae-ico" />} {c.name}
                 </button>
               ))}
           <button type="button" className={`${item} text-ae-danger`} onClick={() => run(() => mod.disconnect.mutate(state.user_id))}>
@@ -98,13 +98,13 @@ function Occupant({ state, speaking, canModerate, channels, perms, isOwner, me }
         type="button"
         onClick={() => showProfile(state.user_id)}
         onContextMenu={(e) =>
-          userMenu(e, state.user_id, canModerate && state.user_id !== me ? [{ label: 'Voice moderation…', icon: '🎚', onClick: () => setMenu(true) }] : [], state.server_id)
+          userMenu(e, state.user_id, canModerate && state.user_id !== me ? [{ label: 'Voice moderation…', icon: <SlidersIcon size={15} />, onClick: () => setMenu(true) }] : [], state.server_id)
         }
         className={`group flex w-full items-center gap-2 rounded py-0.5 pr-1 pl-8 text-left text-sm hover:bg-ae-hover ${state.suppressed ? 'text-ae-muted/70' : 'text-ae-muted'}`}
       >
         <Avatar profile={profile} size={20} speaking={speaking} showFrame={false} />
         <span className="truncate">{profile?.display_name || profile?.username || '…'}</span>
-        {state.request_to_speak_at && <span title="Wants to speak">✋</span>}
+        {state.request_to_speak_at && <span title="Wants to speak"><HandIcon size={15} className="ae-ico" /></span>}
         <span className="ml-auto flex items-center gap-1">
           {state.streaming && <span className="ae-live rounded bg-ae-danger px-1 text-[9px] font-bold text-white">LIVE</span>}
           {state.camera && <CameraIcon size={12} />}

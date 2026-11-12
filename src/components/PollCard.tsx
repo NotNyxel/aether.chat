@@ -1,4 +1,5 @@
 /** Live poll: vote by clicking an answer (click again to remove), bars update in realtime. */
+import { CheckIcon } from './icons';
 import { useEffect, useState } from 'react';
 import type { Message, PollVote } from '../types/db';
 
@@ -76,7 +77,7 @@ export function PollCard({ message, votes, me, onVote }: {
                     chosen ? 'border-ae-accent bg-ae-accent text-[10px] text-ae-on-accent' : 'border-ae-muted'
                   }`}
                 >
-                  {chosen && '✓'}
+                  {chosen && <CheckIcon size={13} />}
                 </span>
               </button>
             </li>

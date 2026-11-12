@@ -2,6 +2,7 @@
  * Under someone's profile card: mutual servers and friends, your private note and friend
  * nickname for them, and a report shortcut.
  */
+import { EditIcon, FlagIcon, TagIcon } from './icons';
 import { useEffect, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { useMutuals, useNotes, useSaveNote } from '../hooks/useAccount';
@@ -83,7 +84,7 @@ export function ProfileExtras({ me, userId, serverId }: { me: string; userId: st
       <label className="block">
         <span className="text-[11px] font-bold tracking-wide text-ae-muted uppercase">Note (only you can see it)</span>
         <textarea
-          className="mt-1 w-full resize-none rounded-ae border border-transparent bg-ae-sunken px-2 py-1.5 text-sm outline-none focus:border-ae-accent"
+          className="ae-input mt-1 w-full resize-none text-sm"
           rows={2}
           maxLength={256}
           placeholder="Click to add a note"
@@ -91,7 +92,7 @@ export function ProfileExtras({ me, userId, serverId }: { me: string; userId: st
           onChange={(e) => setNote(e.target.value)}
           onBlur={() =>
             note !== (existing?.note ?? '') &&
-            save.mutate({ targetId: userId, note }, { onSuccess: () => toast('Note saved', '📝'), onError: (e) => toast.error(e.message) })
+            save.mutate({ targetId: userId, note }, { onSuccess: () => toast('Note saved', <EditIcon size={14} />), onError: (e) => toast.error(e.message) })
           }
         />
       </label>
@@ -99,20 +100,20 @@ export function ProfileExtras({ me, userId, serverId }: { me: string; userId: st
         <label className="block">
           <span className="text-[11px] font-bold tracking-wide text-ae-muted uppercase">Friend nickname (only you see it)</span>
           <input
-            className="mt-1 w-full rounded-ae border border-transparent bg-ae-sunken px-2 py-1.5 text-sm outline-none focus:border-ae-accent"
+            className="ae-input mt-1 w-full text-sm"
             maxLength={32}
             placeholder="Shown in your friends list and DMs"
             value={nick}
             onChange={(e) => setNick(e.target.value)}
             onBlur={() =>
               nick !== (existing?.nickname ?? '') &&
-              save.mutate({ targetId: userId, nickname: nick }, { onSuccess: () => toast('Nickname saved', '🏷️'), onError: (e) => toast.error(e.message) })
+              save.mutate({ targetId: userId, nickname: nick }, { onSuccess: () => toast('Nickname saved', <TagIcon size={14} />), onError: (e) => toast.error(e.message) })
             }
           />
         </label>
       )}
       <button type="button" className="text-xs text-ae-muted hover:text-ae-danger" onClick={() => openReport({ userId, serverId })}>
-        ⚑ Report user
+        <FlagIcon size={15} className="ae-ico" /> Report user
       </button>
     </div>
   );

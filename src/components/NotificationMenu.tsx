@@ -13,7 +13,7 @@ import {
   useSetNotificationSetting,
 } from '../hooks/useNotifications';
 import type { NotificationLevel, NotificationSetting } from '../types/db';
-import { BellIcon, BellOffIcon } from './icons';
+import { BellIcon, BellOffIcon, ChevronRightIcon } from './icons';
 
 export interface NotifyScope {
   kind: NotificationSetting['scope_kind'];
@@ -50,7 +50,7 @@ export function NotificationOptions({ scope, onDone }: { scope: NotifyScope; onD
         <>
           <button type="button" className={item} onClick={() => setShowMute((v) => !v)}>
             <BellOffIcon size={15} /> Mute {noun}
-            <span className="ml-auto text-ae-muted">{showMute ? '▾' : '▸'}</span>
+            <ChevronRightIcon size={14} className={`ml-auto text-ae-muted transition-transform ${showMute ? 'rotate-90' : ''}`} />
           </button>
           {showMute && (
             <div className="ml-6 border-l border-ae-border pl-1">

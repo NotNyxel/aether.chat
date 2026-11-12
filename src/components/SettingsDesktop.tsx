@@ -4,7 +4,9 @@
  */
 import { useEffect, useState } from 'react';
 import { isSafeGlobal, useFailedGlobalShortcuts } from '../hooks/useKeybinds';
-import { useActivityOf } from '../hooks/usePresence';
+import { useActivityOf, useListeningOf } from '../hooks/usePresence';
+import { ListeningCard } from './ActivityCards';
+import { GameArtIcon } from '../lib/activityArt';
 import { getAutostart, notify, runningProcesses, setAutostart } from '../lib/desktop';
 import { detectGame, KNOWN_GAMES } from '../lib/games';
 import { formatCombo } from '../lib/keybinds';
@@ -23,7 +25,7 @@ export function DesktopNotificationsSection() {
   return (
     <Section
       title="Desktop notifications"
-      description="Shown while aether.chat is in the background, for DMs, mentions and calls. Muted chats and Do Not Disturb never notify. Choose per server, channel or DM with the 🔔 in its header."
+      description="Shown while aether.chat is in the background, for DMs, mentions and calls. Muted chats and Do Not Disturb never notify. Choose per server, channel or DM with the bell in its header."
     >
       <Toggle label="Enable desktop notifications" checked={prefs.desktop} onChange={(v) => set({ desktop: v })} />
       <Toggle
@@ -43,7 +45,7 @@ export function DesktopNotificationsSection() {
         <button
           type="button"
           className="rounded-ae bg-ae-surface px-3 py-1.5 text-sm hover:bg-ae-hover"
-          onClick={() => void notify('aether.chat', 'Notifications are working. 🎉').then(() => !isTauri && 'Notification' in window && setPermission(Notification.permission))}
+          onClick={() => void notify('aether.chat', 'Notifications are working!').then(() => !isTauri && 'Notification' in window && setPermission(Notification.permission))}
         >
           Send a test notification
         </button>
@@ -149,6 +151,7 @@ export function ActivityTab({ userId }: { userId: string }) {
   const activity = useSettingsStore((s) => s.activity);
   const setActivity = useSettingsStore((s) => s.setActivity);
   const current = useActivityOf(userId);
+  const track = useListeningOf(userId);
   const [exe, setExe] = useState('');
   const [name, setName] = useState('');
   const [running, setRunning] = useState<string[] | null>(null);
@@ -174,7 +177,9 @@ export function ActivityTab({ userId }: { userId: string }) {
               <p className="text-sm">
                 {current ? (
                   <>
-                    🎮 Now playing <b>{current}</b>
+                    <span className="flex items-center gap-2">
+                      <GameArtIcon name={current} size={28} /> Now playing <b>{current}</b>
+                    </span>
                   </>
                 ) : (
                   <span className="text-ae-muted">No game detected right now.</span>
@@ -184,6 +189,20 @@ export function ActivityTab({ userId }: { userId: string }) {
           </>
         ) : (
           <p className="text-sm text-ae-muted">Game detection is available in the desktop app.</p>
+        )}
+      </Section>
+
+      <Section
+        title="Spotify"
+        description="Shows the song you're playing in the Spotify desktop app, with album art and a progress bar, on your profile and in member lists. Read from Windows' media controls; no Spotify login needed."
+      >
+        {isTauri ? (
+          <>
+            <Toggle label="Share what I'm listening to" checked={activity.shareSpotify} onChange={(v) => setActivity({ shareSpotify: v })} />
+            {activity.shareSpotify && (track ? <ListeningCard track={track} compact /> : <p className="text-sm text-ae-muted">Nothing playing in Spotify right now.</p>)}
+          </>
+        ) : (
+          <p className="text-sm text-ae-muted">Spotify status is available in the desktop app.</p>
         )}
       </Section>
 

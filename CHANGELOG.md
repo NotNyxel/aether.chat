@@ -3,6 +3,84 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.0.0] - 2026-11-12
+
+**The Final Batch: aether.chat 1.0**
+
+- **Zero default UI:**
+  - a custom title bar (minimise, maximise, close) instead of the Windows frame;
+  - custom right-click menus everywhere: Cut, Copy, Paste and Emoji in text boxes, plus menus for links and
+    images;
+  - custom dropdowns, colour pickers, date and time pickers, checkboxes, radios, sliders and scrollbars;
+  - custom audio and video players;
+  - in-app prompts replace every browser pop-up;
+  - browser shortcuts (print, find, view source and others) are blocked.
+- **Real icons instead of emoji:**
+  - every UI icon is now from one consistent icon set;
+  - emoji in messages, names and statuses use the bundled **Twemoji** set on every PC, not the Windows emoji;
+  - badges are proper icon badges, and five new badges were added.
+- **New status icons:** online, idle (moon), do not disturb (bar) and offline (ring), with a morph animation.
+  Toggle it in Appearance → "Animate status icons".
+- **Invites, reworked:**
+  - every invite is an `aether.chat/inv/CODE` link, or you can type just the code (for example `aether`);
+  - codes work in any case;
+  - the new **Join a server** dialog shows a live preview of the server before you join;
+  - invite links in chat render as cards with a Join button;
+  - a web link (`notnyxel.github.io/aether.chat-releases/inv/#CODE`) opens the app straight to the invite.
+- **Add a server** button and a separate **Join** (compass) button on the server rail.
+- **Invite people** dialog: send invites to friends in one click, copy the link, choose an expiry.
+- **Inbox moved** to the title bar, next to a new **Search** button (Ctrl+K quick switcher). The search covers
+  friends, DMs, servers, channels and people.
+- **Server header redesign:** the banner fades behind the server name, so they no longer overlap.
+- **Message requests and people search:**
+  - **Search for someone** (next to Add Friend) finds anyone by name;
+  - you can message a stranger up to 3 times (admins can change the limit);
+  - they get it under **Message requests** with Accept, Ignore, Block and **Block & report spam**;
+  - Privacy now has "Everyone" for DMs and "Let people find me in search".
+- **"Find or start a conversation"** bar at the top of your DM list.
+- **Spotify:** share what you're listening to (Settings → Activity Privacy). It shows the album art, song, artist,
+  album and a live progress bar on your profile, and "Listening to …" in member lists. It reads Windows' media
+  controls, so no Spotify login is needed.
+- **Real game art:** "Playing" shows the game's artwork from Steam, or its logo for games like VALORANT, League of
+  Legends and Fortnite.
+- **User popout** (click yourself at the bottom left):
+  - your banner, avatar and a status thought bubble;
+  - name, username and pronouns, badges and bio;
+  - Edit Profile;
+  - a status submenu;
+  - **Switch Accounts**: stay signed in to several accounts and hop between them;
+  - Copy User ID.
+- **Profile Studio:** a full-screen Edit Profile.
+  - Left: decoration tiles, each opening a picker with a live preview.
+  - Center: your full profile.
+  - Right: your **profile board**, with widgets for Favorite game, Games I like (with artwork), On repeat,
+    Card and Quote.
+- **Full profiles:** clicking anyone opens their full profile with their board.
+- **Nameplates:** 15 animated plates behind your name in member lists, DMs, friends and the user panel.
+- **Profile frames:** 11 ornate frames, including White Roses, Crimson Roses, Gilded, Prism, Starfall, Circuit
+  and Vines.
+- **More customization:**
+  - 6 new profile themes;
+  - 6 new name effects (Fire, Ice, Chrome, Pastel, Toxic, Glitch);
+  - 4 new profile effects (Embers, Autumn, Music, Lightning).
+- **16 new app themes (40 in total):** Everforest, Kanagawa, One Dark, Ayu Mirage, Material Ocean, Lavender
+  Haze, Coffee, Amethyst, Aurora Borealis, Blood Moon, Retro Terminal, Nightfall, Mint, Arctic, Cotton Candy
+  and Clean Light.
+- **Cleaner chat:**
+  - a redesigned composer: a rounded box with upload, attach, emoji and send buttons, a reply bar that shows
+    the message, and attachment cards with spoiler, alt-text and remove actions;
+  - roomier messages with reply connector lines, tidier reactions and a lighter hover toolbar;
+  - one consistent style for every text box.
+- **Admin panel** (Settings → Admin Panel, only for admin accounts):
+  - live stats;
+  - user search with email and activity;
+  - grant or remove admin;
+  - award badges;
+  - app settings (message request limit, people search, an app-wide announcement banner);
+  - review reports from DMs and message requests.
+  - Admins can also be set in Supabase (`users.is_admin`).
+- Database: `supabase/migrations/009_final.sql` and `010_invites.sql`. New Edge Function: `game-art`.
+
 ## [0.9.0] - 2026-11-12
 
 **Batch 6: accounts, privacy and safety, plus a redesigned profile editor and a polish pass**

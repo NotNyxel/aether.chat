@@ -1,4 +1,5 @@
 /** Friends page: Online / All / Pending / Blocked tabs and Add Friend by username. */
+import { MessageRequests, SearchPeople, useRequestConversations } from './FriendsExtras';
 import { ask } from './ConfirmDialog';
 import { useFriendNickname } from '../hooks/useAccount';
 import { useMeId } from '../hooks/useMe';
@@ -6,14 +7,15 @@ import { useUserMenu } from '../hooks/useUserMenu';
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { activeCustomStatus } from '../hooks/useDesktop';
-import { PresenceDot, STATUS_LABELS, useActivityOf, usePresenceMap, usePresenceOf } from '../hooks/usePresence';
+import { PresenceDot, STATUS_LABELS, usePresenceMap, usePresenceOf } from '../hooks/usePresence';
+import { ActivityLine } from './ActivityCards';
 import { useBlocks, useConversationActions, useFriendActions, useFriendships } from '../hooks/useSocialData';
 import { useUiStore } from '../stores/uiStore';
 import { useCall } from './CallContext';
-import { CloseIcon, MessageIcon, PhoneIcon, UsersIcon } from './icons';
+import { CheckIcon, CloseIcon, MessageIcon, PhoneIcon, SearchIcon, UsersIcon } from './icons';
 import { Avatar } from './ProfileCard';
 
-type Tab = 'online' | 'all' | 'pending' | 'blocked' | 'add';
+type Tab = 'online' | 'all' | 'pending' | 'requests' | 'blocked' | 'add' | 'search';
 
 function ActionButton({ title, onClick, danger, children }: { title: string; onClick: () => void; danger?: boolean; children: ReactNode }) {
   return (
@@ -38,11 +40,11 @@ function PersonRow({ userId, subtitle, actions }: { userId: string; subtitle?: s
   const nickname = useFriendNickname(userId);
   const { data: p } = useProfile(userId);
   const status = usePresenceOf(userId);
-  const playing = useActivityOf(userId);
   const showProfile = useUiStore((s) => s.showProfile);
   return (
     <li
-      className="group flex cursor-pointer items-center gap-3 border-t border-ae-border px-2 py-2.5 hover:rounded-ae hover:bg-ae-hover"
+      data-plate={p?.nameplate || 'none'}
+      className="ae-plate group flex cursor-pointer items-center gap-3 border-t border-ae-border px-2 py-2.5 hover:rounded-ae hover:bg-ae-hover"
       onClick={() => showProfile(userId)}
       onContextMenu={(e) => userMenu(e, userId)}
     >
@@ -54,7 +56,7 @@ function PersonRow({ userId, subtitle, actions }: { userId: string; subtitle?: s
         <span className="block truncate text-sm font-semibold">
           {nickname || p?.display_name || p?.username || '…'} <span className="font-normal text-ae-muted">@{p?.username}</span>
         </span>
-        <span className="block truncate text-xs text-ae-muted">{subtitle ?? (playing ? `Playing ${playing}` : activeCustomStatus(p) || STATUS_LABELS[status])}</span>
+        <span className="block truncate text-xs text-ae-muted">{subtitle ?? <ActivityLine userId={userId} fallback={activeCustomStatus(p) || STATUS_LABELS[status]} />}</span>
       </span>
       <span className="flex gap-2">{actions}</span>
     </li>
@@ -119,6 +121,7 @@ export function FriendsView({ userId }: { userId: string }) {
   const { callConversation } = useCall();
   const openHome = useUiStore((s) => s.openHome);
   const presence = usePresenceMap();
+  const requestCount = useRequestConversations(userId).length;
 
   const friends = useMemo(
     () =>
@@ -164,6 +167,7 @@ export function FriendsView({ userId }: { userId: string }) {
     { id: 'online', label: 'Online' },
     { id: 'all', label: 'All' },
     { id: 'pending', label: 'Pending', badge: incoming.length },
+    { id: 'requests', label: 'Message requests', badge: requestCount },
     { id: 'blocked', label: 'Blocked' },
   ];
 
@@ -193,11 +197,20 @@ export function FriendsView({ userId }: { userId: string }) {
         >
           Add Friend
         </button>
+        <button
+          type="button"
+          onClick={() => setTab('search')}
+          className={`flex items-center gap-1.5 rounded-ae px-2 py-0.5 text-sm font-medium ${tab === 'search' ? 'bg-ae-surface text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'}`}
+        >
+          <SearchIcon size={14} /> Search for someone
+        </button>
       </header>
 
       <div className="ae-scroll flex-1 overflow-y-auto px-6 py-4">
         {error && <p className="mb-2 text-sm text-ae-danger">{error.message}</p>}
         {tab === 'add' && <AddFriend />}
+        {tab === 'search' && <SearchPeople />}
+        {tab === 'requests' && <MessageRequests me={userId} />}
 
         {(tab === 'online' || tab === 'all') && (
           <>
@@ -229,7 +242,7 @@ export function FriendsView({ userId }: { userId: string }) {
                   actions={
                     <>
                       <ActionButton title="Accept" onClick={() => actions.accept.mutate(f.requester_id)}>
-                        <span className="text-ae-success">✓</span>
+                        <span className="text-ae-success"><CheckIcon size={15} className="ae-ico" /></span>
                       </ActionButton>
                       <ActionButton title="Ignore" danger onClick={() => actions.remove.mutate(f.requester_id)}>
                         <CloseIcon size={16} />

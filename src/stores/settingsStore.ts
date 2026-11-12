@@ -28,6 +28,8 @@ export interface ThemeSettings {
   ambientBackground: boolean;
   /** How lively the interface is: full (springy), subtle, or off. */
   animations: 'full' | 'subtle' | 'off' | 'system';
+  /** Status icons morph between states and glow softly. */
+  animateStatus: boolean;
 }
 
 export interface Keybinds {
@@ -69,6 +71,8 @@ export interface SystemPrefs {
 export interface ActivityPrefs {
   /** Detect running games and show "Playing …" to others. Off by default. */
   shareActivity: boolean;
+  /** Share the Spotify track you're listening to. */
+  shareSpotify: boolean;
   customGames: CustomGame[];
 }
 
@@ -103,6 +107,7 @@ export const DEFAULT_THEME: ThemeSettings = {
   reduceMotion: false,
   ambientBackground: true,
   animations: 'full',
+  animateStatus: true,
 };
 
 export const DEFAULT_KEYBINDS: Keybinds = {
@@ -120,7 +125,7 @@ export const DEFAULT_SOUNDS: SoundSettings = {
 
 export const DEFAULT_NOTIFICATIONS: NotificationPrefs = { desktop: true, showPreview: true, taskbarBadge: true, flashOnCall: true };
 export const DEFAULT_SYSTEM: SystemPrefs = { closeToTray: true, globalShortcuts: true, autoIdleMinutes: 10 };
-export const DEFAULT_ACTIVITY: ActivityPrefs = { shareActivity: false, customGames: [] };
+export const DEFAULT_ACTIVITY: ActivityPrefs = { shareActivity: false, shareSpotify: false, customGames: [] };
 
 export const useSettingsStore = create<SettingsState>()(
   persist(

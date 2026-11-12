@@ -87,6 +87,76 @@ fn running_processes() -> Vec<String> {
     }
 }
 
+/// What Spotify is playing, read from Windows' media session API (the same source as the volume
+/// flyout's media card). No Spotify account or API key needed. None when Spotify isn't playing.
+#[derive(serde::Serialize)]
+struct NowPlaying {
+    title: String,
+    artist: String,
+    album: String,
+    position_ms: u64,
+    duration_ms: u64,
+    playing: bool,
+}
+
+#[tauri::command]
+async fn now_playing() -> Result<Option<NowPlaying>, String> {
+    #[cfg(windows)]
+    {
+        Ok(tauri::async_runtime::spawn_blocking(read_spotify).await.ok().flatten())
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(None)
+    }
+}
+
+#[cfg(windows)]
+fn read_spotify() -> Option<NowPlaying> {
+    use windows::Media::Control::{
+        GlobalSystemMediaTransportControlsSessionManager as Manager, GlobalSystemMediaTransportControlsSessionPlaybackStatus as Status,
+    };
+    let manager = Manager::RequestAsync().ok()?.join().ok()?;
+    let sessions = manager.GetSessions().ok()?;
+    let mut spotify = None;
+    for i in 0..sessions.Size().ok()? {
+        let session = sessions.GetAt(i).ok()?;
+        let app = session.SourceAppUserModelId().ok()?.to_string().to_ascii_lowercase();
+        if app.contains("spotify") {
+            spotify = Some(session);
+            break;
+        }
+    }
+    let session = spotify?;
+    let props = session.TryGetMediaPropertiesAsync().ok()?.join().ok()?;
+    let title = props.Title().ok()?.to_string();
+    if title.is_empty() {
+        return None;
+    }
+    let artist = props.Artist().map(|s| s.to_string()).unwrap_or_default();
+    let album = props.AlbumTitle().map(|s| s.to_string()).unwrap_or_default();
+    let playing = session.GetPlaybackInfo().ok()?.PlaybackStatus().ok()? == Status::Playing;
+    let timeline = session.GetTimelineProperties().ok()?;
+    let ticks = |d: i64| (d.max(0) / 10_000) as u64; // TimeSpan is in 100 ns units
+    let mut position_ms = ticks(timeline.Position().ok()?.Duration);
+    let duration_ms = ticks(timeline.EndTime().ok()?.Duration - timeline.StartTime().ok()?.Duration);
+    // Spotify only reports the position when it changes state; add the time since that report.
+    if playing {
+        if let Ok(updated) = timeline.LastUpdatedTime() {
+            const EPOCH_DIFF_100NS: i64 = 116_444_736_000_000_000; // 1601 → 1970
+            let now_100ns = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos() as i64 / 100 + EPOCH_DIFF_100NS)
+                .unwrap_or(0);
+            let elapsed = now_100ns - updated.UniversalTime;
+            if elapsed > 0 {
+                position_ms += (elapsed / 10_000) as u64;
+            }
+        }
+    }
+    Some(NowPlaying { title, artist, album, position_ms: position_ms.min(duration_ms.max(1)), duration_ms, playing })
+}
+
 /// Saves a data export. The save dialog runs here (not in the web page), so the page can only
 /// write a file to the place the user picks.
 #[tauri::command]
@@ -133,6 +203,7 @@ pub fn run() {
                 .unwrap_or(false);
             match kind {
                 PermissionKind::Microphone | PermissionKind::Camera | PermissionKind::Notifications | PermissionKind::Autoplay
+                | PermissionKind::ClipboardRead
                     if own_page =>
                 {
                     PermissionResponse::Allow
@@ -140,7 +211,7 @@ pub fn run() {
                 _ => PermissionResponse::Default,
             }
         })
-        .invoke_handler(tauri::generate_handler![set_close_to_tray, idle_seconds, running_processes, save_export])
+        .invoke_handler(tauri::generate_handler![set_close_to_tray, idle_seconds, running_processes, save_export, now_playing])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open aether.chat", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Toggle mute", true, None::<&str>)?;

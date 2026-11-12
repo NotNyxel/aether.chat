@@ -34,6 +34,11 @@
 That's it. There's nothing to configure. The app keeps itself up to date: every time it starts, it checks for a
 new version and installs it before opening.
 
+**macOS and Linux:** download from the [Releases page](https://github.com/NotNyxel/aether.chat-releases/releases/latest):
+- macOS (Apple Silicon and Intel): `aether.chat_<version>_macos-universal.dmg`. The app isn't notarised by Apple yet, so
+  the first time, right-click it and choose **Open** (or run `xattr -cr "/Applications/aether.chat.app"`).
+- Linux: `…_linux-x86_64.AppImage` (updates itself; `chmod +x` it and run) or `…_linux-amd64.deb`.
+
 **No install?** Use the web app at **[aether-chat-beta.vercel.app](https://aether-chat-beta.vercel.app)** in any browser,
 on PC or phone.
 
@@ -310,7 +315,9 @@ Features ship in themed batches, one minor version each. See **[ROADMAP.md](ROAD
   has no click events on Windows). Open the Inbox to jump to it.
 - **Spotify status reads Windows' media controls,** so it needs the Spotify desktop app (not the web player).
 - **Switch Accounts remembers accounts on this device only.** Signing out of an account removes it from the list.
-- **Windows only** for now.
+- **Native screen capture** (our own picker, per-app audio) is Windows-only. macOS and Linux use the system's screen picker.
+- **macOS builds aren't notarised** (that needs a paid Apple Developer account), so Gatekeeper asks once.
+- **Game and Spotify status** read Windows APIs, so they're Windows-only for now.
 
 ## Credits
 - Emoji: [Twemoji](https://github.com/twitter/twemoji) by Twitter (graphics CC-BY 4.0), via the

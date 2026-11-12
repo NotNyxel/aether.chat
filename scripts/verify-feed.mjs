@@ -25,7 +25,10 @@ const newer = (a, b) => {
 
 const endpoint = conf.plugins.updater.endpoints[0];
 const feed = await (await fetch(endpoint)).json();
-const target = feed.platforms['windows-x86_64'];
+const platformArg = process.argv.indexOf('--platform');
+const platform = platformArg > 0 ? process.argv[platformArg + 1] : 'windows-x86_64';
+const target = feed.platforms[platform];
+if (!target) throw new Error(`latest.json has no ${platform} entry`);
 console.log(`feed:      ${endpoint}`);
 console.log(`latest:    ${feed.version} (published ${feed.pub_date})`);
 console.log(`installed: ${from} -> update offered: ${newer(feed.version, from)}`);

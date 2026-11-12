@@ -16,6 +16,7 @@ import { ActivityLine } from './ActivityCards';
 import { BellIcon, BellOffIcon, CheckIcon, CloseIcon, InboxIcon, PhoneIcon, PlusIcon, SearchIcon, UsersIcon } from './icons';
 import { useRequestConversations } from './FriendsExtras';
 import { UserPanel } from './UserPanel';
+import { plateProps } from '../lib/cosmetics';
 
 function ConversationRow({ conv, me, active, inCall, count: rawCount, muted }: {
   conv: Conversation;
@@ -59,7 +60,7 @@ function ConversationRow({ conv, me, active, inCall, count: rawCount, muted }: {
         type="button"
         onClick={() => openHome(conv.id)}
         onContextMenu={(e) => (other ? userMenu(e, other, ['divider', ...dmItems]) : openContextMenu(e, dmItems))}
-        data-plate={otherProfile?.nameplate || 'none'}
+        {...plateProps(otherProfile?.nameplate, otherProfile?.decor)}
         className={`ae-plate flex w-full items-center gap-3 rounded-ae px-2 py-1.5 text-left ${
           active ? 'bg-ae-surface text-ae-text' : unread ? 'text-ae-text hover:bg-ae-hover' : `text-ae-muted hover:bg-ae-hover hover:text-ae-text ${muted ? 'opacity-50' : ''}`
         }`}

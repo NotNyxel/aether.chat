@@ -385,10 +385,10 @@ nav[aria-label='Servers'] > button:hover {
 }
 @keyframes ae-fall {
   from {
-    transform: translate3d(0, -40px, 0) rotate(0deg);
+    transform: translate3d(0, -40px, 0) rotate(var(--rot, 0deg));
   }
   to {
-    transform: translate3d(var(--drift, 0px), 620px, 0) rotate(var(--spin, 0deg));
+    transform: translate3d(var(--drift, 0px), 620px, 0) rotate(calc(var(--rot, 0deg) + var(--spin, 0deg)));
   }
 }
 @keyframes ae-rise {

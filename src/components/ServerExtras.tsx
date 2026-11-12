@@ -3,13 +3,20 @@
  * and → "Bot" (the built-in bot and its slash commands). Saved straight to public.servers; the
  * rules live in 012_servers_bot.sql.
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSupabase } from '../lib/supabase';
+import { useServerEmojis } from '../lib/customEmoji';
+import { promptText } from './ConfirmDialog';
+import { toast } from './Toaster';
 import { useChannels } from '../hooks/useChatData';
 import { useUpdateServer } from '../hooks/useServerAdmin';
 import { BOT_COMMANDS, BOT_NAME } from '../lib/botCommands';
 import type { Server } from '../types/db';
 import { BotIcon, HashIcon, ShieldIcon } from './icons';
 import { Field, inputCls, Section, Toggle } from './SettingsPanel';
+import { DISCOVERY_CATEGORIES } from './ServerDiscovery';
+import { WebhooksSection } from './Webhooks';
 
 const LEVELS: { id: NonNullable<Server['verification_level']>; label: string; hint: string }[] = [
   { id: 'none', label: 'None', hint: 'Anyone with an invite can join and talk.' },
@@ -42,6 +49,8 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
     welcome_channel_id: server.welcome_channel_id ?? null,
     welcome_message: server.welcome_message ?? '',
     rules: server.rules ?? '',
+    discoverable: !!server.discoverable,
+    discovery_category: server.discovery_category ?? 'social',
   });
   const [d, setD] = useState(initial);
   useEffect(() => setD(initial()), [server]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -93,6 +102,21 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
         </Field>
       </Section>
 
+      <Section title="Server discovery" description="List this server so anyone can find and join it from Explore public servers, without an invite.">
+        <Toggle label="Show in server discovery" checked={d.discoverable} onChange={(v) => editable && setD((x) => ({ ...x, discoverable: v }))} />
+        {d.discoverable && (
+          <Field label="Category">
+            <select className={inputCls} disabled={!editable} value={d.discovery_category} onChange={(e) => setD((x) => ({ ...x, discovery_category: e.target.value }))}>
+              {DISCOVERY_CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+      </Section>
+
       <Section title="Rules" description="Shown with /rules. Markdown works.">
         <textarea
           className={`${inputCls} min-h-36 text-sm`}
@@ -112,7 +136,14 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
         onSave={() =>
           update.mutate({
             id: server.id,
-            patch: { verification_level: d.verification_level, welcome_channel_id: d.welcome_channel_id, welcome_message: d.welcome_message.trim() || null, rules: d.rules.trim() || null },
+            patch: {
+              verification_level: d.verification_level,
+              welcome_channel_id: d.welcome_channel_id,
+              welcome_message: d.welcome_message.trim() || null,
+              rules: d.rules.trim() || null,
+              discoverable: d.discoverable,
+              discovery_category: d.discovery_category,
+            },
           })
         }
       />
@@ -139,6 +170,8 @@ export function BotTab({ server, userId, editable }: { server: Server; userId: s
         <Toggle label={server.bot_enabled ? 'On' : 'Off'} checked={!!server.bot_enabled} onChange={(v) => editable && set({ bot_enabled: v })} />
       </div>
       {update.error && <p className="text-sm text-ae-danger">{update.error.message}</p>}
+
+      <WebhooksSection server={server} editable={editable} />
 
       <div className={server.bot_enabled ? '' : 'pointer-events-none opacity-50'}>
         <Section title="Welcome new members">
@@ -173,5 +206,97 @@ function Row({ name, mod, children }: { name: string; mod?: boolean; children: R
       <span className="flex-1 text-sm text-ae-muted">{children}</span>
       {mod && <span className="rounded bg-ae-warning/15 px-1.5 text-[10px] font-bold text-ae-warning uppercase">Mods</span>}
     </li>
+  );
+}
+
+/** Server Settings → Emoji: upload and manage custom emoji (PNG, GIF, WebP; up to 512 KB). */
+export function EmojiTab({ server, canManage }: { server: Server; canManage: boolean }) {
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  const { data: emojis = [] } = useServerEmojis([server.id]);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const refresh = () => void qc.invalidateQueries({ queryKey: ['server-emojis'] });
+
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setBusy(true);
+    for (const file of [...files].slice(0, 20)) {
+      if (!/^image\/(png|gif|webp|jpeg)$/.test(file.type)) {
+        toast.error(`${file.name}: use PNG, GIF, WebP or JPEG.`);
+        continue;
+      }
+      if (file.size > 512 * 1024) {
+        toast.error(`${file.name} is over 512 KB.`);
+        continue;
+      }
+      const base = file.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 32);
+      let name = base.length >= 2 ? base : `emoji_${Math.random().toString(36).slice(2, 6)}`;
+      if (emojis.some((e) => e.name === name)) name = `${name.slice(0, 28)}_${Math.random().toString(36).slice(2, 5)}`;
+      const path = `${server.id}/${crypto.randomUUID()}.${file.type.split('/')[1]}`;
+      const up = await sb.storage.from('emojis').upload(path, file, { contentType: file.type, cacheControl: '31536000' });
+      if (up.error) {
+        toast.error(up.error.message);
+        continue;
+      }
+      const url = sb.storage.from('emojis').getPublicUrl(path).data.publicUrl;
+      const { error } = await sb.from('server_emojis').insert({ server_id: server.id, name, url, animated: file.type === 'image/gif' });
+      if (error) toast.error(error.message);
+    }
+    setBusy(false);
+    refresh();
+  };
+  const rename = async (id: string, current: string) => {
+    const next = await promptText('New name (letters, numbers, _)', { title: 'Rename emoji', initial: current, maxLength: 32 });
+    if (!next) return;
+    const clean = next.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (clean.length < 2) return toast.error('Names need at least 2 letters or numbers.');
+    // Rename = re-insert under the new name (names are the readable part of the token; ids stay valid).
+    const e = emojis.find((x) => x.id === id);
+    if (!e) return;
+    const { error } = await sb.from('server_emojis').insert({ server_id: server.id, name: clean, url: e.url, animated: e.animated });
+    if (error) return toast.error(error.message);
+    await sb.from('server_emojis').delete().eq('id', id);
+    refresh();
+  };
+  const remove = async (id: string) => {
+    await sb.from('server_emojis').delete().eq('id', id);
+    refresh();
+  };
+
+  return (
+    <div className="space-y-6">
+      <Section title={`Custom emoji (${emojis.length}/100)`} description="Members use them in messages with the emoji picker or by typing :name:. They show up anywhere, even for people outside this server.">
+        {canManage ? (
+          <>
+            <input ref={fileRef} type="file" multiple accept="image/png,image/gif,image/webp,image/jpeg" className="hidden" onChange={(e) => void upload(e.target.files).then(() => (e.target.value = ''))} />
+            <button type="button" disabled={busy || emojis.length >= 100} onClick={() => fileRef.current?.click()} className="ae-press rounded-ae bg-ae-accent px-4 py-2 text-sm font-semibold text-ae-on-accent disabled:opacity-50">
+              {busy ? 'Uploading…' : 'Upload emoji'}
+            </button>
+            <p className="text-xs text-ae-muted">Square images look best. GIFs stay animated. You can pick several files at once.</p>
+          </>
+        ) : (
+          <p className="text-sm text-ae-muted">You need Manage Expressions to add emoji.</p>
+        )}
+      </Section>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        {emojis.map((e) => (
+          <div key={e.id} className="group flex items-center gap-2 rounded-ae border border-ae-border bg-ae-surface/20 p-2">
+            <img src={e.url} alt="" className="h-9 w-9 object-contain" />
+            <span className="min-w-0 flex-1 truncate font-mono text-xs">:{e.name}:</span>
+            {canManage && (
+              <span className="hidden gap-0.5 group-hover:flex">
+                <button type="button" className="rounded px-1.5 text-xs text-ae-muted hover:text-ae-text" onClick={() => void rename(e.id, e.name)}>
+                  Rename
+                </button>
+                <button type="button" className="rounded px-1.5 text-xs text-ae-muted hover:text-ae-danger" onClick={() => void remove(e.id)}>
+                  Delete
+                </button>
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

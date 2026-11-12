@@ -1,19 +1,28 @@
-import { ClockIcon } from './icons';
+import { ClockIcon, ReactIcon as SmilePlusIcon } from './icons';
 /** Emoji picker: search, category tabs, recents. Closes on outside click or Escape. */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EMOJI_GROUPS, getRecentEmoji, pushRecentEmoji, searchEmoji, useEmojiData, type EmojiEntry } from '../lib/emoji';
 import { useEscape } from '../lib/escape';
+import { useMeId } from '../hooks/useMe';
+import { useServers } from '../hooks/useChatData';
+import { customEmojiToken, useServerEmojis } from '../lib/customEmoji';
 
 interface EmojiPickerProps {
   onPick: (emoji: string) => void;
+  /** Also offer custom emoji from your servers (inserts a <:name:id> token). */
+  allowCustom?: boolean;
   onClose: () => void;
   /** Positioning classes for the floating panel. */
   className?: string;
 }
 
-export function EmojiPicker({ onPick, onClose, className = 'bottom-full right-0 mb-2' }: EmojiPickerProps) {
+export function EmojiPicker({ onPick, onClose, className = 'bottom-full right-0 mb-2', allowCustom = false }: EmojiPickerProps) {
   const data = useEmojiData();
+  const me = useMeId();
+  const { data: myServers = [] } = useServers(me);
+  const { data: customAll = [] } = useServerEmojis(allowCustom ? myServers.map((x) => x.id) : []);
   const [query, setQuery] = useState('');
+  const custom = query.trim() ? customAll.filter((e) => e.name.includes(query.trim().toLowerCase().replace(/:/g, ''))) : customAll;
   const [hovered, setHovered] = useState<EmojiEntry | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -92,6 +101,18 @@ export function EmojiPicker({ onPick, onClose, className = 'bottom-full right-0 
         )}
 
         <div ref={scrollRef} className="ae-scroll min-w-0 flex-1 overflow-y-auto p-2">
+          {custom.length > 0 && (
+            <>
+              <p className="px-1 pb-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Server emoji</p>
+              <div className="mb-2 grid grid-cols-8">
+                {custom.slice(0, 80).map((e) => (
+                  <button key={e.id} type="button" title={`:${e.name}:`} onClick={() => onPick(customEmojiToken(e))} className="grid h-9 w-9 place-items-center rounded hover:bg-ae-hover">
+                    <img src={e.url} alt={e.name} className="h-7 w-7 object-contain" draggable={false} />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           {!data && <p className="p-4 text-center text-sm text-ae-muted">Loading emoji…</p>}
           {data && results && (
             <>
@@ -138,6 +159,41 @@ export function EmojiPicker({ onPick, onClose, className = 'bottom-full right-0 
           <span className="text-ae-muted">Pick an emoji. Tip: type :name in chat.</span>
         )}
       </footer>
+    </div>
+  );
+}
+
+/** A button showing the chosen emoji; opens the emoji picker (used for status emoji). */
+export function EmojiButton({ value, onChange, size = 'md' }: { value: string | null | undefined; onChange: (emoji: string | null) => void; size?: 'sm' | 'md' }) {
+  const [open, setOpen] = useState(false);
+  const box = size === 'sm' ? 'h-9 w-9 text-lg' : 'h-10 w-11 text-xl';
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        aria-label={value ? `Status emoji ${value}. Change it` : 'Pick a status emoji'}
+        data-tip={value ? 'Change emoji (right-click to clear)' : 'Pick an emoji'}
+        onClick={() => setOpen((v) => !v)}
+        onContextMenu={(e) => {
+          if (!value) return;
+          e.preventDefault();
+          e.stopPropagation();
+          onChange(null);
+        }}
+        className={`ae-press grid place-items-center rounded-ae border border-ae-border bg-ae-sunken leading-none hover:border-ae-accent ${box}`}
+      >
+        {value || <SmilePlusIcon size={18} className="text-ae-muted" />}
+      </button>
+      {open && (
+        <EmojiPicker
+          className="top-full left-0 mt-2"
+          onClose={() => setOpen(false)}
+          onPick={(e) => {
+            onChange(e);
+            setOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

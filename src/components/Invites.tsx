@@ -14,9 +14,10 @@ import { useSupabase } from '../lib/supabase';
 import { useUiStore } from '../stores/uiStore';
 import type { Server } from '../types/db';
 import { Dialog } from './Dialog';
-import { ArrowLeftIcon, CheckIcon, CompassIcon, CopyIcon, GlobeIcon, InviteIcon, PlusIcon, UsersIcon } from './icons';
+import { ArrowLeftIcon, SearchIcon, CheckIcon, CompassIcon, CopyIcon, GlobeIcon, InviteIcon, PlusIcon, UsersIcon } from './icons';
 import { Avatar } from './ProfileCard';
 import { toast } from './Toaster';
+import { ServerDiscovery } from './ServerDiscovery';
 
 export interface InviteDetails {
   code: string;
@@ -107,7 +108,7 @@ export function InviteEmbed({ code, me }: { code: string; me: string }) {
 
 // ── Add a server (create or join) ─────────────────────────────────────────────────────────
 
-export const useAddServer = create<{ open: null | 'menu' | 'create' | 'join'; code: string; set: (open: null | 'menu' | 'create' | 'join', code?: string) => void }>()((set) => ({
+export const useAddServer = create<{ open: null | 'menu' | 'create' | 'join' | 'explore'; code: string; set: (open: null | 'menu' | 'create' | 'join' | 'explore', code?: string) => void }>()((set) => ({
   open: null,
   code: '',
   set: (open, code = '') => set({ open, code }),
@@ -155,6 +156,25 @@ export function AddServerDialog({ userId }: { userId: string }) {
             <span className="block font-semibold">Join a server</span>
             <span className="block text-xs text-ae-muted">Use an invite link like aether.chat/inv/aether, or just the code.</span>
           </span>
+        </button>
+        <button type="button" onClick={() => set('explore')} className="ae-lift flex w-full items-center gap-3 rounded-ae border border-ae-border p-3 text-left hover:border-ae-accent">
+          <span className="grid h-11 w-11 place-items-center rounded-ae bg-[#00d4ff]/15 text-[#00d4ff]">
+            <SearchIcon size={22} />
+          </span>
+          <span className="flex-1">
+            <span className="block font-semibold">Explore public servers</span>
+            <span className="block text-xs text-ae-muted">Find communities anyone can join.</span>
+          </span>
+        </button>
+      </Dialog>
+    );
+
+  if (open === 'explore')
+    return (
+      <Dialog wide title="Explore public servers" onClose={close}>
+        <ServerDiscovery userId={userId} onDone={close} />
+        <button type="button" className="flex items-center gap-1 rounded-ae px-3 py-2 text-sm text-ae-muted hover:text-ae-text" onClick={() => set('menu')}>
+          <ArrowLeftIcon size={15} /> Back
         </button>
       </Dialog>
     );

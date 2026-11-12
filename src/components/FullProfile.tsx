@@ -15,6 +15,9 @@ import { CalendarIcon, LinkIcon, WidgetIcon } from './icons';
 import { Avatar, BadgeRow, ProfileEffectLayer, StyledName } from './ProfileCard';
 import { ScopedCss } from './ThemeEngine';
 import { useEscape } from '../lib/escape';
+import { cardFrameAttrs, cardVars } from '../lib/cardDecor';
+import { themeAttrs } from '../lib/cosmetics';
+import { cropStyle } from './ProfileCard';
 
 function Label({ children }: { children: ReactNode }) {
   return <h3 className="mb-1.5 text-[11px] font-bold tracking-wide text-ae-muted uppercase">{children}</h3>;
@@ -33,13 +36,15 @@ export function FullProfile({ profile, actions, boardEmpty, className = '' }: { 
       data-ae-profile={scopeId}
       className={`ae-profile-card ae-card @container relative w-full overflow-hidden rounded-[calc(var(--ae-radius)+6px)] border border-ae-border text-ae-text shadow-2xl ${className}`}
       data-card={profile.card_style ?? 'solid'}
-      data-cardframe={profile.card_frame || 'none'}
+      data-ct={themeAttrs(profile.card_style).pattern}
+      {...cardFrameAttrs(profile)}
       style={
         {
           '--pf-primary': primary,
           '--pf-accent': accent,
           '--card-a': primary,
           '--card-b': accent,
+          ...cardVars(profile),
           background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 30%, var(--ae-bg-elevated)) 0%, var(--ae-bg-elevated) 45%)`,
           contain: 'layout paint style',
           isolation: 'isolate',
@@ -47,10 +52,10 @@ export function FullProfile({ profile, actions, boardEmpty, className = '' }: { 
       }
     >
       <ScopedCss css={profile.custom_css} scopeSelector={`[data-ae-profile="${scopeId}"]`} />
-      <ProfileEffectLayer effect={profile.profile_effect} color={isHexColor(profile.accent_color) ? profile.accent_color : undefined} />
+      <ProfileEffectLayer effect={profile.profile_effect} color={isHexColor(profile.accent_color) ? profile.accent_color : undefined} angle={profile.decor?.effectAngle} decorColor={profile.decor?.effect} />
 
       <div className="ae-profile-banner h-40 w-full @2xl:h-48" style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}>
-        {profile.banner_url && <img src={profile.banner_url} alt="" className="h-full w-full object-cover" draggable={false} />}
+        {profile.banner_url && <img src={profile.banner_url} alt="" className="h-full w-full object-cover" draggable={false} style={cropStyle(profile.decor?.bannerCrop)} />}
       </div>
 
       <div className="relative px-5 pb-5">

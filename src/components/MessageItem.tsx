@@ -164,7 +164,7 @@ function MessageItemImpl(props: MessageItemProps) {
   const [draft, setDraft] = useState(message.content);
   const [copied, setCopied] = useState(false);
   const bot = !!message.is_bot;
-  const name = bot ? BOT_NAME : props.authorNickname || author?.display_name || author?.username || 'Deleted user';
+  const name = bot ? (message.bot_name || BOT_NAME) : props.authorNickname || author?.display_name || author?.username || 'Deleted user';
   const avatarProfile = author && props.authorAvatar ? { ...author, avatar_url: props.authorAvatar } : author;
   const mine = message.author_id === me;
   const mentioned =
@@ -177,7 +177,7 @@ function MessageItemImpl(props: MessageItemProps) {
   return (
     <li
       id={`msg-${message.id}`}
-      className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-4 pt-0.5 pb-px' : 'py-px'} ${mentioned && !mine ? 'ae-mentioned' : ''}`}
+      className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-4 pt-0.5 pb-px' : 'py-px'} ${mentioned && !mine ? 'ae-mentioned' : ''} ${(message as { pending?: boolean }).pending ? 'pointer-events-none opacity-60' : ''}`}
       onMouseLeave={() => setPicker(false)}
       onContextMenu={(e) => {
         if (editing) return;
@@ -225,7 +225,9 @@ function MessageItemImpl(props: MessageItemProps) {
       }}
     >
       <div className="w-10 shrink-0">
-        {showHeader && bot ? (
+        {showHeader && bot && message.bot_avatar ? (
+          <img src={message.bot_avatar} alt="" className="h-10 w-10 rounded-full object-cover" draggable={false} />
+        ) : showHeader && bot ? (
           <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-ae-accent to-[#00d4ff] text-white shadow-md">
             <BotIcon size={20} />
           </span>
@@ -268,7 +270,7 @@ function MessageItemImpl(props: MessageItemProps) {
             >
               {bot ? <span className="text-ae-accent">{name}</span> : <StyledName profile={author} text={name} color={props.authorColor ?? author?.accent_color ?? undefined} />}
             </button>
-            {bot && <span className="rounded bg-ae-accent px-1 py-px text-[10px] leading-none font-bold text-ae-on-accent">BOT</span>}
+            {bot && <span className="rounded bg-ae-accent px-1 py-px text-[10px] leading-none font-bold text-ae-on-accent">{message.bot_command === 'webhook' ? 'APP' : 'BOT'}</span>}
             <time className="text-[11px] text-ae-muted" dateTime={message.created_at} title={new Date(message.created_at).toLocaleString()}>
               {formatTime(message.created_at)}
             </time>
@@ -276,7 +278,7 @@ function MessageItemImpl(props: MessageItemProps) {
           </div>
         )}
 
-        {bot && message.bot_invoker_id && message.bot_command && message.bot_command !== 'welcome' && (
+        {bot && message.bot_invoker_id && message.bot_command && message.bot_command !== 'welcome' && message.bot_command !== 'webhook' && (
           <p className="text-xs text-ae-muted">
             <DisplayName userId={message.bot_invoker_id} /> used <span className="font-mono text-ae-accent">/{message.bot_command}</span>
           </p>

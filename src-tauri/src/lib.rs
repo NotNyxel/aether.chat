@@ -24,7 +24,9 @@ mod capture {
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[cfg(desktop)]
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+#[cfg(desktop)]
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 
@@ -38,6 +40,7 @@ static SPLASH_BUSY: AtomicBool = AtomicBool::new(false);
 static AUTOSTART: AtomicBool = AtomicBool::new(false);
 
 /// Closes the startup window and reveals the main one (unless we were launched at sign-in).
+#[cfg(desktop)]
 fn finish_splash(app: &AppHandle) {
     if SPLASH_DONE.swap(true, Ordering::SeqCst) {
         return;
@@ -51,17 +54,20 @@ fn finish_splash(app: &AppHandle) {
 }
 
 /// The startup window is done (no update, offline, or it was skipped).
+#[cfg(desktop)]
 #[tauri::command]
 fn splash_finish(app: AppHandle) {
     finish_splash(&app);
 }
 
 /// The startup window started downloading an update: don't let the failsafe cut it off.
+#[cfg(desktop)]
 #[tauri::command]
 fn splash_busy() {
     SPLASH_BUSY.store(true, Ordering::Relaxed);
 }
 
+#[cfg(desktop)]
 fn show_main(app: &AppHandle) {
     // A second launch or a tray click while an update is installing: keep showing the startup window.
     if !SPLASH_DONE.load(Ordering::SeqCst) {
@@ -83,6 +89,7 @@ fn show_main(app: &AppHandle) {
     }
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 fn set_close_to_tray(enabled: bool) {
     CLOSE_TO_TRAY.store(enabled, Ordering::Relaxed);
@@ -222,6 +229,7 @@ fn read_spotify() -> Option<NowPlaying> {
 
 /// Saves a data export. The save dialog runs here (not in the web page), so the page can only
 /// write a file to the place the user picks.
+#[cfg(desktop)]
 #[tauri::command]
 async fn save_export(app: AppHandle, file_name: String, contents: String) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
@@ -239,7 +247,22 @@ async fn save_export(app: AppHandle, file_name: String, contents: String) -> Res
     Ok(Some(path.display().to_string()))
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// Android/iOS: the web app in a native shell (no tray, splash, updater or global shortcuts).
+#[cfg(mobile)]
+#[tauri::mobile_entry_point]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_deep_link::init())
+        .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, idle_seconds, running_processes, now_playing])
+        .run(tauri::generate_context!())
+        .expect("error while running aether.chat");
+}
+
+#[cfg(desktop)]
 pub fn run() {
     tauri::Builder::default()
         // Must be first: a second launch focuses the running copy instead of opening another.

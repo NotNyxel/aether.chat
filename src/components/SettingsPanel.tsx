@@ -25,6 +25,9 @@ import { AdminIcon, AppWindowIcon, ArrowLeftIcon as BackIcon, BellIcon, CloseIco
 import { ActivityTab, BackgroundShortcutsSection, DesktopNotificationsSection, WindowsTab } from './SettingsDesktop';
 import { useTheme } from './ThemeEngine';
 import { useEscape } from '../lib/escape';
+import { useSupabase } from '../lib/supabase';
+import { toast } from './Toaster';
+import { disablePush, enablePush, pushEnabled, pushSupported } from '../lib/push';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Shared form primitives
@@ -526,6 +529,35 @@ function KeybindRow({ label, hint, combo, onChange }: { label: string; hint: str
   );
 }
 
+/** Web app: push notifications for DMs and mentions, even when aether.chat is closed. */
+function PushSection() {
+  const sb = useSupabase();
+  const [on, setOn] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    void pushEnabled().then(setOn);
+  }, []);
+  if (!pushSupported) return null;
+  const toggle = async (v: boolean) => {
+    setBusy(true);
+    try {
+      if (v) await enablePush(sb);
+      else await disablePush(sb);
+      setOn(v);
+      toast.success(v ? 'Push notifications are on for this device.' : 'Push notifications are off for this device.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Section title="Push notifications" description="Get DMs and @mentions on this device even when aether.chat is closed. On iPhone and iPad, add aether.chat to your Home Screen first (Share → Add to Home Screen).">
+      <Toggle label={busy ? 'Working…' : 'Push notifications on this device'} checked={!!on} onChange={(v) => !busy && void toggle(v)} />
+    </Section>
+  );
+}
+
 function NotificationsTab() {
   const sounds = useSettingsStore((s) => s.sounds);
   const setSounds = useSettingsStore((s) => s.setSounds);
@@ -538,6 +570,7 @@ function NotificationsTab() {
   return (
     <div className="space-y-6">
       <DesktopNotificationsSection />
+      <PushSection />
       <Section
         title="Sounds"
         description="DM and mention sounds only play when you're not already looking at that chat. Do Not Disturb silences messages and ringing."

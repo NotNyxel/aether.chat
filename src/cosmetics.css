@@ -1,0 +1,411 @@
+/* Generated cosmetic families (see src/lib/cosmetics.ts). Each family is one rule driven by
+   CSS variables, so every palette and every custom colour works without new CSS. */
+
+/* ═══ Nameplates: .ae-plate[data-ps] with --pa --pb --pc ═══ */
+.ae-plate[data-ps='sheen']::before {
+  background: linear-gradient(110deg, var(--pa), var(--pb) 40%, color-mix(in srgb, var(--pc) 70%, #fff) 50%, var(--pb) 60%, var(--pa));
+  background-size: 250% 100%;
+  animation: ae-plate-slide 6s linear infinite;
+}
+.ae-plate[data-ps='aurora']::before {
+  background:
+    radial-gradient(60% 120% at 20% 50%, var(--pa), transparent 70%),
+    radial-gradient(60% 120% at 70% 50%, var(--pb), transparent 70%),
+    radial-gradient(50% 100% at 95% 50%, var(--pc), transparent 70%);
+  background-size: 200% 100%;
+  animation: ae-plate-slide 10s ease-in-out infinite alternate;
+}
+.ae-plate[data-ps='grid']::before {
+  background:
+    linear-gradient(color-mix(in srgb, var(--pc) 45%, transparent) 1px, transparent 1px) 0 0 / 10px 10px,
+    linear-gradient(90deg, color-mix(in srgb, var(--pc) 45%, transparent) 1px, transparent 1px) 0 0 / 10px 10px,
+    linear-gradient(90deg, var(--pa), var(--pb));
+  animation: ae-cos-pan 4s linear infinite;
+}
+.ae-plate[data-ps='stripes']::before {
+  background:
+    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--pc) 40%, transparent) 0 6px, transparent 6px 14px),
+    linear-gradient(90deg, var(--pa), var(--pb));
+  background-size: 40px 40px, 100% 100%;
+  animation: ae-cos-pan 3s linear infinite;
+}
+.ae-plate[data-ps='dots']::before {
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--pc) 70%, transparent) 1.4px, transparent 1.6px) 0 0 / 9px 9px,
+    linear-gradient(90deg, var(--pa), var(--pb));
+}
+.ae-plate[data-ps='waves']::before {
+  background:
+    repeating-radial-gradient(circle at 100% 50%, color-mix(in srgb, var(--pc) 35%, transparent) 0 3px, transparent 3px 11px),
+    linear-gradient(90deg, var(--pa), var(--pb));
+  animation: ae-cos-breathe 4s ease-in-out infinite;
+}
+.ae-plate[data-ps='glow']::before {
+  background: linear-gradient(90deg, var(--pa), var(--pb));
+  box-shadow: inset 0 0 18px var(--pc);
+  animation: ae-cos-breathe 2.6s ease-in-out infinite;
+}
+.ae-plate[data-ps='mesh']::before {
+  background:
+    radial-gradient(40% 90% at 15% 30%, var(--pa), transparent),
+    radial-gradient(40% 90% at 60% 80%, var(--pb), transparent),
+    radial-gradient(35% 80% at 90% 20%, var(--pc), transparent),
+    color-mix(in srgb, var(--pa) 40%, #000);
+}
+.ae-plate[data-ps='scan']::before {
+  background:
+    repeating-linear-gradient(0deg, color-mix(in srgb, #000 35%, transparent) 0 1px, transparent 1px 3px),
+    linear-gradient(90deg, var(--pa), var(--pb), var(--pc));
+  background-size: 100% 6px, 200% 100%;
+  animation: ae-plate-slide 7s linear infinite;
+}
+.ae-plate[data-ps='spark']::before {
+  background:
+    radial-gradient(circle at 20% 30%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 55% 70%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 80% 25%, var(--pc) 0 1.4px, transparent 2px),
+    radial-gradient(circle at 35% 80%, var(--pc) 0 1px, transparent 1.6px),
+    linear-gradient(90deg, var(--pa), var(--pb));
+  background-size: 60px 40px, 70px 40px, 50px 40px, 80px 40px, 100% 100%;
+  animation: ae-cos-twinkle 2.4s steps(4) infinite;
+}
+
+/* ═══ Avatar decorations: .ae-avatar[data-fs] with --fa --fb ═══ */
+.ae-avatar[data-fs]::before {
+  inset: -4px;
+  border-radius: inherit;
+}
+.ae-avatar[data-fs='ring']::before {
+  background: var(--fa);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--fa) 60%, transparent);
+}
+.ae-avatar[data-fs='duo']::before {
+  background: conic-gradient(var(--fa), var(--fb), var(--fa));
+  animation: ae-spin 4s linear infinite;
+}
+.ae-avatar[data-fs='dash']::before {
+  background: repeating-conic-gradient(var(--fa) 0 10deg, transparent 10deg 20deg);
+  animation: ae-spin 12s linear infinite;
+}
+.ae-avatar[data-fs='pulse']::before {
+  background: var(--fa);
+  animation: ae-frame-pulse 1.8s ease-in-out infinite;
+}
+.ae-avatar[data-fs='orbit']::before {
+  background:
+    radial-gradient(circle at 50% 3px, var(--fb) 0 3px, transparent 3.5px),
+    conic-gradient(color-mix(in srgb, var(--fa) 80%, transparent), color-mix(in srgb, var(--fa) 20%, transparent));
+  animation: ae-spin 3s linear infinite;
+}
+.ae-avatar[data-fs='halo']::before {
+  inset: -7px;
+  background: radial-gradient(closest-side, transparent 78%, var(--fa) 84%, color-mix(in srgb, var(--fb) 50%, transparent) 92%, transparent);
+  animation: ae-cos-breathe 3s ease-in-out infinite;
+}
+.ae-avatar[data-fs='spark']::before {
+  background: conic-gradient(from 0deg, var(--fa), transparent 25%, var(--fb) 50%, transparent 75%, var(--fa));
+  animation: ae-spin 1.6s linear infinite;
+}
+.ae-avatar[data-fs='double']::before {
+  inset: -6px;
+  background: radial-gradient(closest-side, transparent 86%, var(--fa) 87% 91%, transparent 92% 95%, var(--fb) 96%);
+}
+.ae-avatar[data-fs='flicker']::before {
+  box-shadow:
+    0 0 0 2px var(--fa),
+    0 0 14px 3px var(--fa),
+    0 0 26px var(--fb);
+  animation: ae-flicker 3s steps(1) infinite;
+}
+.ae-avatar[data-fs='prism']::before {
+  background: conic-gradient(var(--fa), var(--fb), #fff, var(--fb), var(--fa));
+  filter: saturate(1.4) blur(0.4px);
+  animation: ae-spin 5s linear infinite reverse;
+}
+
+/* ═══ Avatar shapes from the registry (clip-path or border-radius) ═══ */
+.ae-avatar[data-shape-custom] > .ae-avatar-inner,
+.ae-avatar[data-shape-custom]::before {
+  clip-path: var(--shape-clip, none);
+  border-radius: var(--shape-radius, 0);
+}
+
+/* ═══ Profile frames: .ae-card[data-cfs] with --cfa --cfb ═══ */
+.ae-card[data-cfs]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.ae-card[data-cfs='glow']::after {
+  box-shadow: inset 0 0 26px color-mix(in srgb, var(--cfa) 70%, transparent), inset 0 0 0 1px var(--cfa);
+}
+.ae-card[data-cfs='double']::after {
+  box-shadow: inset 0 0 0 2px var(--cfa), inset 0 0 0 5px transparent, inset 0 0 0 6px var(--cfb);
+}
+.ae-card[data-cfs='dashed']::after {
+  border: 2px dashed var(--cfa);
+}
+.ae-card[data-cfs='gradient']::after,
+.ae-card[data-cfs='spin']::after {
+  padding: 3px;
+  background: linear-gradient(135deg, var(--cfa), var(--cfb), var(--cfa));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.ae-card[data-cfs='spin']::after {
+  background: conic-gradient(from var(--ae-cos-angle, 0deg), var(--cfa), var(--cfb), transparent, var(--cfa));
+  animation: ae-cos-angle 4s linear infinite;
+}
+.ae-card[data-cfs='corners']::after {
+  background:
+    linear-gradient(var(--cfa), var(--cfa)) top left / 34px 3px no-repeat,
+    linear-gradient(var(--cfa), var(--cfa)) top left / 3px 34px no-repeat,
+    linear-gradient(var(--cfa), var(--cfa)) top right / 34px 3px no-repeat,
+    linear-gradient(var(--cfa), var(--cfa)) top right / 3px 34px no-repeat,
+    linear-gradient(var(--cfb), var(--cfb)) bottom left / 34px 3px no-repeat,
+    linear-gradient(var(--cfb), var(--cfb)) bottom left / 3px 34px no-repeat,
+    linear-gradient(var(--cfb), var(--cfb)) bottom right / 34px 3px no-repeat,
+    linear-gradient(var(--cfb), var(--cfb)) bottom right / 3px 34px no-repeat;
+  margin: 8px;
+  border-radius: 0;
+}
+.ae-card[data-cfs='neon']::after {
+  box-shadow: inset 0 0 0 2px var(--cfa), 0 0 18px var(--cfa), inset 0 0 18px color-mix(in srgb, var(--cfb) 60%, transparent);
+  animation: ae-cos-breathe 2s ease-in-out infinite;
+}
+.ae-card[data-cfs='stitch']::after {
+  margin: 6px;
+  border: 2px dotted var(--cfa);
+  border-radius: calc(var(--ae-radius) + 2px);
+}
+.ae-card[data-cfs='deco']::after {
+  margin: 6px;
+  border: 1px solid var(--cfa);
+  box-shadow: inset 0 0 0 4px transparent, inset 0 0 0 5px var(--cfb);
+  background:
+    linear-gradient(45deg, var(--cfa) 0 8px, transparent 8px) top left / 22px 22px no-repeat,
+    linear-gradient(-45deg, var(--cfa) 0 8px, transparent 8px) top right / 22px 22px no-repeat,
+    linear-gradient(135deg, var(--cfa) 0 8px, transparent 8px) bottom left / 22px 22px no-repeat,
+    linear-gradient(-135deg, var(--cfa) 0 8px, transparent 8px) bottom right / 22px 22px no-repeat;
+  border-radius: 2px;
+}
+.ae-card[data-cfs='pixel']::after {
+  border-radius: 0;
+  box-shadow:
+    inset 0 0 0 3px var(--cfa),
+    inset 0 0 0 6px var(--cfb),
+    inset 0 0 0 9px color-mix(in srgb, var(--cfa) 40%, transparent);
+}
+
+/* ═══ Name effects: .ae-name[data-fill][data-tr] using --name-a / --name-b ═══ */
+.ae-name[data-fill] {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+.ae-name[data-fill='solid'] {
+  background-color: var(--name-a);
+}
+.ae-name[data-fill='grad'] {
+  background-image: linear-gradient(90deg, var(--name-a), var(--name-b));
+}
+.ae-name[data-fill='vgrad'] {
+  background-image: linear-gradient(180deg, var(--name-b), var(--name-a));
+}
+.ae-name[data-fill='flow'] {
+  background-image: linear-gradient(90deg, var(--name-a), var(--name-b), var(--name-a));
+  background-size: 200% 100%;
+  animation: ae-plate-slide 3s linear infinite;
+}
+.ae-name[data-fill='shine'] {
+  background-image: linear-gradient(110deg, var(--name-a) 40%, #fff 50%, var(--name-a) 60%);
+  background-size: 250% 100%;
+  animation: ae-plate-slide 2.6s linear infinite;
+}
+.ae-name[data-fill='rainbow'] {
+  background-image: linear-gradient(90deg, #ff5f6d, #ffc371, #f9f871, #47e891, #45caff, #a66cff, #ff5f6d);
+  background-size: 300% 100%;
+  animation: ae-plate-slide 5s linear infinite;
+}
+.ae-name[data-fill='metal'] {
+  background-image: linear-gradient(180deg, #fff 0%, var(--name-a) 45%, color-mix(in srgb, var(--name-a) 40%, #000) 55%, var(--name-b) 100%);
+}
+.ae-name[data-fill='split'] {
+  background-image: linear-gradient(180deg, var(--name-a) 50%, var(--name-b) 50%);
+}
+.ae-name[data-fill='fade'] {
+  background-image: linear-gradient(90deg, var(--name-a), color-mix(in srgb, var(--name-a) 25%, transparent));
+}
+.ae-name[data-fill='duo'] {
+  background-image: linear-gradient(90deg, var(--name-a) 50%, var(--name-b) 50%);
+}
+.ae-name[data-tr='soft'] {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--name-a) 70%, transparent));
+}
+.ae-name[data-tr='bright'] {
+  filter: drop-shadow(0 0 3px var(--name-a)) drop-shadow(0 0 9px var(--name-b));
+}
+.ae-name[data-tr='outline'] {
+  -webkit-text-stroke: 0.6px var(--name-b);
+}
+.ae-name[data-tr='shadow'] {
+  filter: drop-shadow(1px 2px 0 color-mix(in srgb, #000 70%, transparent));
+}
+.ae-name[data-tr='lift'] {
+  filter: drop-shadow(1px 1px 0 color-mix(in srgb, var(--name-b) 80%, #000)) drop-shadow(1px 1px 0 color-mix(in srgb, var(--name-b) 60%, #000));
+}
+.ae-name[data-tr='echo'] {
+  filter: drop-shadow(3px 0 0 color-mix(in srgb, var(--name-b) 55%, transparent)) drop-shadow(-3px 0 0 color-mix(in srgb, var(--name-a) 35%, transparent));
+}
+.ae-name[data-tr='pulse'] {
+  animation: ae-cos-namepulse 2s ease-in-out infinite;
+}
+.ae-name[data-fill='flow'][data-tr='pulse'],
+.ae-name[data-fill='shine'][data-tr='pulse'],
+.ae-name[data-fill='rainbow'][data-tr='pulse'] {
+  animation:
+    ae-plate-slide 3s linear infinite,
+    ae-cos-namepulse 2s ease-in-out infinite;
+}
+.ae-name[data-tr='flicker'] {
+  filter: drop-shadow(0 0 6px var(--name-a));
+  animation: ae-flicker 3.2s steps(1) infinite;
+}
+.ae-name[data-tr='emboss'] {
+  filter: drop-shadow(0 1px 0 color-mix(in srgb, #fff 45%, transparent)) drop-shadow(0 -1px 0 color-mix(in srgb, #000 55%, transparent));
+}
+
+/* ═══ Profile themes: .ae-card[data-ct] with --card-a / --card-b and --ctv (1–5) ═══ */
+.ae-card[data-ct] {
+  --ct-angle: calc(45deg + var(--ctv, 1) * 30deg);
+  --ct-mix: calc(10% + var(--ctv, 1) * 9%);
+}
+.ae-card[data-ct='linear'] {
+  background: linear-gradient(var(--ct-angle), color-mix(in srgb, var(--card-a) var(--ct-mix), var(--ae-bg-elevated)), color-mix(in srgb, var(--card-b) var(--ct-mix), var(--ae-bg-elevated))) !important;
+}
+.ae-card[data-ct='radial'] {
+  background: radial-gradient(circle at calc(var(--ctv) * 20%) 0%, color-mix(in srgb, var(--card-b) calc(var(--ct-mix) + 15%), transparent), transparent 70%), color-mix(in srgb, var(--card-a) var(--ct-mix), var(--ae-bg-elevated)) !important;
+}
+.ae-card[data-ct='conic'] {
+  background: conic-gradient(from var(--ct-angle) at 70% 20%, color-mix(in srgb, var(--card-a) 45%, #0b0b12), color-mix(in srgb, var(--card-b) 45%, #0b0b12), color-mix(in srgb, var(--card-a) 45%, #0b0b12)) !important;
+}
+.ae-card[data-ct='split'] {
+  background: linear-gradient(var(--ct-angle), color-mix(in srgb, var(--card-a) 40%, #0c0c14) 50%, color-mix(in srgb, var(--card-b) 30%, #0c0c14) 50%) !important;
+}
+.ae-card[data-ct='mesh'] {
+  background:
+    radial-gradient(40% 50% at calc(var(--ctv) * 18%) 20%, color-mix(in srgb, var(--card-a) 55%, transparent), transparent),
+    radial-gradient(45% 55% at 85% 75%, color-mix(in srgb, var(--card-b) 50%, transparent), transparent),
+    #0e0e16 !important;
+}
+.ae-card[data-ct='dots'] {
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--card-b) 45%, transparent) calc(var(--ctv) * 0.4px + 0.6px), transparent calc(var(--ctv) * 0.4px + 1px)) 0 0 / 14px 14px,
+    color-mix(in srgb, var(--card-a) 22%, #0d0d14) !important;
+}
+.ae-card[data-ct='grid'] {
+  background:
+    linear-gradient(color-mix(in srgb, var(--card-b) 25%, transparent) 1px, transparent 1px) 0 0 / calc(10px + var(--ctv) * 5px) calc(10px + var(--ctv) * 5px),
+    linear-gradient(90deg, color-mix(in srgb, var(--card-b) 25%, transparent) 1px, transparent 1px) 0 0 / calc(10px + var(--ctv) * 5px) calc(10px + var(--ctv) * 5px),
+    color-mix(in srgb, var(--card-a) 22%, #0c0c13) !important;
+}
+.ae-card[data-ct='stripes'] {
+  background: repeating-linear-gradient(var(--ct-angle), color-mix(in srgb, var(--card-a) 30%, #0d0d14) 0 calc(var(--ctv) * 6px), color-mix(in srgb, var(--card-b) 22%, #0d0d14) calc(var(--ctv) * 6px) calc(var(--ctv) * 12px)) !important;
+}
+.ae-card[data-ct='checker'] {
+  background: repeating-conic-gradient(color-mix(in srgb, var(--card-a) 30%, #0d0d14) 0 25%, color-mix(in srgb, var(--card-b) 22%, #0d0d14) 0 50%) 0 0 / calc(var(--ctv) * 8px + 12px) calc(var(--ctv) * 8px + 12px) !important;
+}
+.ae-card[data-ct='rings'] {
+  background: repeating-radial-gradient(circle at 30% 0%, color-mix(in srgb, var(--card-a) 32%, #0c0c14) 0 calc(var(--ctv) * 6px), color-mix(in srgb, var(--card-b) 22%, #0c0c14) calc(var(--ctv) * 6px) calc(var(--ctv) * 12px)) !important;
+}
+.ae-card[data-ct='glass'] {
+  background: linear-gradient(var(--ct-angle), color-mix(in srgb, var(--card-a) 25%, transparent), color-mix(in srgb, var(--card-b) 15%, transparent)), color-mix(in srgb, var(--ae-bg-elevated) 70%, transparent) !important;
+  backdrop-filter: blur(calc(var(--ctv) * 4px + 6px)) saturate(1.3);
+}
+.ae-card[data-ct='aurora'] {
+  background:
+    radial-gradient(60% 40% at 20% 0%, color-mix(in srgb, var(--card-a) 60%, transparent), transparent),
+    radial-gradient(60% 40% at 80% 10%, color-mix(in srgb, var(--card-b) 55%, transparent), transparent),
+    #081014 !important;
+  background-size: 200% 200% !important;
+  animation: ae-plate-slide calc(20s - var(--ctv) * 3s) ease-in-out infinite alternate;
+}
+.ae-card[data-ct='holo'] {
+  background: linear-gradient(var(--ct-angle), color-mix(in srgb, var(--card-a) 35%, #111), #6ee7f9 30%, color-mix(in srgb, var(--card-b) 45%, #111) 60%, #f0abfc) !important;
+  background-size: 300% 300% !important;
+  animation: ae-plate-slide calc(14s - var(--ctv) * 2s) linear infinite;
+}
+.ae-card[data-ct='spot'] {
+  background: radial-gradient(circle at 50% calc(var(--ctv) * 20% - 20%), color-mix(in srgb, var(--card-b) 45%, transparent), transparent 55%), color-mix(in srgb, var(--card-a) 18%, #09090f) !important;
+}
+.ae-card[data-ct='vignette'] {
+  background: radial-gradient(circle, color-mix(in srgb, var(--card-a) 40%, #111) 0%, #050508 calc(110% - var(--ctv) * 10%)) !important;
+}
+.ae-card[data-ct='diagonal'] {
+  background: repeating-linear-gradient(var(--ct-angle), color-mix(in srgb, var(--card-b) 30%, transparent) 0 1px, transparent 1px calc(var(--ctv) * 4px + 4px)), color-mix(in srgb, var(--card-a) 22%, #0c0c13) !important;
+}
+.ae-card[data-ct='zigzag'] {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--card-b) 30%, transparent) 25%, transparent 25%) -10px 0 / 20px 20px,
+    linear-gradient(225deg, color-mix(in srgb, var(--card-b) 30%, transparent) 25%, transparent 25%) -10px 0 / 20px 20px,
+    color-mix(in srgb, var(--card-a) calc(var(--ctv) * 6% + 14%), #0c0c13) !important;
+}
+.ae-card[data-ct='waves'] {
+  background: repeating-radial-gradient(ellipse at 50% 120%, color-mix(in srgb, var(--card-a) 30%, #0b0b12) 0 calc(var(--ctv) * 5px + 6px), color-mix(in srgb, var(--card-b) 20%, #0b0b12) calc(var(--ctv) * 5px + 6px) calc(var(--ctv) * 10px + 12px)) !important;
+}
+.ae-card[data-ct='duo'] {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--card-a) calc(var(--ctv) * 10% + 25%), #0b0b12), color-mix(in srgb, var(--card-b) calc(var(--ctv) * 8% + 15%), #0b0b12)) !important;
+}
+.ae-card[data-ct='ink'] {
+  background:
+    radial-gradient(30% 20% at 25% 30%, color-mix(in srgb, var(--card-a) 50%, transparent), transparent),
+    radial-gradient(25% 30% at 70% 60%, color-mix(in srgb, var(--card-b) 45%, transparent), transparent),
+    radial-gradient(20% 15% at 40% 85%, color-mix(in srgb, var(--card-a) 40%, transparent), transparent),
+    #f3efe6 !important;
+  color: #1a1a22;
+  filter: contrast(1.05);
+}
+
+/* ═══ Shared keyframes ═══ */
+@keyframes ae-cos-pan {
+  to {
+    background-position: 40px 0, 0 0, 0 0;
+  }
+}
+@keyframes ae-cos-breathe {
+  50% {
+    opacity: 0.6;
+    filter: brightness(1.25);
+  }
+}
+@keyframes ae-cos-twinkle {
+  50% {
+    opacity: 0.7;
+  }
+}
+@keyframes ae-cos-namepulse {
+  50% {
+    filter: brightness(1.35) drop-shadow(0 0 6px var(--name-a));
+  }
+}
+@property --ae-cos-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes ae-cos-angle {
+  to {
+    --ae-cos-angle: 360deg;
+  }
+}
+:root[data-ae-animations='subtle'] [data-ps]::before,
+:root[data-ae-animations='subtle'] [data-fs]::before,
+:root[data-ae-animations='subtle'] [data-cfs]::after,
+:root[data-ae-animations='subtle'] .ae-card[data-ct],
+:root[data-ae-animations='subtle'] .ae-name[data-fill] {
+  animation: none !important;
+}

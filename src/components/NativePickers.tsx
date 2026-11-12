@@ -5,7 +5,7 @@
  * keeps working unchanged.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, PipetteIcon } from './icons';
 
 /** Sets a form element's value the way a user edit would, so React's onChange fires. */
 export function commitValue(el: HTMLInputElement | HTMLSelectElement, value: string) {
@@ -125,15 +125,47 @@ function hsvToHex(h: number, s: number, v: number): string {
 
 const SWATCHES = ['#7c5cff', '#5865f2', '#00d4ff', '#2ee6d6', '#3ddc84', '#f5b942', '#ff8a4c', '#ff5c6c', '#ff3cac', '#e0569b', '#ffffff', '#0b0b0f'];
 
+const RECENT_KEY = 'aether.recentColors';
+function recentColors(): string[] {
+  try {
+    return (JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as string[]).filter((c) => /^#[0-9a-f]{6}$/i.test(c)).slice(0, 12);
+  } catch {
+    return [];
+  }
+}
+function rememberColor(hex: string) {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify([hex, ...recentColors().filter((c) => c.toLowerCase() !== hex.toLowerCase())].slice(0, 12)));
+  } catch {
+    // private mode
+  }
+}
+const hexToRgb = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16) || 0;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255] as const;
+};
+const rgbToHex = (r: number, g: number, b: number) => `#${[r, g, b].map((x) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('')}`;
+
+/** aether.chat's colour picker: replaces every <input type="color"> in the app. */
 export function ColorPopover({ el, onClose }: { el: HTMLInputElement; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const original = useRef(el.value || '#7c5cff');
   const [hsv, setHsv] = useState(() => hexToHsv(el.value || '#7c5cff'));
   const [text, setText] = useState(el.value);
+  const [mode, setMode] = useState<'hex' | 'rgb'>('hex');
+  const [recent] = useState(recentColors);
   const rect = el.getBoundingClientRect();
-  const pos = usePopoverPosition(rect, 236, 300);
-  useDismiss(ref, onClose);
+  const pos = usePopoverPosition(rect, 272, 380);
+  useDismiss(ref, () => {
+    rememberColor(hsvToHex(...hsvRef.current));
+    onClose();
+  });
+  const hsvRef = useRef(hsv);
+  hsvRef.current = hsv;
   const hex = hsvToHex(...hsv);
-  const live = (next: [number, number, number]) => {
+  const [r, g, b] = hexToRgb(hex);
+
+  const set = (next: [number, number, number]) => {
     setHsv(next);
     const h = hsvToHex(...next);
     setText(h);
@@ -141,58 +173,130 @@ export function ColorPopover({ el, onClose }: { el: HTMLInputElement; onClose: (
   };
   const drag = (e: React.PointerEvent, area: 'sv' | 'hue') => {
     const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    (e.currentTarget as HTMLElement).focus();
     const move = (ev: PointerEvent) => {
       const x = Math.min(1, Math.max(0, (ev.clientX - box.left) / box.width));
       const y = Math.min(1, Math.max(0, (ev.clientY - box.top) / box.height));
-      setHsv((cur) => {
-        const next: [number, number, number] = area === 'sv' ? [cur[0], x, 1 - y] : [x * 360, cur[1], cur[2]];
-        const h = hsvToHex(...next);
-        setText(h);
-        commitValue(el, h);
-        return next;
-      });
+      const cur = hsvRef.current;
+      set(area === 'sv' ? [cur[0], x, 1 - y] : [x * 360, cur[1], cur[2]]);
     };
     move(e.nativeEvent);
     const up = () => (window.removeEventListener('pointermove', move), window.removeEventListener('pointerup', up));
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   };
+  const keys = (area: 'sv' | 'hue') => (e: React.KeyboardEvent) => {
+    const step = e.shiftKey ? 0.1 : 0.02;
+    const [h, s, v] = hsvRef.current;
+    const moves: Record<string, [number, number, number]> =
+      area === 'sv'
+        ? { ArrowLeft: [h, s - step, v], ArrowRight: [h, s + step, v], ArrowUp: [h, s, v + step], ArrowDown: [h, s, v - step] }
+        : { ArrowLeft: [h - step * 180, s, v], ArrowRight: [h + step * 180, s, v], ArrowDown: [h - step * 180, s, v], ArrowUp: [h + step * 180, s, v] };
+    const next = moves[e.key];
+    if (!next) return;
+    e.preventDefault();
+    set([(next[0] + 360) % 360, Math.min(1, Math.max(0, next[1])), Math.min(1, Math.max(0, next[2]))]);
+  };
+  const eyedropper = 'EyeDropper' in window;
+  const pickFromScreen = async () => {
+    try {
+      const res = await new (window as unknown as { EyeDropper: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper().open();
+      set(hexToHsv(res.sRGBHex));
+    } catch {
+      // cancelled
+    }
+  };
+  const swatch = (c: string) => (
+    <button key={c} type="button" aria-label={c} data-tip={c} className={`h-6 rounded-md border ${c.toLowerCase() === hex ? 'border-white ring-2 ring-ae-accent' : 'border-ae-border'}`} style={{ background: c }} onClick={() => set(hexToHsv(c))} />
+  );
+
   return (
-    <div ref={ref} className="ae-pop fixed z-[96] w-[236px] space-y-3 rounded-ae border border-ae-border bg-ae-elevated p-3 shadow-2xl" style={pos}>
+    <div ref={ref} className="ae-pop fixed z-[96] w-[272px] space-y-3 rounded-ae border border-ae-border bg-ae-elevated p-3 shadow-2xl" style={pos}>
       <div
-        className="relative h-36 cursor-crosshair rounded-md"
+        role="slider"
+        tabIndex={0}
+        aria-label="Saturation and brightness"
+        aria-valuetext={hex}
+        className="relative h-40 cursor-crosshair touch-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ae-accent"
         style={{ background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(${hsv[0]} 100% 50%))` }}
         onPointerDown={(e) => drag(e, 'sv')}
+        onKeyDown={keys('sv')}
       >
         <span
-          className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow"
+          className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white shadow-[0_0_0_1px_#0006,0_2px_6px_#0008]"
           style={{ left: `${hsv[1] * 100}%`, top: `${(1 - hsv[2]) * 100}%`, background: hex }}
         />
       </div>
-      <div
-        className="relative h-3 cursor-pointer rounded-full"
-        style={{ background: 'linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red)' }}
-        onPointerDown={(e) => drag(e, 'hue')}
-      >
-        <span className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow" style={{ left: `${(hsv[0] / 360) * 100}%`, background: `hsl(${hsv[0]} 100% 50%)` }} />
-      </div>
-      <div className="grid grid-cols-6 gap-1.5">
-        {SWATCHES.map((c) => (
-          <button key={c} type="button" aria-label={c} className="h-6 rounded-md border border-ae-border" style={{ background: c }} onClick={() => live(hexToHsv(c))} />
-        ))}
+      <div className="flex items-center gap-2">
+        {eyedropper && (
+          <button type="button" data-tip="Pick a colour from the screen" aria-label="Eyedropper" className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-ae-border text-ae-muted hover:text-ae-text" onClick={() => void pickFromScreen()}>
+            <PipetteIcon size={15} />
+          </button>
+        )}
+        <div
+          role="slider"
+          tabIndex={0}
+          aria-label="Hue"
+          aria-valuenow={Math.round(hsv[0])}
+          className="relative h-3.5 flex-1 cursor-pointer touch-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ae-accent"
+          style={{ background: 'linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red)' }}
+          onPointerDown={(e) => drag(e, 'hue')}
+          onKeyDown={keys('hue')}
+        >
+          <span className="pointer-events-none absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white shadow-[0_0_0_1px_#0006]" style={{ left: `${(hsv[0] / 360) * 100}%`, background: `hsl(${hsv[0]} 100% 50%)` }} />
+        </div>
       </div>
       <div className="flex items-center gap-2">
-        <span className="h-8 w-8 shrink-0 rounded-md border border-ae-border" style={{ background: hex }} />
-        <input
-          className="ae-input w-full !py-1.5 font-mono text-sm"
-          value={text}
-          maxLength={7}
-          onChange={(e) => {
-            setText(e.target.value);
-            if (/^#[0-9a-f]{6}$/i.test(e.target.value)) live(hexToHsv(e.target.value));
-          }}
-        />
+        <div className="flex h-8 w-14 shrink-0 overflow-hidden rounded-md border border-ae-border" data-tip="Before / after">
+          <button type="button" aria-label="Back to the original colour" className="flex-1" style={{ background: original.current }} onClick={() => set(hexToHsv(original.current))} />
+          <span className="flex-1" style={{ background: hex }} />
+        </div>
+        {mode === 'hex' ? (
+          <input
+            className="ae-input w-full !py-1.5 font-mono text-sm"
+            value={text}
+            maxLength={7}
+            spellCheck={false}
+            onChange={(e) => {
+              const v = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`;
+              setText(v);
+              if (/^#[0-9a-f]{6}$/i.test(v)) set(hexToHsv(v));
+              else if (/^#[0-9a-f]{3}$/i.test(v)) set(hexToHsv(`#${[...v.slice(1)].map((c) => c + c).join('')}`));
+            }}
+          />
+        ) : (
+          <div className="grid flex-1 grid-cols-3 gap-1">
+            {([r, g, b] as const).map((val, i) => (
+              <input
+                key={i}
+                aria-label={'RGB'[i]}
+                className="ae-input w-full !px-1 !py-1.5 text-center font-mono text-xs"
+                inputMode="numeric"
+                value={val}
+                onChange={(e) => {
+                  const n = Math.max(0, Math.min(255, Number(e.target.value.replace(/\D/g, '')) || 0));
+                  const next = [r, g, b] as number[];
+                  next[i] = n;
+                  set(hexToHsv(rgbToHex(next[0]!, next[1]!, next[2]!)));
+                }}
+              />
+            ))}
+          </div>
+        )}
+        <button type="button" className="shrink-0 rounded-md px-1.5 py-1 text-[11px] font-bold text-ae-muted uppercase hover:bg-ae-hover hover:text-ae-text" onClick={() => setMode((m) => (m === 'hex' ? 'rgb' : 'hex'))}>
+          {mode === 'hex' ? 'RGB' : 'HEX'}
+        </button>
       </div>
+      <div>
+        <p className="mb-1 text-[10px] font-bold tracking-wide text-ae-muted uppercase">Swatches</p>
+        <div className="grid grid-cols-6 gap-1.5">{SWATCHES.map(swatch)}</div>
+      </div>
+      {recent.length > 0 && (
+        <div>
+          <p className="mb-1 text-[10px] font-bold tracking-wide text-ae-muted uppercase">Recent</p>
+          <div className="grid grid-cols-6 gap-1.5">{recent.map(swatch)}</div>
+        </div>
+      )}
     </div>
   );
 }

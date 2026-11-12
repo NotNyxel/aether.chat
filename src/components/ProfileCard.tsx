@@ -18,6 +18,9 @@ import { ActivitySections } from './ActivityCards';
 import { ScopedCss } from './ThemeEngine';
 import { useEscape } from '../lib/escape';
 import { DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY } from '../lib/profileDecor';
+import { effectDef, frameProps, loadNameFont, nameEffectAttrs, nameFontFamily, shapeDef, type Crop, type EffectDef } from '../lib/cosmetics';
+import { cardFrameAttrs, cardVars } from '../lib/cardDecor';
+import { themeAttrs } from '../lib/cosmetics';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Badges
@@ -67,7 +70,7 @@ export function BadgeRow({ badgeIds, size = 24 }: { badgeIds: string[]; size?: n
 
 interface AvatarProps {
   profile:
-    | (Pick<UserProfile, 'username' | 'display_name' | 'avatar_url' | 'avatar_frame' | 'accent_color'> & Partial<Pick<UserProfile, 'avatar_shape'>>)
+    | (Pick<UserProfile, 'username' | 'display_name' | 'avatar_url' | 'avatar_frame' | 'accent_color'> & Partial<Pick<UserProfile, 'avatar_shape' | 'decor'>>)
     | null
     | undefined;
   size?: number;
@@ -88,15 +91,19 @@ export function Avatar({ profile, size = 40, speaking = false, showFrame = true 
   const [broken, setBroken] = useState(false);
   const name = profile?.display_name || profile?.username || '?';
   const frame = showFrame && profile?.avatar_frame ? profile.avatar_frame : 'none';
+  const gen = frameProps(frame, profile?.decor);
+  const shape = shapeDef(profile?.avatar_shape);
   const style = {
     '--avatar-size': `${size}px`,
     '--frame-color': isHexColor(profile?.accent_color) ? profile.accent_color : DEFAULT_PROFILE_ACCENT,
+    ...gen.style,
+    ...(shape ? { '--shape-clip': shape.clip ?? 'none', '--shape-radius': shape.radius ?? '0' } : {}),
   } as CSSProperties;
 
   useEffect(() => setBroken(false), [profile?.avatar_url]);
 
   return (
-    <div className="ae-avatar" data-frame={frame} data-shape={profile?.avatar_shape ?? 'circle'} data-speaking={speaking} style={style}>
+    <div className="ae-avatar" data-frame={frame} data-fs={gen.fam} data-shape={profile?.avatar_shape ?? 'circle'} data-shape-custom={shape ? '' : undefined} data-speaking={speaking} style={style}>
       <div
         className="ae-avatar-inner"
         style={{
@@ -105,7 +112,7 @@ export function Avatar({ profile, size = 40, speaking = false, showFrame = true 
         }}
       >
         {profile?.avatar_url && !broken ? (
-          <img src={profile.avatar_url} alt="" draggable={false} onError={() => setBroken(true)} />
+          <img src={profile.avatar_url} alt="" draggable={false} onError={() => setBroken(true)} style={cropStyle(profile.decor?.avatarCrop)} />
         ) : (
           <span aria-hidden="true">{name.slice(0, 1).toUpperCase()}</span>
         )}
@@ -120,6 +127,12 @@ export function Avatar({ profile, size = 40, speaking = false, showFrame = true 
 
 type NameProfile = Partial<Pick<UserProfile, 'display_name' | 'username' | 'name_font' | 'name_effect' | 'name_color_a' | 'name_color_b' | 'accent_color'>>;
 
+/** CSS for a stored crop (focus point + zoom); works for GIFs too since the file isn't touched. */
+export function cropStyle(c: Crop | null | undefined): CSSProperties | undefined {
+  if (!c) return undefined;
+  return { objectPosition: `${c.x}% ${c.y}%`, transform: c.z > 1 ? `scale(${c.z})` : undefined, transformOrigin: `${c.x}% ${c.y}%` };
+}
+
 /**
  * A display name with the user's chosen font and effect. `color` (e.g. a role colour) applies
  * unless the user picked a colour effect, which wins, like Discord's gradient role names.
@@ -128,12 +141,17 @@ export function StyledName({ profile, text, color, className = '' }: { profile: 
   const a = isHexColor(profile?.name_color_a) ? profile!.name_color_a! : isHexColor(profile?.accent_color) ? profile!.accent_color! : DEFAULT_PROFILE_ACCENT;
   const b = isHexColor(profile?.name_color_b) ? profile!.name_color_b! : `color-mix(in srgb, ${a} 30%, #ffffff)`;
   const effect = profile?.name_effect ?? 'none';
+  const fx = nameEffectAttrs(effect);
+  const family = nameFontFamily(profile?.name_font);
+  useEffect(() => loadNameFont(profile?.name_font), [profile?.name_font]);
   return (
     <span
       className={`ae-name ${className}`}
       data-font={profile?.name_font ?? 'default'}
       data-effect={effect}
-      style={{ '--name-a': a, '--name-b': b, color: effect === 'none' ? (color ?? undefined) : undefined } as CSSProperties}
+      data-fill={fx.fill}
+      data-tr={fx.tr}
+      style={{ '--name-a': a, '--name-b': b, color: effect === 'none' ? (color ?? undefined) : undefined, ...(family ? { fontFamily: `'Twemoji', '${family}', system-ui, sans-serif` } : {}) } as CSSProperties}
     >
       {text ?? (profile?.display_name || profile?.username || '…')}
     </span>
@@ -161,10 +179,14 @@ const EFFECTS: Record<Exclude<ProfileEffect, 'none'>, { glyphs: string[]; count:
 };
 const CONFETTI_COLORS = ['#ff5f6d', '#ffc371', '#5ee6a8', '#4facfe', '#a18cd1', '#f9f871'];
 
-export function ProfileEffectLayer({ effect, color }: { effect: ProfileEffect | null | undefined; color?: string }) {
+export function ProfileEffectLayer({ effect, color, angle = 12, decorColor }: { effect: ProfileEffect | null | undefined; color?: string; angle?: number; decorColor?: string }) {
   const parts = useMemo(() => {
     if (!effect || effect === 'none') return [];
-    const fx = EFFECTS[effect];
+    const legacy = EFFECTS[effect as Exclude<ProfileEffect, 'none'>] as EffectDef | undefined;
+    const fx = legacy ? { ...legacy, aligned: effect === 'rain' } : effectDef(effect);
+    if (!fx) return [];
+    const rad = (Math.max(-45, Math.min(45, angle)) * Math.PI) / 180;
+    const slide = Math.tan(rad) * 620; // sideways travel over the card's height at this angle
     // Deterministic pseudo-random layout so the card doesn't reshuffle on every render.
     let seed = effect.length * 9301;
     const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
@@ -176,11 +198,13 @@ export function ProfileEffectLayer({ effect, color }: { effect: ProfileEffect | 
         top: fx.motion === 'fall' ? '-6%' : fx.motion === 'rise' ? '100%' : `${rand() * 100}%`,
         fontSize: size,
         opacity: fx.motion === 'fall' ? 0.85 : undefined,
-        animation: `ae-${fx.motion} ${duration}s ${fx.motion === 'fall' || fx.motion === 'rise' ? 'linear' : 'ease-in-out'} ${-rand() * duration}s infinite`,
-        '--drift': `${(rand() - 0.5) * 60}px`,
-        '--spin': `${(rand() - 0.5) * 720}deg`,
-        color:
-          effect === 'confetti'
+        animation: `ae-${fx.motion === 'drift' ? 'fall' : fx.motion} ${duration}s ${fx.motion === 'fall' || fx.motion === 'rise' || fx.motion === 'drift' ? 'linear' : 'ease-in-out'} ${-rand() * duration}s infinite`,
+        // Falling things travel along one angle. Streaks (rain) also point that way instead of tumbling.
+        '--drift': `${(fx.motion === 'fall' || fx.motion === 'drift' ? -slide : 0) + (fx.aligned ? 0 : (rand() - 0.5) * (fx.motion === 'drift' ? 160 : 60))}px`,
+        '--spin': fx.aligned ? '0deg' : `${(rand() - 0.5) * (fx.motion === 'drift' ? 180 : 720)}deg`,
+        '--rot': fx.aligned ? `${angle}deg` : '0deg',
+        color: decorColor ??
+          (effect === 'confetti'
             ? CONFETTI_COLORS[i % CONFETTI_COLORS.length]
             : effect === 'fireflies'
               ? '#ffe96b'
@@ -192,12 +216,12 @@ export function ProfileEffectLayer({ effect, color }: { effect: ProfileEffect | 
                 ? 'rgba(160, 200, 255, 0.6)'
                 : effect === 'snow' || effect === 'bubbles'
                   ? 'rgba(255,255,255,0.85)'
-                  : (color ?? '#ffe08a'),
+                  : (color ?? '#ffe08a')),
         textShadow: effect === 'fireflies' ? '0 0 8px #ffe96b' : effect === 'embers' ? '0 0 6px #ff6a00' : effect === 'lightning' ? '0 0 10px #8ecbff' : undefined,
       } as CSSProperties;
       return { glyph: fx.glyphs[i % fx.glyphs.length]!, style };
     });
-  }, [effect, color]);
+  }, [effect, color, angle, decorColor]);
   if (parts.length === 0) return null;
   return (
     <div className="ae-fx" aria-hidden="true">
@@ -286,13 +310,15 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
       data-ae-profile={scopeId}
       className={`ae-profile-card ae-card relative w-[340px] overflow-hidden rounded-ae border border-ae-border text-ae-text shadow-2xl ${className}`}
       data-card={profile.card_style ?? 'solid'}
-      data-cardframe={profile.card_frame || 'none'}
+      data-ct={themeAttrs(profile.card_style).pattern}
+      {...cardFrameAttrs(profile)}
       style={
         {
           '--pf-primary': primary,
           '--pf-accent': accent,
           '--card-a': primary,
           '--card-b': accent,
+          ...cardVars(profile),
           background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 35%, var(--ae-bg-elevated)) 0%, var(--ae-bg-elevated) 55%)`,
           contain: 'layout paint style',
           isolation: 'isolate',
@@ -300,10 +326,10 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
       }
     >
       <ScopedCss css={profile.custom_css} scopeSelector={`[data-ae-profile="${scopeId}"]`} />
-      <ProfileEffectLayer effect={profile.profile_effect} color={isHexColor(profile.accent_color) ? profile.accent_color : undefined} />
+      <ProfileEffectLayer effect={profile.profile_effect} color={isHexColor(profile.accent_color) ? profile.accent_color : undefined} angle={profile.decor?.effectAngle} decorColor={profile.decor?.effect} />
 
       <div className="ae-profile-banner h-28 w-full" style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}>
-        {profile.banner_url && <img src={profile.banner_url} alt="" className="h-full w-full object-cover" draggable={false} />}
+        {profile.banner_url && <img src={profile.banner_url} alt="" className="h-full w-full object-cover" draggable={false} style={cropStyle(profile.decor?.bannerCrop)} />}
       </div>
 
       <div className="relative px-4 pb-4">

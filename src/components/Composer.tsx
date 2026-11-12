@@ -18,6 +18,9 @@ import { PollDialog } from './PollDialog';
 import { Avatar } from './ProfileCard';
 import { BOT_COMMANDS, parseBotCommand } from '../lib/botCommands';
 import { useSupabase } from '../lib/supabase';
+import { useMeId } from '../hooks/useMe';
+import { useServers } from '../hooks/useChatData';
+import { customEmojiToken, useServerEmojis } from '../lib/customEmoji';
 
 interface Suggestion {
   key: string;
@@ -57,6 +60,10 @@ const TRIGGER = /(^|\s)([@#:])([\w.+-]*)$/;
 export function Composer(props: ComposerProps) {
   const { scope } = props;
   const send = useSendMessage(scope);
+  const meId = useMeId();
+  const sendQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const { data: myServers = [] } = useServers(meId);
+  const { data: customEmojis = [] } = useServerEmojis(myServers.map((x) => x.id));
   const sb = useSupabase();
   const upload = useUploadAttachment(scope);
   const emoji = useEmojiData();
@@ -175,15 +182,19 @@ export function Composer(props: ComposerProps) {
         .slice(0, 8)
         .map((c) => ({ key: c.id, insert: `<#${c.id}> `, label: c.name, icon: <HashIcon size={16} className="text-ae-muted" /> }));
     }
-    if (!emoji) return [];
-    return searchEmoji(emoji, q, 8).map((e) => ({
+    const customHits: Suggestion[] = customEmojis
+      .filter((e) => e.name.includes(q))
+      .slice(0, 6)
+      .map((e) => ({ key: e.id, insert: `${customEmojiToken(e)} `, label: `:${e.name}:`, sub: 'Server emoji', icon: <img src={e.url} alt="" className="h-6 w-6 object-contain" /> }));
+    if (!emoji) return customHits;
+    return [...customHits, ...searchEmoji(emoji, q, 8 - Math.min(customHits.length, 4)).map((e) => ({
       key: e.emoji,
       insert: `${e.emoji} `,
       label: e.shortcodes[0] ? `:${e.shortcodes[0]}:` : e.label,
       sub: e.label,
       icon: <span className="text-xl leading-none">{e.emoji}</span>,
-    }));
-  }, [trigger, props.memberIds, props.channels, props.canMentionEveryone, props.roles, profiles, emoji]);
+    }))];
+  }, [trigger, props.memberIds, props.channels, props.canMentionEveryone, props.roles, profiles, emoji, customEmojis]);
 
   useEffect(() => setSelected(0), [trigger?.kind, trigger?.query]);
 
@@ -213,7 +224,7 @@ export function Composer(props: ComposerProps) {
   // ── Sending ───────────────────────────────────────────────────────────────────────────────
   const submit = () => {
     const content = draft.trim();
-    if ((!content && pending.length === 0) || send.isPending || uploading > 0 || cooldownLeft > 0 || props.timedOutUntil) return;
+    if ((!content && pending.length === 0) || uploading > 0 || cooldownLeft > 0 || props.timedOutUntil) return;
     const command = props.botCommands && scope.kind === 'channel' && pending.length === 0 ? parseBotCommand(content) : null;
     if (command) {
       setDraft('');
@@ -225,20 +236,22 @@ export function Composer(props: ComposerProps) {
       });
       return;
     }
-    send.mutate(
-      { content, replyToId: props.replyTo?.id ?? null, attachments: pending },
-      {
-        onSuccess: () => {
-          setDraft('');
-          setPending([]);
-          props.onCancelReply();
-          props.onStopTyping();
-          props.onSent();
-          playSound('messageSent');
-          if (props.slowmodeSeconds) setCooldownUntil(Date.now() + props.slowmodeSeconds * 1000);
-        },
-        onError: (e) => toast.error(e.message),
-      },
+    // Instant: clear the box and show the message now; sends go out one after another in order,
+    // so fast typing is never blocked or wiped while the server answers.
+    const vars = { content, replyToId: props.replyTo?.id ?? null, attachments: pending, tempId: `local-${crypto.randomUUID()}`, authorId: meId };
+    setDraft('');
+    setPending([]);
+    props.onCancelReply();
+    props.onStopTyping();
+    props.onSent();
+    playSound('messageSent');
+    if (props.slowmodeSeconds) setCooldownUntil(Date.now() + props.slowmodeSeconds * 1000);
+    sendQueue.current = sendQueue.current.then(() =>
+      send.mutateAsync(vars).catch((e: Error) => {
+        toast.error(e.message);
+        // Give the text back, unless they've already started typing something new.
+        setDraft((cur) => (cur.trim() ? cur : content));
+      }),
     );
   };
 
@@ -493,6 +506,7 @@ export function Composer(props: ComposerProps) {
           </div>
           {pickerOpen && (
             <EmojiPicker
+              allowCustom
               onClose={() => setPickerOpen(false)}
               onPick={(e) => {
                 insertAtCaret(e);

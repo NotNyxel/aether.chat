@@ -10,18 +10,22 @@ import { useSupabase } from '../lib/supabase';
 import { AVATAR_FRAMES, isHexColor } from '../theme/presets';
 import type { AvatarShape, CardStyle, EditableProfile, NameEffect, NameFont, ProfileEffect, ProfileLink, UserProfile } from '../types/db';
 import { Dialog } from './Dialog';
-import { CheckIcon, ChevronRightIcon, CloseIcon, FrameIcon, IdCardIcon, LinkIcon, NameplateIcon, PaletteIcon, ShapeIcon, SparklesIcon } from './icons';
+import { CheckIcon, ChevronRightIcon, CloseIcon, FrameIcon, IdCardIcon, LinkIcon, NameplateIcon, PaletteIcon, SearchIcon, ShapeIcon, SparklesIcon } from './icons';
 import { CARD_FRAMES, DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY, NAMEPLATES } from '../lib/profileDecor';
 import { useUiStore } from '../stores/uiStore';
 import { Avatar, ProfileCard, StyledName } from './ProfileCard';
-import { ColorField, Field, inputCls, Section } from './SettingsPanel';
+import { ColorField, Field, inputCls, Section, Slider } from './SettingsPanel';
 import { toast } from './Toaster';
 import { useEscape } from '../lib/escape';
+import { CropDialog } from './CropDialog';
+import { cropStyle } from './ProfileCard';
+import { type Crop, BANNER_PRESETS, GEN_NAME_EFFECTS, NAME_FONTS, GEN_AVATAR_FRAMES, GEN_CARD_FRAMES, GEN_EFFECTS, GEN_NAMEPLATES, GEN_SHAPES, GEN_THEMES, plateProps, type Decor } from '../lib/cosmetics';
+import { EmojiButton } from './EmojiPicker';
 
 export const EDITABLE_KEYS: (keyof EditableProfile)[] = [
   'username', 'display_name', 'custom_status', 'status_emoji', 'bio', 'avatar_url', 'avatar_frame', 'banner_url', 'primary_color',
   'accent_color', 'custom_css', 'audio_status_url', 'theme_preset', 'pronouns', 'name_font', 'name_effect', 'name_color_a', 'name_color_b',
-  'profile_effect', 'card_style', 'avatar_shape', 'profile_links', 'nameplate', 'card_frame', 'profile_widgets',
+  'profile_effect', 'card_style', 'avatar_shape', 'profile_links', 'nameplate', 'card_frame', 'profile_widgets', 'decor',
 ];
 
 export function toDraft(p: UserProfile): EditableProfile {
@@ -111,7 +115,7 @@ export function MiniCard({ profile }: { profile: UserProfile }) {
 
 interface PickerProps<T extends string> {
   title: string;
-  options: { id: T; label: string }[];
+  options: { id: T; label: string; group?: string }[];
   current: T;
   base: UserProfile;
   apply: (id: T) => Partial<UserProfile>;
@@ -127,6 +131,12 @@ interface PickerProps<T extends string> {
 export function Picker<T extends string>({ title, options, current, base, apply, renderTile, extra, aside, onApply, onClose }: PickerProps<T>) {
   const [selected, setSelected] = useState<T>(current);
   const [hovered, setHovered] = useState<T | null>(null);
+  const groups = [...new Set(options.map((o) => o.group).filter(Boolean))] as string[];
+  const [group, setGroup] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [limit, setLimit] = useState(36);
+  const q = query.trim().toLowerCase();
+  const filtered = options.filter((o) => (!group || o.group === group) && (!q || o.label.toLowerCase().includes(q)));
   const shown = hovered ?? selected;
   const preview = { ...base, ...apply(shown) } as UserProfile;
 
@@ -148,8 +158,30 @@ export function Picker<T extends string>({ title, options, current, base, apply,
         </header>
         <div className="flex min-h-0 flex-1">
           <div className="ae-scroll min-h-0 flex-1 overflow-y-auto p-4">
+            {options.length > 20 && (
+              <div className="mb-3 space-y-2">
+                <div className="ae-field">
+                  <SearchIcon size={15} />
+                  <input className="ae-input" placeholder={`Search ${options.length} options`} value={query} onChange={(e) => (setQuery(e.target.value), setLimit(36))} />
+                </div>
+                {groups.length > 1 && (
+                  <div className="flex flex-wrap gap-1">
+                    {[null, ...groups].map((g) => (
+                      <button
+                        key={g ?? 'all'}
+                        type="button"
+                        onClick={() => (setGroup(g), setLimit(36))}
+                        className={`rounded-full border px-2.5 py-0.5 text-xs ${group === g ? 'border-ae-accent bg-ae-accent/15 font-semibold' : 'border-ae-border text-ae-muted hover:text-ae-text'}`}
+                      >
+                        {g ?? 'All'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-2.5 lg:grid-cols-4" onMouseLeave={() => setHovered(null)}>
-              {options.map((o) => (
+              {filtered.slice(0, limit).map((o) => (
                 <div
                   key={o.id}
                   role="button"
@@ -170,6 +202,12 @@ export function Picker<T extends string>({ title, options, current, base, apply,
                 </div>
               ))}
             </div>
+            {filtered.length > limit && (
+              <button type="button" className="mt-3 w-full rounded-ae border border-ae-border py-2 text-sm text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={() => setLimit((l) => l + 48)}>
+                Show more ({filtered.length - limit} left)
+              </button>
+            )}
+            {filtered.length === 0 && <p className="py-8 text-center text-sm text-ae-muted">Nothing matches.</p>}
             {extra?.(shown)}
           </div>
           <aside className="hidden w-[380px] shrink-0 flex-col items-center gap-3 border-l border-ae-border bg-ae-sunken/50 p-5 md:flex">
@@ -214,22 +252,26 @@ export function CustomizeRow({ icon, title, value, onChange, children }: { icon:
   );
 }
 
-export function ImageSlot({ label, url, round, userId, kind, onChange }: {
+export function ImageSlot({ label, url, round, userId, kind, onChange, crop, onCrop }: {
   label: string;
   url: string | null;
   round?: boolean;
   userId: string;
   kind: 'avatar' | 'banner';
   onChange: (url: string | null) => void;
+  /** When given, offers crop & zoom (right after uploading, and with "Adjust"). */
+  crop?: Crop;
+  onCrop?: (c: Crop | undefined) => void;
 }) {
   const upload = useUploadProfileMedia(userId);
+  const [cropping, setCropping] = useState<string | null>(null);
   const ref = useRef<HTMLInputElement>(null);
   const [linking, setLinking] = useState(false);
   const [link, setLink] = useState('');
   return (
     <div className="flex min-w-0 flex-1 items-center gap-3 rounded-ae border border-ae-border bg-ae-surface/30 p-2.5">
       <div className={`grid shrink-0 place-items-center overflow-hidden bg-ae-sunken ${round ? 'h-14 w-14 rounded-full' : 'h-14 w-24 rounded-ae'}`}>
-        {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : <span className="text-xs text-ae-muted">none</span>}
+        {url ? <img src={url} alt="" className="h-full w-full object-cover" style={cropStyle(crop)} /> : <span className="text-xs text-ae-muted">none</span>}
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
         <p className="text-sm font-semibold">{label}</p>
@@ -253,12 +295,25 @@ export function ImageSlot({ label, url, round, userId, kind, onChange }: {
             <input
               ref={ref}
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 e.target.value = '';
-                if (file) upload.mutate({ file, kind }, { onSuccess: onChange, onError: (err) => toast.error(err.message) });
+                if (file)
+                  upload.mutate(
+                    { file, kind },
+                    {
+                      onSuccess: (u) => {
+                        onChange(u);
+                        if (onCrop) {
+                          onCrop(undefined); // new picture: start centred
+                          setCropping(u);
+                        }
+                      },
+                      onError: (err) => toast.error(err.message),
+                    },
+                  );
               }}
             />
             <button type="button" className="ae-press rounded bg-ae-accent px-2.5 py-1 font-semibold text-ae-on-accent" onClick={() => ref.current?.click()}>
@@ -267,6 +322,11 @@ export function ImageSlot({ label, url, round, userId, kind, onChange }: {
             <button type="button" className="rounded px-2 py-1 text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={() => setLinking(true)}>
               Link
             </button>
+            {url && onCrop && (
+              <button type="button" className="rounded px-2 py-1 text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={() => setCropping(url)}>
+                Adjust
+              </button>
+            )}
             {url && (
               <button type="button" className="rounded px-2 py-1 text-ae-danger hover:bg-ae-hover" onClick={() => onChange(null)}>
                 Remove
@@ -275,6 +335,7 @@ export function ImageSlot({ label, url, round, userId, kind, onChange }: {
           </div>
         )}
       </div>
+      {cropping && onCrop && <CropDialog url={cropping} kind={kind} value={crop} onSave={onCrop} onClose={() => setCropping(null)} />}
     </div>
   );
 }
@@ -365,7 +426,7 @@ function MainProfile({ userId }: { userId: string }) {
             </Field>
             <Field label="Status">
               <div className="flex gap-2">
-                <input className={`${inputCls} !w-14 shrink-0 text-center`} maxLength={8} placeholder="😀" value={text('status_emoji')} onChange={(e) => setText('status_emoji', e.target.value)} />
+                <EmojiButton value={text('status_emoji')} onChange={(e) => setText('status_emoji', e ?? '')} />
                 <input className={inputCls} maxLength={128} placeholder="What's up?" value={text('custom_status')} onChange={(e) => setText('custom_status', e.target.value)} />
               </div>
             </Field>
@@ -377,8 +438,8 @@ function MainProfile({ userId }: { userId: string }) {
 
         <Section title="Pictures">
           <div className="flex flex-wrap gap-3">
-            <ImageSlot label="Avatar" round url={draft.avatar_url} userId={userId} kind="avatar" onChange={(u) => set({ avatar_url: u })} />
-            <ImageSlot label="Banner" url={draft.banner_url} userId={userId} kind="banner" onChange={(u) => set({ banner_url: u })} />
+            <ImageSlot label="Avatar" round url={draft.avatar_url} userId={userId} kind="avatar" onChange={(u) => set({ avatar_url: u })} crop={draft.decor?.avatarCrop} onCrop={(c) => set({ decor: { ...(draft.decor ?? {}), avatarCrop: c } })} />
+            <ImageSlot label="Banner" url={draft.banner_url} userId={userId} kind="banner" onChange={(u) => set({ banner_url: u })} crop={draft.decor?.bannerCrop} onCrop={(c) => set({ decor: { ...(draft.decor ?? {}), bannerCrop: c } })} />
           </div>
         </Section>
 
@@ -500,66 +561,7 @@ function MainProfile({ userId }: { userId: string }) {
         </div>
       )}
 
-      {picker === 'frame' && (
-        <Picker
-          title="Avatar decoration"
-          options={AVATAR_FRAMES.map((f) => ({ id: f.id as string, label: f.label }))}
-          current={draft.avatar_frame ?? 'none'}
-          base={merged}
-          apply={(id) => ({ avatar_frame: id === 'none' ? null : id })}
-          renderTile={(p) => (
-            <div className="grid h-24 place-items-center">
-              <Avatar profile={p} size={60} />
-            </div>
-          )}
-          onApply={applyPatch}
-          onClose={() => setPicker(null)}
-        />
-      )}
-      {picker === 'shape' && (
-        <Picker
-          title="Avatar shape"
-          options={SHAPES}
-          current={draft.avatar_shape ?? 'circle'}
-          base={merged}
-          apply={(id) => ({ avatar_shape: id })}
-          renderTile={(p) => (
-            <div className="grid h-24 place-items-center">
-              <Avatar profile={p} size={64} />
-            </div>
-          )}
-          onApply={applyPatch}
-          onClose={() => setPicker(null)}
-        />
-      )}
-      {picker === 'effect' && (
-        <Picker title="Profile effect" options={EFFECTS} current={draft.profile_effect ?? 'none'} base={merged} apply={(id) => ({ profile_effect: id })} renderTile={(p) => <MiniCard profile={p} />} onApply={applyPatch} onClose={() => setPicker(null)} />
-      )}
-      {picker === 'card' && (
-        <Picker title="Card style" options={CARDS} current={draft.card_style ?? 'solid'} base={merged} apply={(id) => ({ card_style: id })} renderTile={(p) => <MiniCard profile={p} />} onApply={applyPatch} onClose={() => setPicker(null)} />
-      )}
       <ExtraPickers picker={picker} draft={draft} merged={merged} applyPatch={applyPatch} close={() => setPicker(null)} />
-      {picker === 'name' && <NamePicker base={merged} onApply={applyPatch} onClose={() => setPicker(null)} />}
-      {picker === 'colors' && (
-        <Picker
-          title="Profile colours"
-          options={[{ id: 'current', label: 'Current' }, ...COLOR_PRESETS.map(([a, b]) => ({ id: `${a}|${b}`, label: `${a} · ${b}` }))]}
-          current="current"
-          base={merged}
-          apply={(id) => (id === 'current' ? {} : { primary_color: id.split('|')[0]!, accent_color: id.split('|')[1]! })}
-          renderTile={(p) => (
-            <div className="h-20 rounded-ae" style={{ background: `linear-gradient(135deg, ${p.primary_color ?? DEFAULT_PROFILE_PRIMARY}, ${p.accent_color ?? DEFAULT_PROFILE_ACCENT})` }} />
-          )}
-          extra={() => (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <ColorField label="Banner colour" value={draft.primary_color} onChange={(v) => set({ primary_color: v })} />
-              <ColorField label="Accent colour" value={draft.accent_color} onChange={(v) => set({ accent_color: v })} />
-            </div>
-          )}
-          onApply={applyPatch}
-          onClose={() => setPicker(null)}
-        />
-      )}
     </div>
   );
 }
@@ -570,53 +572,80 @@ export function NamePicker({ base, onApply, onClose }: { base: UserProfile; onAp
   const [effect, setEffect] = useState<NameEffect>(base.name_effect ?? 'none');
   const [a, setA] = useState<string | null>(base.name_color_a);
   const [b, setB] = useState<string | null>(base.name_color_b);
-  const [hoverFont, setHoverFont] = useState<NameFont | null>(null);
-  const [hoverEffect, setHoverEffect] = useState<NameEffect | null>(null);
-  const preview = { ...base, name_font: hoverFont ?? font, name_effect: hoverEffect ?? effect, name_color_a: a, name_color_b: b } as UserProfile;
+  const [hover, setHover] = useState<{ font?: NameFont; effect?: NameEffect } | null>(null);
+  const [tab, setTab] = useState<'font' | 'effect'>('font');
+  const [query, setQuery] = useState('');
+  const [group, setGroup] = useState<string | null>(null);
+  const [limit, setLimit] = useState(48);
+  const preview = { ...base, name_font: hover?.font ?? font, name_effect: hover?.effect ?? effect, name_color_a: a, name_color_b: b } as UserProfile;
+
+  const fonts = [...FONTS.map((f) => ({ id: f.id as string, label: f.label, group: 'Classic' })), ...NAME_FONTS.map((f) => ({ id: f.id, label: f.label, group: f.group }))];
+  const effects = [...NAME_EFFECTS.map((f) => ({ id: f.id as string, label: f.label, group: 'Classic' })), ...GEN_NAME_EFFECTS];
+  const list = tab === 'font' ? fonts : effects;
+  const groups = [...new Set(list.map((o) => o.group))];
+  const q = query.trim().toLowerCase();
+  const shown = list.filter((o) => (!group || o.group === group) && (!q || o.label.toLowerCase().includes(q)));
+  const switchTab = (t: 'font' | 'effect') => {
+    setTab(t);
+    setGroup(null);
+    setQuery('');
+    setLimit(48);
+  };
   const tile = (active: boolean) =>
-    `ae-enter rounded-ae border-2 bg-ae-sunken px-2 py-3 text-center transition-all hover:-translate-y-0.5 ${active ? 'border-ae-accent' : 'border-transparent hover:border-ae-border'}`;
+    `rounded-ae border-2 bg-ae-sunken px-2 py-3 text-center transition-all hover:-translate-y-0.5 ${active ? 'border-ae-accent' : 'border-transparent hover:border-ae-border'}`;
 
   return (
     <Dialog wide title="Name style" onClose={onClose}>
-      <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-        <div className="space-y-4">
-          <div>
-            <p className="mb-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Font</p>
-            <div className="grid grid-cols-3 gap-2" onMouseLeave={() => setHoverFont(null)}>
-              {FONTS.map((f) => (
-                <button key={f.id} type="button" className={tile(font === f.id)} onMouseEnter={() => setHoverFont(f.id)} onClick={() => setFont(f.id)}>
-                  <StyledName profile={{ ...preview, name_font: f.id, name_effect: 'none' }} className="text-base font-semibold" />
-                  <span className="mt-1 block text-[11px] text-ae-muted">{f.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="mb-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Effect</p>
-            <div className="grid grid-cols-3 gap-2" onMouseLeave={() => setHoverEffect(null)}>
-              {NAME_EFFECTS.map((f) => (
-                <button key={f.id} type="button" className={tile(effect === f.id)} onMouseEnter={() => setHoverEffect(f.id)} onClick={() => setEffect(f.id)}>
-                  <StyledName profile={{ ...preview, name_effect: f.id }} className="text-base font-semibold" />
-                  <span className="mt-1 block text-[11px] text-ae-muted">{f.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          {effect !== 'none' && effect !== 'rainbow' && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <ColorField label="Colour 1" value={a} onChange={setA} />
-              {(effect === 'gradient' || effect === 'neon') && <ColorField label="Colour 2" value={b} onChange={setB} />}
-            </div>
-          )}
-        </div>
-        <div className="hidden w-[200px] flex-col items-center justify-center gap-2 rounded-ae bg-ae-sunken p-4 md:flex">
-          <Avatar profile={preview} size={64} />
-          <p className="text-xl font-bold">
-            <StyledName profile={preview} />
-          </p>
-          <p className="text-xs text-ae-muted">@{base.username}</p>
-        </div>
+      <div className="rounded-ae border border-ae-border bg-ae-sunken/60 px-4 py-3 text-center">
+        <p className="text-2xl font-bold">
+          <StyledName profile={preview} />
+        </p>
+        <p className="text-xs text-ae-muted">@{base.username}</p>
       </div>
+      <div className="flex gap-1 rounded-ae bg-ae-sunken/50 p-1">
+        {(['font', 'effect'] as const).map((t) => (
+          <button key={t} type="button" onClick={() => switchTab(t)} className={`flex-1 rounded-ae py-1.5 text-sm ${tab === t ? 'bg-ae-surface font-semibold' : 'text-ae-muted hover:text-ae-text'}`}>
+            {t === 'font' ? `Fonts (${fonts.length})` : `Effects (${effects.length})`}
+          </button>
+        ))}
+      </div>
+      <div className="ae-field">
+        <SearchIcon size={15} />
+        <input className="ae-input" placeholder={tab === 'font' ? 'Search fonts' : 'Search effects'} value={query} onChange={(e) => (setQuery(e.target.value), setLimit(48))} />
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {[null, ...groups].map((g) => (
+          <button key={g ?? 'all'} type="button" onClick={() => (setGroup(g), setLimit(48))} className={`rounded-full border px-2.5 py-0.5 text-xs ${group === g ? 'border-ae-accent bg-ae-accent/15 font-semibold' : 'border-ae-border text-ae-muted hover:text-ae-text'}`}>
+            {g ?? 'All'}
+          </button>
+        ))}
+      </div>
+      <div className="ae-scroll grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3" onMouseLeave={() => setHover(null)}>
+        {shown.slice(0, limit).map((o) =>
+          tab === 'font' ? (
+            <button key={o.id} type="button" className={tile(font === o.id)} onMouseEnter={() => setHover({ font: o.id })} onClick={() => setFont(o.id)}>
+              <StyledName profile={{ ...preview, name_font: o.id, name_effect: 'none' }} className="block truncate text-base font-semibold" />
+              <span className="mt-1 block truncate text-[11px] text-ae-muted">{o.label}</span>
+            </button>
+          ) : (
+            <button key={o.id} type="button" className={tile(effect === o.id)} onMouseEnter={() => setHover({ effect: o.id })} onClick={() => setEffect(o.id)}>
+              <StyledName profile={{ ...preview, name_effect: o.id }} className="block truncate text-base font-semibold" />
+              <span className="mt-1 block truncate text-[11px] text-ae-muted">{o.label}</span>
+            </button>
+          ),
+        )}
+        {shown.length > limit && (
+          <button type="button" className="col-span-full rounded-ae border border-ae-border py-2 text-sm text-ae-muted hover:bg-ae-hover" onClick={() => setLimit((l) => l + 48)}>
+            Show more ({shown.length - limit} left)
+          </button>
+        )}
+      </div>
+      {effect !== 'none' && effect !== 'rainbow' && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ColorField label="Colour 1" value={a} onChange={setA} />
+          <ColorField label="Colour 2" value={b} onChange={setB} />
+        </div>
+      )}
       <div className="flex justify-end gap-2">
         <button type="button" className="rounded-ae px-4 py-2 text-sm hover:bg-ae-hover" onClick={onClose}>
           Cancel
@@ -752,7 +781,7 @@ export function ProfileEditor({ userId }: { userId: string }) {
 /** A member-list row with a nameplate behind it, for picker tiles and previews. */
 export function NameplateRow({ profile, className = '' }: { profile: UserProfile; className?: string }) {
   return (
-    <div className={`ae-plate flex items-center gap-2 overflow-hidden rounded-ae px-2 py-1.5 ${className}`} data-plate={profile.nameplate || 'none'}>
+    <div className={`ae-plate flex items-center gap-2 overflow-hidden rounded-ae px-2 py-1.5 ${className}`} {...plateProps(profile.nameplate, profile.decor)}>
       <Avatar profile={profile} size={32} showFrame={false} />
       <span className="min-w-0">
         <StyledName profile={profile} className="block truncate text-sm font-semibold" />
@@ -764,20 +793,154 @@ export function NameplateRow({ profile, className = '' }: { profile: UserProfile
 
 /** Pickers for nameplates and profile frames (shared by the settings page and Profile Studio). */
 export function ExtraPickers({ picker, draft, merged, applyPatch, close }: { picker: PickerKind | null; draft: EditableProfile; merged: UserProfile; applyPatch: (p: Partial<UserProfile>) => void; close: () => void }) {
+  const decor = (draft.decor ?? {}) as Decor;
+  const setDecor = (patch: Partial<Decor>) => applyPatch({ decor: { ...decor, ...patch } } as Partial<UserProfile>);
+  const colorRow = (label: string, value: string | undefined, onChange: (v: string | null) => void) => <ColorField label={label} value={value ?? null} onChange={onChange} />;
+  const custom = (title: string, children: ReactNode) => (
+    <div className="mt-4 space-y-3 rounded-ae border border-ae-border bg-ae-sunken/40 p-3">
+      <p className="text-[11px] font-bold tracking-wide text-ae-muted uppercase">{title}</p>
+      {children}
+    </div>
+  );
+  const tileAvatar = (size: number) => (p: UserProfile) => (
+    <div className="grid h-24 place-items-center">
+      <Avatar profile={p} size={size} />
+    </div>
+  );
+
+  if (picker === 'frame')
+    return (
+      <Picker
+        title="Avatar decoration"
+        options={[...AVATAR_FRAMES.map((f) => ({ id: f.id as string, label: f.label, group: 'Classic' })), ...GEN_AVATAR_FRAMES]}
+        current={draft.avatar_frame ?? 'none'}
+        base={merged}
+        apply={(id) => ({ avatar_frame: id === 'none' ? null : id })}
+        renderTile={tileAvatar(60)}
+        extra={() =>
+          custom(
+            'Your colours (for the styles after Classic)',
+            <div className="grid gap-3 sm:grid-cols-2">
+              {colorRow('Colour 1', decor.frame?.[0], (v) => setDecor({ frame: v ? [v, decor.frame?.[1] ?? v] : undefined }))}
+              {colorRow('Colour 2', decor.frame?.[1], (v) => setDecor({ frame: [decor.frame?.[0] ?? v ?? '#7c5cff', v ?? decor.frame?.[0] ?? '#7c5cff'] }))}
+            </div>,
+          )
+        }
+        onApply={applyPatch}
+        onClose={close}
+      />
+    );
+  if (picker === 'shape')
+    return (
+      <Picker
+        title="Avatar shape"
+        options={[...SHAPES.map((x) => ({ id: x.id as string, label: x.label, group: 'Classic' })), ...GEN_SHAPES.map((x) => ({ id: x.id, label: x.label, group: x.group }))]}
+        current={draft.avatar_shape ?? 'circle'}
+        base={merged}
+        apply={(id) => ({ avatar_shape: id })}
+        renderTile={tileAvatar(64)}
+        onApply={applyPatch}
+        onClose={close}
+      />
+    );
+  if (picker === 'effect')
+    return (
+      <Picker
+        title="Profile effect"
+        options={[...EFFECTS.map((x) => ({ id: x.id as string, label: x.label, group: 'Classic' })), ...GEN_EFFECTS]}
+        current={draft.profile_effect ?? 'none'}
+        base={merged}
+        apply={(id) => ({ profile_effect: id })}
+        renderTile={(p) => <MiniCard profile={p} />}
+        extra={() =>
+          custom(
+            'Colour and direction',
+            <>
+              {colorRow('Particle colour (leave empty for the effect’s own)', decor.effect, (v) => setDecor({ effect: v ?? undefined }))}
+              <Slider label="Falling angle" value={decor.effectAngle ?? 12} min={-45} max={45} step={1} format={(v) => `${v}°`} onChange={(v) => setDecor({ effectAngle: v })} />
+            </>,
+          )
+        }
+        onApply={applyPatch}
+        onClose={close}
+      />
+    );
+  if (picker === 'card')
+    return (
+      <Picker
+        title="Profile theme"
+        options={[...CARDS.map((x) => ({ id: x.id as string, label: x.label, group: 'Classic' })), ...GEN_THEMES]}
+        current={draft.card_style ?? 'solid'}
+        base={merged}
+        apply={(id) => ({ card_style: id })}
+        renderTile={(p) => <MiniCard profile={p} />}
+        extra={() =>
+          custom(
+            'Theme colours (your banner and accent colours)',
+            <div className="grid gap-3 sm:grid-cols-2">
+              {colorRow('Colour 1', draft.primary_color ?? undefined, (v) => applyPatch({ primary_color: v }))}
+              {colorRow('Colour 2', draft.accent_color ?? undefined, (v) => applyPatch({ accent_color: v }))}
+            </div>,
+          )
+        }
+        onApply={applyPatch}
+        onClose={close}
+      />
+    );
+  if (picker === 'colors')
+    return (
+      <Picker
+        title="Banner colours"
+        options={[{ id: 'current', label: 'Current', group: 'Yours' }, ...BANNER_PRESETS.map((b) => ({ id: `${b.primary}|${b.accent}`, label: b.label, group: b.label.split(' ')[0]! }))]}
+        current="current"
+        base={merged}
+        apply={(id) => (id === 'current' ? {} : { primary_color: id.split('|')[0]!, accent_color: id.split('|')[1]! })}
+        renderTile={(p) => <div className="h-20 rounded-ae" style={{ background: `linear-gradient(135deg, ${p.primary_color ?? DEFAULT_PROFILE_PRIMARY}, ${p.accent_color ?? DEFAULT_PROFILE_ACCENT})` }} />}
+        extra={() =>
+          custom(
+            'Custom',
+            <div className="grid gap-3 sm:grid-cols-2">
+              {colorRow('Banner colour', draft.primary_color ?? undefined, (v) => applyPatch({ primary_color: v }))}
+              {colorRow('Accent colour', draft.accent_color ?? undefined, (v) => applyPatch({ accent_color: v }))}
+            </div>,
+          )
+        }
+        onApply={applyPatch}
+        onClose={close}
+      />
+    );
+  if (picker === 'name') return <NamePicker base={merged} onApply={applyPatch} onClose={close} />;
   if (picker === 'plate')
     return (
       <Picker
         title="Nameplate"
-        options={NAMEPLATES.map((n) => ({ id: n.id as string, label: n.label }))}
+        options={[...NAMEPLATES.map((n) => ({ id: n.id as string, label: n.label, group: 'Classic' })), ...GEN_NAMEPLATES]}
         current={draft.nameplate || 'none'}
         base={merged}
         apply={(id) => ({ nameplate: id })}
-        renderTile={(p) => (
-          <div className="ae-plate ae-plate-swatch grid h-20 place-items-center rounded-md bg-ae-bg/60" data-plate={p.nameplate || 'none'}>
-            {(p.nameplate || 'none') === 'none' && <span className="text-xs text-ae-muted">No nameplate</span>}
-          </div>
-        )}
+        renderTile={(p) => {
+          const pp = plateProps(p.nameplate, p.decor);
+          return (
+            <div className={`ae-plate ae-plate-swatch grid h-20 place-items-center rounded-md bg-ae-bg/60`} data-plate={pp['data-plate']} data-ps={pp['data-ps']} style={pp.style}>
+              {(p.nameplate || 'none') === 'none' && <span className="text-xs text-ae-muted">No nameplate</span>}
+            </div>
+          );
+        }}
         aside={(p) => <MemberListMock profile={p} />}
+        extra={() =>
+          custom(
+            'Your colours (for the styles after Classic)',
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[0, 1, 2].map((i) =>
+                colorRow(`Colour ${i + 1}`, decor.plate?.[i], (v) => {
+                  const next = [...(decor.plate ?? ['#7c5cff', '#c77dff', '#00d4ff'])];
+                  next[i] = v ?? next[i]!;
+                  setDecor({ plate: v === null && i === 0 ? undefined : next });
+                }),
+              )}
+            </div>,
+          )
+        }
         onApply={applyPatch}
         onClose={close}
       />
@@ -786,11 +949,12 @@ export function ExtraPickers({ picker, draft, merged, applyPatch, close }: { pic
     return (
       <Picker
         title="Profile frame"
-        options={CARD_FRAMES.map((n) => ({ id: n.id as string, label: n.label }))}
-        current={draft.card_frame || 'none'}
+        options={[...CARD_FRAMES.filter((n) => n.id !== 'crimson-roses').map((n) => ({ id: n.id as string, label: n.id === 'roses' ? 'Roses (any colour)' : n.label, group: 'Classic' })), ...GEN_CARD_FRAMES]}
+        current={draft.card_frame === 'crimson-roses' ? 'roses' : draft.card_frame || 'none'}
         base={merged}
         apply={(id) => ({ card_frame: id })}
         renderTile={(p) => <MiniCard profile={p} />}
+        extra={() => custom('Frame colour (roses and the styles after Classic)', colorRow('Colour', decor.cardFrame, (v) => setDecor({ cardFrame: v ?? undefined })))}
         onApply={applyPatch}
         onClose={close}
       />

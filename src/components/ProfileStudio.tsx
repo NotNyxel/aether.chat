@@ -31,7 +31,6 @@ import {
 import { Avatar, StyledName } from './ProfileCard';
 import {
   CARDS,
-  COLOR_PRESETS,
   EDITABLE_KEYS,
   EFFECTS,
   ExtraPickers,
@@ -40,17 +39,15 @@ import {
   ImageSlot,
   MiniCard,
   NAME_EFFECTS,
-  NamePicker,
   NameplateRow,
-  Picker,
   SHAPES,
   toDraft,
   type PickerKind,
 } from './ProfileEditor';
-import { AVATAR_FRAMES } from '../theme/presets';
-import { ColorField } from './SettingsPanel';
 import { toast } from './Toaster';
 import { useEscape } from '../lib/escape';
+import { ALL_COSMETICS } from '../lib/cosmetics';
+import { EmojiButton } from './EmojiPicker';
 
 function Tile({ icon, label, value, onClick, children }: { icon: ReactNode; label: string; value?: string; onClick: () => void; children?: ReactNode }) {
   return (
@@ -287,7 +284,8 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
     });
   };
 
-  const label = <T extends { id: string; label: string }>(list: readonly T[], id: string | null | undefined, fallback: string) => list.find((x) => x.id === (id || fallback))?.label;
+  const label = <T extends { id: string; label: string }>(list: readonly T[], id: string | null | undefined, fallback: string) =>
+    list.find((x) => x.id === (id || fallback))?.label ?? ALL_COSMETICS.get(id || fallback) ?? (id || fallback);
 
   return (
     <div className="ae-fade absolute inset-0 z-50 flex flex-col bg-ae-bg" role="dialog" aria-label="Edit profile">
@@ -321,7 +319,7 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
               <Tile icon={<NameplateIcon size={14} />} label="Nameplate" value={label(NAMEPLATES, draft.nameplate, 'none')} onClick={() => setPicker('plate')}>
                 <NameplateRow profile={merged} className="w-full scale-90" />
               </Tile>
-              <Tile icon={<SparklesIcon size={14} />} label="Avatar decoration" value={FRAME_LABELS[draft.avatar_frame ?? 'none'] ?? 'None'} onClick={() => setPicker('frame')}>
+              <Tile icon={<SparklesIcon size={14} />} label="Avatar decoration" value={FRAME_LABELS[draft.avatar_frame ?? 'none'] ?? ALL_COSMETICS.get(draft.avatar_frame ?? '') ?? 'None'} onClick={() => setPicker('frame')}>
                 <Avatar profile={merged} size={48} />
               </Tile>
               <Tile icon={<ShapeIcon size={14} />} label="Avatar shape" value={label(SHAPES, draft.avatar_shape, 'circle')} onClick={() => setPicker('shape')}>
@@ -355,7 +353,7 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
             </Labeled>
             <Labeled label="Status">
               <div className="flex gap-2">
-                <input className="ae-input !w-14 shrink-0 text-center" maxLength={8} placeholder="😀" value={text('status_emoji')} onChange={(e) => setText('status_emoji', e.target.value)} />
+                <EmojiButton value={text('status_emoji')} onChange={(e) => setText('status_emoji', e ?? '')} />
                 <input className="ae-input w-full" maxLength={128} placeholder="What's up?" value={text('custom_status')} onChange={(e) => setText('custom_status', e.target.value)} />
               </div>
             </Labeled>
@@ -363,8 +361,8 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
               <textarea className="ae-input min-h-24 w-full" maxLength={4000} value={text('bio')} onChange={(e) => setText('bio', e.target.value)} />
             </Labeled>
             <div className="space-y-2">
-              <ImageSlot label="Avatar" round url={draft.avatar_url} userId={userId} kind="avatar" onChange={(u) => set({ avatar_url: u })} />
-              <ImageSlot label="Banner" url={draft.banner_url} userId={userId} kind="banner" onChange={(u) => set({ banner_url: u })} />
+              <ImageSlot label="Avatar" round url={draft.avatar_url} userId={userId} kind="avatar" onChange={(u) => set({ avatar_url: u })} crop={draft.decor?.avatarCrop} onCrop={(c) => set({ decor: { ...(draft.decor ?? {}), avatarCrop: c } })} />
+              <ImageSlot label="Banner" url={draft.banner_url} userId={userId} kind="banner" onChange={(u) => set({ banner_url: u })} crop={draft.decor?.bannerCrop} onCrop={(c) => set({ decor: { ...(draft.decor ?? {}), bannerCrop: c } })} />
             </div>
             <p className="flex items-center gap-1.5 text-xs text-ae-muted">
               <ImageIcon size={12} /> Links, audio status and profile CSS are in Settings → Profiles.
@@ -408,59 +406,6 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
         </aside>
       </div>
 
-      {picker === 'frame' && (
-        <Picker
-          title="Avatar decoration"
-          options={AVATAR_FRAMES.map((f) => ({ id: f.id as string, label: f.label }))}
-          current={draft.avatar_frame ?? 'none'}
-          base={merged}
-          apply={(id) => ({ avatar_frame: id === 'none' ? null : id })}
-          renderTile={(p) => (
-            <div className="grid h-24 place-items-center">
-              <Avatar profile={p} size={60} />
-            </div>
-          )}
-          onApply={applyPatch}
-          onClose={() => setPicker(null)}
-        />
-      )}
-      {picker === 'shape' && (
-        <Picker
-          title="Avatar shape"
-          options={SHAPES}
-          current={draft.avatar_shape ?? 'circle'}
-          base={merged}
-          apply={(id) => ({ avatar_shape: id })}
-          renderTile={(p) => (
-            <div className="grid h-24 place-items-center">
-              <Avatar profile={p} size={64} />
-            </div>
-          )}
-          onApply={applyPatch}
-          onClose={() => setPicker(null)}
-        />
-      )}
-      {picker === 'effect' && <Picker title="Profile effect" options={EFFECTS} current={draft.profile_effect ?? 'none'} base={merged} apply={(id) => ({ profile_effect: id })} renderTile={(p) => <MiniCard profile={p} />} onApply={applyPatch} onClose={() => setPicker(null)} />}
-      {picker === 'card' && <Picker title="Profile theme" options={CARDS} current={draft.card_style ?? 'solid'} base={merged} apply={(id) => ({ card_style: id })} renderTile={(p) => <MiniCard profile={p} />} onApply={applyPatch} onClose={() => setPicker(null)} />}
-      {picker === 'colors' && (
-        <Picker
-          title="Banner colours"
-          options={[{ id: 'current', label: 'Current' }, ...COLOR_PRESETS.map(([a, b]) => ({ id: `${a}|${b}`, label: `${a} · ${b}` }))]}
-          current="current"
-          base={merged}
-          apply={(id) => (id === 'current' ? {} : { primary_color: id.split('|')[0]!, accent_color: id.split('|')[1]! })}
-          renderTile={(p) => <div className="h-20 rounded-ae" style={{ background: `linear-gradient(135deg, ${p.primary_color ?? DEFAULT_PROFILE_PRIMARY}, ${p.accent_color ?? DEFAULT_PROFILE_ACCENT})` }} />}
-          extra={() => (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <ColorField label="Banner colour" value={draft.primary_color} onChange={(v) => set({ primary_color: v })} />
-              <ColorField label="Accent colour" value={draft.accent_color} onChange={(v) => set({ accent_color: v })} />
-            </div>
-          )}
-          onApply={applyPatch}
-          onClose={() => setPicker(null)}
-        />
-      )}
-      {picker === 'name' && <NamePicker base={merged} onApply={applyPatch} onClose={() => setPicker(null)} />}
       <ExtraPickers picker={picker} draft={draft} merged={merged} applyPatch={applyPatch} close={() => setPicker(null)} />
     </div>
   );

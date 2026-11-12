@@ -14,6 +14,7 @@ import { useUiStore } from '../stores/uiStore';
 import { useCall } from './CallContext';
 import { CheckIcon, CloseIcon, InboxIcon, MessageIcon, PhoneIcon, SearchIcon, UsersIcon } from './icons';
 import { Avatar } from './ProfileCard';
+import { plateProps } from '../lib/cosmetics';
 
 type Tab = 'online' | 'all' | 'pending' | 'blocked' | 'add' | 'search';
 
@@ -43,7 +44,7 @@ function PersonRow({ userId, subtitle, actions }: { userId: string; subtitle?: s
   const showProfile = useUiStore((s) => s.showProfile);
   return (
     <li
-      data-plate={p?.nameplate || 'none'}
+      {...plateProps(p?.nameplate, p?.decor)}
       className="ae-plate group flex cursor-pointer items-center gap-3 border-t border-ae-border px-2 py-2.5 hover:rounded-ae hover:bg-ae-hover"
       onClick={() => showProfile(userId)}
       onContextMenu={(e) => userMenu(e, userId)}

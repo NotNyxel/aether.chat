@@ -3,11 +3,11 @@
 export type ChannelType = 'category' | 'text' | 'voice' | 'stream';
 export type PresenceStatus = 'online' | 'idle' | 'dnd' | 'invisible';
 
-export type NameFont = 'default' | 'serif' | 'mono' | 'rounded' | 'display' | 'handwritten' | 'pixel';
-export type NameEffect = 'none' | 'gradient' | 'rainbow' | 'glow' | 'neon' | 'shimmer' | 'fire' | 'ice' | 'chrome' | 'glitch' | 'pastel' | 'toxic';
-export type ProfileEffect = 'none' | 'sparkles' | 'snow' | 'hearts' | 'fireflies' | 'confetti' | 'rain' | 'stars' | 'bubbles' | 'petals' | 'embers' | 'leaves' | 'music' | 'lightning';
-export type CardStyle = 'solid' | 'glass' | 'gradient' | 'aurora' | 'midnight' | 'holo' | 'noir' | 'sunset' | 'mesh' | 'ocean';
-export type AvatarShape = 'circle' | 'squircle' | 'hexagon';
+export type NameFont = 'default' | 'serif' | 'mono' | 'rounded' | 'display' | 'handwritten' | 'pixel' | (string & {});
+export type NameEffect = 'none' | 'gradient' | 'rainbow' | 'glow' | 'neon' | 'shimmer' | 'fire' | 'ice' | 'chrome' | 'glitch' | 'pastel' | 'toxic' | (string & {});
+export type ProfileEffect = 'none' | 'sparkles' | 'snow' | 'hearts' | 'fireflies' | 'confetti' | 'rain' | 'stars' | 'bubbles' | 'petals' | 'embers' | 'leaves' | 'music' | 'lightning' | (string & {});
+export type CardStyle = 'solid' | 'glass' | 'gradient' | 'aurora' | 'midnight' | 'holo' | 'noir' | 'sunset' | 'mesh' | 'ocean' | (string & {});
+export type AvatarShape = 'circle' | 'squircle' | 'hexagon' | (string & {});
 export interface ProfileLink {
   label: string;
   url: string;
@@ -30,6 +30,8 @@ export interface UserProfile {
   profile_links: ProfileLink[];
   nameplate: string;
   card_frame: string;
+  /** Custom colours, crops and effect settings (see lib/cosmetics.ts). */
+  decor?: import('../lib/cosmetics').Decor | null;
   profile_widgets: import('../lib/profileDecor').ProfileWidget[];
   discoverable: boolean;
   is_admin: boolean;
@@ -68,6 +70,7 @@ export type EditableProfile = Pick<
   | 'nameplate'
   | 'card_frame'
   | 'profile_widgets'
+  | 'decor'
   | 'discoverable'
   | 'status_emoji'
   | 'bio'
@@ -96,6 +99,8 @@ export interface Server {
   rules?: string | null;
   bot_enabled?: boolean;
   bot_welcome?: boolean;
+  discoverable?: boolean;
+  discovery_category?: string | null;
 }
 
 export interface ServerMember {
@@ -261,6 +266,9 @@ export interface Message {
   is_bot?: boolean;
   bot_invoker_id?: string | null;
   bot_command?: string | null;
+  /** Webhook messages: the name and avatar they posted with. */
+  bot_name?: string | null;
+  bot_avatar?: string | null;
 }
 
 export interface PollVote {

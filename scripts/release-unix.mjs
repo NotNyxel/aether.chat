@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build and publish the macOS and Linux versions of the current release (package.json version):
+ * Build and publish the macOS, Linux and Android versions of the current release (package.json version):
  *   node scripts/release-unix.mjs [--ref <commit>]
  *
  * 1. Runs the "Desktop builds" GitHub Actions workflow (.github/workflows/desktop-builds.yml) on
@@ -68,7 +68,8 @@ const appSig = named(find(/\.app\.tar\.gz\.sig$/), `aether.chat_${version}_macos
 const appImage = named(find(/\.AppImage$/), `aether.chat_${version}_linux-x86_64.AppImage`);
 const appImageSig = named(find(/\.AppImage\.sig$/), `aether.chat_${version}_linux-x86_64.AppImage.sig`);
 const deb = named(find(/\.deb$/), `aether.chat_${version}_linux-amd64.deb`);
-const assets = [dmg, appTar, appSig, appImage, appImageSig, deb];
+const apk = named(find(/\.apk$/), `aether.chat_${version}_android.apk`);
+const assets = [dmg, appTar, appSig, appImage, appImageSig, deb, apk];
 for (const repo of [SRC, FEED]) run('gh', ['release', 'upload', tag, ...assets.map((a) => `"${a}"`), '--repo', repo, '--clobber']);
 
 // 3. Merge into latest.json.

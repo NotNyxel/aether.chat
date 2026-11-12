@@ -10,6 +10,8 @@ import { useCall } from './CallContext';
 import { BellOffIcon, CameraIcon, HeadphonesIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, PhoneOffIcon, ScreenIcon, SettingsIcon, UsersIcon } from './icons';
 import { Dialog } from './Dialog';
 import { Avatar } from './ProfileCard';
+import { plateProps } from '../lib/cosmetics';
+import { EmojiButton } from './EmojiPicker';
 
 function IconButton({ label, danger, active, onClick, children }: {
   label: string;
@@ -119,7 +121,7 @@ function CustomStatusDialog({ userId, onClose }: { userId: string; onClose: () =
         }}
       >
         <div className="flex gap-2">
-          <input className={`${input} !w-14 shrink-0 text-center`} value={emoji} maxLength={8} placeholder="😀" onChange={(e) => setEmoji(e.target.value)} aria-label="Status emoji" />
+          <EmojiButton value={emoji} onChange={(e) => setEmoji(e ?? '')} />
           <input className={input} value={text} maxLength={128} autoFocus placeholder="What's happening?" onChange={(e) => setText(e.target.value)} />
         </div>
         <label className="block text-sm">
@@ -174,7 +176,7 @@ export function UserPanel({ userId }: { userId: string }) {
           type="button"
           data-user-panel
           className="ae-plate flex min-w-0 flex-1 items-center gap-2 rounded-ae p-1 text-left hover:bg-ae-hover"
-          data-plate={me?.nameplate || 'none'}
+          {...plateProps(me?.nameplate, me?.decor)}
           onClick={() => setMenu((m) => !m)}
         >
           <span className="relative">

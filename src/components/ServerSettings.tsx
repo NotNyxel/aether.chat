@@ -27,7 +27,7 @@ import { ArchiveIcon, BellIcon, BellOffIcon, BlockIcon, CalendarIcon, CheckIcon,
 import { DisplayName, formatTime } from './MessageItem';
 import { Avatar } from './ProfileCard';
 import { SoundboardTab } from './SoundboardSettings';
-import { BotTab, CommunityTab } from './ServerExtras';
+import { BotTab, CommunityTab, EmojiTab } from './ServerExtras';
 import { ColorField, Field, inputCls, Section, Toggle } from './SettingsPanel';
 import { useEscape } from '../lib/escape';
 
@@ -936,6 +936,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
     },
     { id: 'moderation', label: 'Moderation', show: rank.can(Permission.MANAGE_MESSAGES) },
     { id: 'automod', label: 'AutoMod', show: rank.can(Permission.MANAGE_SERVER) },
+    { id: 'emoji', label: 'Emoji', show: true },
     { id: 'soundboard', label: 'Soundboard', show: true },
     { id: 'invites', label: 'Invites', show: rank.can(Permission.CREATE_INVITE) },
     { id: 'bans', label: 'Bans', show: rank.can(Permission.BAN_MEMBERS) },
@@ -976,6 +977,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
           {active === 'bot' && <BotTab server={server} userId={userId} editable={rank.can(Permission.MANAGE_SERVER)} />}
           {active === 'roles' && <RolesTab server={server} rank={rank} />}
           {active === 'members' && <MembersTab server={server} rank={rank} />}
+          {active === 'emoji' && <EmojiTab server={server} canManage={rank.can(Permission.MANAGE_EXPRESSIONS)} />}
           {active === 'soundboard' && <SoundboardTab server={server} canManage={rank.can(Permission.MANAGE_EXPRESSIONS)} />}
           {active === 'invites' && <InvitesTab server={server} rank={rank} userId={userId} />}
           {active === 'bans' && <BansTab server={server} />}

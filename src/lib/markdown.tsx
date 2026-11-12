@@ -16,6 +16,7 @@ import { Fragment, lazy, Suspense, useEffect, useState, type ReactNode } from 'r
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, ServerRole } from '../types/db';
 import { parseMessageLink } from './messageLinks';
+import { CustomEmoji } from './customEmoji';
 import { openExternal } from './platform';
 
 const CodeBlock = lazy(() => import('./CodeBlock'));
@@ -135,6 +136,7 @@ const INLINE_RULES: InlineRule[] = [
   { re: /<t:(-?\d{1,13})(?::([tTdDfFR]))?>/, render: (m, k) => <Timestamp key={k} unix={Number(m[1])} style={m[2] ?? 'f'} /> },
   { re: new RegExp(`<#(${UUID})>`, 'i'), render: (m, k) => <ChannelMention key={k} id={m[1]} /> },
   { re: new RegExp(`<@&(${UUID})>`, 'i'), render: (m, k) => <RoleMention key={k} id={m[1]} /> },
+  { re: new RegExp(`<a?:([a-z0-9_]{2,32}):(${UUID})>`, 'i'), render: (m, k) => <CustomEmoji key={k} name={m[1]!} id={m[2]!} /> },
   { re: /<(https?:\/\/[^>\s]+)>/, render: (m, k) => <Link key={k} href={m[1]}>{m[1]}</Link> },
   { re: /\*\*([\s\S]+?)\*\*/, render: (m, k) => <strong key={k}>{renderInline(m[1], k)}</strong> },
   { re: /__([\s\S]+?)__/, render: (m, k) => <u key={k}>{renderInline(m[1], k)}</u> },

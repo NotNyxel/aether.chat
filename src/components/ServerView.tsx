@@ -18,6 +18,7 @@ import { CrownIcon, NsfwIcon, StageIcon, TimeoutIcon, UsersIcon, VolumeIcon } fr
 import { MessagePane } from './MessagePane';
 import { Avatar, StyledName } from './ProfileCard';
 import { VoiceRoom } from './VoiceRoom';
+import { plateProps } from '../lib/cosmetics';
 
 function MemberRow({ userId, nickname, owner, offline, color, timedOut, me, serverId, avatarOverride }: {
   me: string;
@@ -41,7 +42,7 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut, me, serv
         type="button"
         onClick={() => showProfile(userId)}
         onContextMenu={(e) => userMenu(e, userId, [], serverId)}
-        data-plate={(!offline && p?.nameplate) || 'none'}
+        {...plateProps((!offline && p?.nameplate) || 'none', p?.decor)}
         className={`ae-plate flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left hover:bg-ae-hover ${offline ? 'opacity-45' : ''}`}
       >
         <span className="relative">

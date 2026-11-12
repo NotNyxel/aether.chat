@@ -15,6 +15,7 @@ import { WindowFrame } from './components/TitleBar';
 import { UpdateBanner } from './components/UpdateBanner';
 import { listenForAuthLinks } from './lib/authLinks';
 import { openJoinDialog } from './lib/joinBus';
+import { listenForPushClicks } from './lib/push';
 import { trackAccounts } from './lib/accounts';
 import { isTauri } from './lib/platform';
 import { resolveBackendConfig, SupabaseProvider, useSupabase } from './lib/supabase';
@@ -116,6 +117,8 @@ function AuthGate() {
 }
 
 const backend = resolveBackendConfig();
+
+listenForPushClicks();
 
 // Web: /inv/CODE opens the join dialog (after signing in, if needed).
 if (!isTauri) {

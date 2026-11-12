@@ -978,5 +978,44 @@ await expectOk('admins change the group DM size', async () => {
   if (!refused) throw new Error('limit not applied');
 });
 
+console.log('\nPlatform (1.4)');
+await expectOk('decor, generated shapes and cosmetics are writable', () =>
+  as(B, `update public.users set decor = '{"plate":["#ff0000"],"effectAngle":20}', avatar_shape = 'sh-star-5-45', nameplate = 'pl-sheen-violet', name_effect = 'fx-grad-soft', name_font = 'f-lobster', card_style = 'th-mesh-3' where id = '${B}'`));
+await expectError('decor must be an object', () => as(B, `update public.users set decor = '[1]' where id = '${B}'`));
+await expectOk('users manage only their own push subscriptions', async () => {
+  await as(B, `insert into public.push_subscriptions (endpoint, p256dh, auth) values ('https://push.example/abc', 'k', 'a')`);
+  const n = (await as(C, `select count(*)::int n from public.push_subscriptions`)).rows[0].n;
+  if (n !== 0) throw new Error('saw others');
+});
+await expectOk('messages still send with the push trigger in place (no pg_net here)', () => as(A, `insert into public.messages (channel_id, content) values ($1, 'push test @carol')`, [general]));
+const discSrv = (await as(A, `insert into public.servers (name) values ('Open Club') returning id`)).rows[0].id;
+await expectError('servers are not joinable without discovery', () => as(C, `select public.join_discoverable($1)`, [discSrv]), "isn't open");
+await expectOk('discoverable servers can be found and joined', async () => {
+  await as(A, `update public.servers set discoverable = true, discovery_category = 'gaming' where id = $1`, [discSrv]);
+  const found = (await as(C, `select name, is_member from public.discover_servers('open', 'gaming')`)).rows;
+  if (!found.some((r) => r.name === 'Open Club' && !r.is_member)) throw new Error(JSON.stringify(found));
+  await as(C, `select public.join_discoverable($1)`, [discSrv]);
+});
+const discCh = (await as(A, `select id from public.channels where server_id = $1 and type = 'text'`, [discSrv])).rows[0].id;
+await expectOk('webhooks post with the right token only', async () => {
+  const w = (await as(A, `insert into public.channel_webhooks (channel_id, server_id, name) values ($1, $2, 'CI') returning id, token`, [discCh, discSrv])).rows[0];
+  await db.exec(`reset role; set role anon;`);
+  try {
+    await db.query(`select public.webhook_post($1, $2, 'Build passed ✅', 'GitHub')`, [w.id, w.token]);
+    let refused = false;
+    try { await db.query(`select public.webhook_post($1, 'wrong', 'x')`, [w.id]); } catch { refused = true; }
+    if (!refused) throw new Error('bad token accepted');
+  } finally { await db.exec('reset role;'); }
+  const m = (await as(A, `select bot_name, is_bot from public.messages where channel_id = $1 and bot_command = 'webhook'`, [discCh])).rows[0];
+  if (m?.bot_name !== 'GitHub' || !m.is_bot) throw new Error(JSON.stringify(m));
+});
+await expectError('members without Manage Channels cannot make webhooks', () => as(C, `insert into public.channel_webhooks (channel_id, server_id, name) values ($1, $2, 'x')`, [discCh, discSrv]));
+await expectOk('custom emoji: managers add, everyone can see', async () => {
+  await as(A, `insert into public.server_emojis (server_id, name, url) values ($1, 'party_cat', 'https://x.example/e.png')`, [discSrv]);
+  const n = (await as(B, `select count(*)::int n from public.server_emojis where name = 'party_cat'`)).rows[0].n;
+  if (n !== 1) throw new Error(String(n));
+});
+await expectError('members cannot add emoji without Manage Expressions', () => as(C, `insert into public.server_emojis (server_id, name, url) values ($1, 'nope', 'https://x.example/e.png')`, [discSrv]));
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

@@ -2,7 +2,7 @@
 # Run by scripts/release-unix.mjs (or by hand from the Actions tab); it uploads the signed
 # installers and updater bundles as workflow artifacts, which that script then publishes to
 # both GitHub releases and merges into latest.json so these builds update themselves too.
-name: Desktop builds (macOS, Linux)
+name: Desktop builds (macOS, Linux, Android)
 
 on:
   workflow_dispatch:
@@ -11,9 +11,14 @@ on:
         description: Commit, branch or tag to build
         required: false
         default: main
+      platforms:
+        description: all, desktop or android
+        required: false
+        default: all
 
 jobs:
   build:
+    if: inputs.platforms != 'android'
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +86,75 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: aether-${{ matrix.name }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    if: inputs.platforms != 'desktop'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Android NDK
+        run: |
+          sdkmanager --install "ndk;27.0.12077973" "build-tools;34.0.0" "platforms;android-34" > /dev/null
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: android
+
+      - run: npm ci
+
+      - name: Generate the Android project
+        run: |
+          npx tauri android init --ci
+          # Voice and video calls need the microphone and camera; notifications need permission too.
+          M=src-tauri/gen/android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application#' "$M"
+
+      - name: Build
+        run: npx tauri android build --apk --target aarch64 --target armv7
+
+      - name: Sign
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          echo "$KS_B64" | base64 -d > ks.jks
+          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name '*release*.apk' | head -1)
+          BT="$ANDROID_HOME/build-tools/34.0.0"
+          mkdir -p out
+          "$BT/zipalign" -f -p 4 "$APK" aligned.apk
+          "$BT/apksigner" sign --ks ks.jks --ks-pass "pass:$KS_PW" --key-pass "pass:$KS_PW" --ks-key-alias aether --out out/aether-android.apk aligned.apk
+          "$BT/apksigner" verify out/aether-android.apk
+          rm -f ks.jks
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aether-android
           path: out/*
           if-no-files-found: error
           retention-days: 14

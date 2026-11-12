@@ -212,6 +212,22 @@ function upsertMessage(data: MessagePages | undefined, msg: Message): MessagePag
   return { ...data, pages: [[msg, ...first], ...rest] };
 }
 
+/** Drops the optimistic copy of a message once the real one arrives (same author and text). */
+function settlePending(data: MessagePages | undefined, msg: Message): MessagePages | undefined {
+  if (!data) return data;
+  let done = false;
+  return {
+    ...data,
+    pages: data.pages.map((page) =>
+      page.filter((m) => {
+        const hit = !done && (m as { pending?: boolean }).pending && m.author_id === msg.author_id && m.content === msg.content;
+        if (hit) done = true;
+        return !hit;
+      }),
+    ),
+  };
+}
+
 function removeMessage(data: MessagePages | undefined, id: string): MessagePages | undefined {
   if (!data) return data;
   return { ...data, pages: data.pages.map((page) => page.filter((m) => m.id !== id)) };
@@ -241,7 +257,7 @@ export function useMessages(scope: MessageScope) {
     const stop = liveChannel(sb, `messages:${scope.id}`, (c) =>
       c
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter }, (p) =>
-        qc.setQueryData<MessagePages>(key, (d) => upsertMessage(d, p.new as Message)),
+        qc.setQueryData<MessagePages>(key, (d) => upsertMessage(settlePending(d, p.new as Message), p.new as Message)),
       )
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter }, (p) => {
         qc.setQueryData<MessagePages>(key, (d) => upsertMessage(d, p.new as Message));
@@ -270,11 +286,47 @@ export interface SendMessageInput {
   poll?: { question: string; options: { text: string; emoji?: string | null }[]; multi: boolean; duration_hours: number };
 }
 
+/** Extra fields for an optimistic send: the message shows up instantly with a temporary id. */
+export interface SendVars extends SendMessageInput {
+  tempId?: string;
+  authorId?: string;
+}
+
 export function useSendMessage(scope: MessageScope) {
   const sb = useSupabase();
   const qc = useQueryClient();
+  const key = ['messages', scope.id];
   return useMutation({
-    mutationFn: async (input: SendMessageInput) => {
+    // Show it right away; the real row replaces it when the server answers.
+    onMutate: (v: SendVars) => {
+      if (!v.tempId) return;
+      const optimistic = {
+        id: v.tempId,
+        channel_id: scope.kind === 'channel' ? scope.id : null,
+        conversation_id: scope.kind === 'channel' ? null : scope.id,
+        author_id: v.authorId ?? null,
+        content: v.content,
+        attachments: v.attachments ?? [],
+        reply_to_id: v.replyToId ?? null,
+        pinned: false,
+        edited_at: null,
+        created_at: new Date().toISOString(),
+        mentions: [],
+        mention_roles: [],
+        mention_everyone: false,
+        poll: null,
+        forwarded_from: null,
+        thread_id: null,
+        crossposted_from: null,
+        published_at: null,
+        pending: true,
+      } as unknown as Message;
+      qc.setQueryData<MessagePages>(key, (d) => upsertMessage(d, optimistic));
+    },
+    onError: (_e, v) => {
+      if (v.tempId) qc.setQueryData<MessagePages>(key, (d) => removeMessage(d, v.tempId!));
+    },
+    mutationFn: async (input: SendVars) => {
       const rows = unwrap(
         await sb
           .from('messages')
@@ -302,7 +354,8 @@ export function useSendMessage(scope: MessageScope) {
         `🛡️ Your message was blocked by AutoMod: ${why}.${(ev as { action?: string } | null)?.action === 'block_and_timeout' ? ' You were also timed out.' : ''}`,
       );
     },
-    onSuccess: (msg) => qc.setQueryData<MessagePages>(['messages', scope.id], (d) => upsertMessage(d, msg)),
+    onSuccess: (msg, v) =>
+      qc.setQueryData<MessagePages>(key, (d) => upsertMessage(v.tempId ? removeMessage(d, v.tempId) : d, msg)),
   });
 }
 

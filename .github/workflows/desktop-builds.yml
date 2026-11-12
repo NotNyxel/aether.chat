@@ -1,8 +1,8 @@
-# macOS and Linux builds of aether.chat. Windows is built locally by scripts/release.mjs.
+# macOS, Linux, Android and iOS builds of Aether. Windows is built locally by scripts/release.mjs.
 # Run by scripts/release-unix.mjs (or by hand from the Actions tab); it uploads the signed
 # installers and updater bundles as workflow artifacts, which that script then publishes to
 # both GitHub releases and merges into latest.json so these builds update themselves too.
-name: Desktop builds (macOS, Linux, Android)
+name: Desktop builds (macOS, Linux, Android, iOS)
 
 on:
   workflow_dispatch:
@@ -12,13 +12,13 @@ on:
         required: false
         default: main
       platforms:
-        description: all, desktop or android
+        description: all, desktop, android or ios
         required: false
         default: all
 
 jobs:
   build:
-    if: inputs.platforms != 'android'
+    if: inputs.platforms == 'all' || inputs.platforms == 'desktop'
     strategy:
       fail-fast: false
       matrix:
@@ -91,7 +91,7 @@ jobs:
           retention-days: 14
 
   android:
-    if: inputs.platforms != 'desktop'
+    if: inputs.platforms == 'all' || inputs.platforms == 'android'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     steps:
@@ -132,6 +132,8 @@ jobs:
       - name: Generate the Android project
         run: |
           npx tauri android init --ci
+          # App icon: the generated project starts with Tauri's default icon; replace it with ours.
+          npx tauri icon public/icon.svg
           # Voice and video calls need the microphone and camera; notifications need permission too.
           M=src-tauri/gen/android/app/src/main/AndroidManifest.xml
           sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application#' "$M"
@@ -157,6 +159,65 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: aether-android
+          path: out/*
+          if-no-files-found: error
+          retention-days: 14
+
+  # iPhone / iPad: an unsigned .ipa for sideloading (SideStore, AltStore, Sideloadly sign it with
+  # the person's own Apple ID). Apple's paid developer account isn't needed.
+  ios:
+    if: inputs.platforms == 'all' || inputs.platforms == 'ios'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ios
+
+      - run: npm ci
+
+      - name: Generate the Xcode project
+        run: |
+          npx tauri ios init --ci
+          npx tauri icon public/icon.svg
+          P=src-tauri/gen/apple/aetherchat_iOS/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Aether uses the microphone for voice calls.'" "$P" || true
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Aether uses the camera for video calls.'" "$P" || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Aether lets you send photos from your library.'" "$P" || true
+
+      - name: Build (unsigned)
+        run: |
+          npm run build
+          cd src-tauri/gen/apple
+          SCHEME=$(xcodebuild -list -json | python3 -c "import json,sys; print([s for s in json.load(sys.stdin)['project']['schemes'] if s.endswith('_iOS')][0])")
+          xcodebuild -scheme "$SCHEME" -configuration release -sdk iphoneos -destination 'generic/platform=iOS'             -derivedDataPath build ARCHS=arm64 CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+
+      - name: Package .ipa
+        run: |
+          APP=$(find src-tauri/gen/apple/build/Build/Products -maxdepth 2 -name '*.app' -type d | head -1)
+          echo "Built $APP"
+          mkdir -p out Payload
+          cp -R "$APP" Payload/
+          zip -qry out/aether-ios.ipa Payload
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aether-ios
           path: out/*
           if-no-files-found: error
           retention-days: 14

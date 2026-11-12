@@ -41,6 +41,8 @@ import { AnnouncementBar } from './AdminPanel';
 import { EventsDialog } from './Events';
 import { CreateThreadDialog } from './Threads';
 import { ArrowLeftIcon as BackIcon } from './icons';
+import { ThemeStudio } from './ThemeStudio';
+import { ThemeEffectLayer } from './ThemeEffectLayer';
 
 /** Moderation tools for a member, shown in their profile card while you're viewing the server. */
 function ServerMemberTools({ server, me, userId }: { server: Server; me: string; userId: string }) {
@@ -198,6 +200,8 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <ForwardDialog me={userId} />
       <Lightbox />
       <ProfilePeekLayer me={userId} server={server} />
+      <ThemeStudio />
+      <ThemeEffectLayer />
       {popoverUserId && <PopoverForUser me={userId} userId={popoverUserId} server={server} onClose={() => showProfile(null)} />}
       <ServerSettings servers={servers.data ?? []} userId={userId} />
       <CreateThreadDialog />

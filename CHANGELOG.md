@@ -3,6 +3,20 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.6.1] - 2026-11-12
+
+**Customize your theme**
+
+- **Settings → Appearance → Customize your theme** opens a panel on the right of the app, so you see every change
+  live:
+  - **Dark or light**;
+  - **up to 5 colours** for a gradient behind the whole app (each with the colour picker);
+  - **Gradient Direction** and **Color Intensity** sliders;
+  - **background effects:** stars, snow, petals, bubbles, fireflies, aurora or rain, with an amount slider;
+  - **Surprise Me!** for a random theme, and **Reset**.
+- Panels go see-through over your gradient, and menus and dialogs get a frosted-glass blur.
+- Picking one of the ready-made themes switches your custom theme off; it's kept for next time.
+
 ## [1.6.0] - 2026-11-12
 
 **Aether: new name, profile cards, better emoji**

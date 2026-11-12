@@ -69,7 +69,9 @@ const appImage = named(find(/\.AppImage$/), `Aether_${version}_linux-x86_64.AppI
 const appImageSig = named(find(/\.AppImage\.sig$/), `Aether_${version}_linux-x86_64.AppImage.sig`);
 const deb = named(find(/\.deb$/), `Aether_${version}_linux-amd64.deb`);
 const apk = named(find(/\.apk$/), `Aether_${version}_android.apk`);
-const assets = [dmg, appTar, appSig, appImage, appImageSig, deb, apk];
+const ipaSrc = files.find((x) => /\.ipa$/.test(x));
+const ipa = ipaSrc ? named(ipaSrc, `Aether_${version}_ios-unsigned.ipa`) : null;
+const assets = [dmg, appTar, appSig, appImage, appImageSig, deb, apk, ...(ipa ? [ipa] : [])];
 for (const repo of [SRC, FEED]) run('gh', ['release', 'upload', tag, ...assets.map((a) => `"${a}"`), '--repo', repo, '--clobber']);
 
 // 3. Merge into latest.json.

@@ -19,16 +19,43 @@
  *    so even `position: fixed` stays clipped to the card.
  */
 import { createContext, useContext, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
-import { useSettingsStore, type ThemeSettings } from '../stores/settingsStore';
+import { DEFAULT_CUSTOM_THEME, useSettingsStore, type CustomTheme, type ThemeSettings } from '../stores/settingsStore';
+import { customBackdrop } from '../theme/custom';
 import { isHexColor, readableTextOn, THEME_PRESETS, type ThemePresetId, type ThemeTokens } from '../theme/presets';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Token resolution
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
+/** Tokens for a custom theme: see-through panels over your gradient. */
+function customTokens(c: CustomTheme): ThemeTokens {
+  const light = c.mode === 'light';
+  const base = (light ? THEME_PRESETS.daylight : THEME_PRESETS['oled-dark']).tokens;
+  const first = c.colors[0] ?? '#7c5cff';
+  const solid = light ? `color-mix(in oklab, ${first} 10%, #ffffff)` : `color-mix(in oklab, ${first} 14%, #121218)`;
+  const ink = light ? '0 0 0' : '255 255 255';
+  const shade = light ? '255 255 255' : '0 0 0';
+  return {
+    ...base,
+    backdrop: customBackdrop(c),
+    bg: `rgb(${shade} / ${light ? 0.42 : 0.28})`,
+    bgElevated: `rgb(${shade} / ${light ? 0.62 : 0.5})`,
+    bgSunken: `rgb(${shade} / ${light ? 0.5 : 0.38})`,
+    surface: `rgb(${ink} / 0.07)`,
+    surfaceHover: `rgb(${ink} / 0.12)`,
+    border: `rgb(${ink} / 0.1)`,
+    text: light ? '#15151b' : '#f4f4f7',
+    textMuted: `rgb(${ink} / 0.62)`,
+    accent: light ? `color-mix(in oklab, ${first} 75%, #000)` : `color-mix(in oklab, ${first} 85%, #fff)`,
+    accentContrast: light ? '#ffffff' : readableTextOn(first),
+    blur: '18px',
+    bgSolid: solid,
+  } as ThemeTokens;
+}
+
 export function resolveTokens(theme: ThemeSettings, profileAccent: string | null): ThemeTokens {
   const preset = THEME_PRESETS[theme.presetId] ?? THEME_PRESETS['oled-dark'];
-  const tokens: ThemeTokens = { ...preset.tokens };
+  const tokens: ThemeTokens = theme.custom?.enabled ? customTokens({ ...DEFAULT_CUSTOM_THEME, ...theme.custom }) : { ...preset.tokens };
   const accent =
     theme.useProfileAccent && isHexColor(profileAccent)
       ? profileAccent
@@ -186,10 +213,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.dataset.aeAmbient = String(theme.ambientBackground);
     root.dataset.aeAnimations = theme.animations;
     root.dataset.aeStatusAnim = String(theme.animateStatus);
-    const light = !!THEME_PRESETS[theme.presetId]?.light;
+    const custom = !!theme.custom?.enabled;
+    const light = custom ? theme.custom!.mode === 'light' : !!THEME_PRESETS[theme.presetId]?.light;
+    root.dataset.aeCustom = String(custom);
+    if (!custom) root.style.removeProperty('--ae-bg-solid');
     root.dataset.aeLight = String(light);
     root.style.colorScheme = light ? 'light' : 'dark';
-  }, [tokens, theme.presetId, theme.reduceMotion, theme.ambientBackground, theme.animations, theme.animateStatus]);
+  }, [tokens, theme.presetId, theme.custom, theme.reduceMotion, theme.ambientBackground, theme.animations, theme.animateStatus]);
 
   const customCss = useMemo(
     () =>

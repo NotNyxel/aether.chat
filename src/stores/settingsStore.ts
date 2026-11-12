@@ -15,6 +15,33 @@ import type { CustomGame } from '../lib/games';
 import type { SoundId } from '../lib/sounds';
 import type { ThemePresetId } from '../theme/presets';
 
+export type ThemeEffect = 'none' | 'stars' | 'snow' | 'petals' | 'bubbles' | 'fireflies' | 'aurora' | 'rain';
+
+/** A theme you build yourself in "Customize your theme". */
+export interface CustomTheme {
+  enabled: boolean;
+  mode: 'dark' | 'light';
+  /** 1 to 5 gradient colours. */
+  colors: string[];
+  /** Gradient direction in degrees. */
+  angle: number;
+  /** 0 to 100: how strongly the colours show. */
+  intensity: number;
+  effect: ThemeEffect;
+  /** 10 to 100: how much of the effect. */
+  effectAmount: number;
+}
+
+export const DEFAULT_CUSTOM_THEME: CustomTheme = {
+  enabled: false,
+  mode: 'dark',
+  colors: ['#02ffe9', '#f5e44a'],
+  angle: 0,
+  intensity: 49,
+  effect: 'none',
+  effectAmount: 50,
+};
+
 export interface ThemeSettings {
   presetId: ThemePresetId;
   /** Overrides the preset accent. `null` keeps the preset's accent. */
@@ -30,6 +57,8 @@ export interface ThemeSettings {
   animations: 'full' | 'subtle' | 'off' | 'system';
   /** Status icons morph between states and glow softly. */
   animateStatus: boolean;
+  /** Your own theme; replaces the preset while it's on. */
+  custom?: CustomTheme | null;
 }
 
 export interface Keybinds {

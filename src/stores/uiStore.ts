@@ -39,6 +39,9 @@ interface UiState {
   /** The small profile card shown next to whatever was clicked (a name, avatar, member row). */
   peek: { userId: string; rect: PeekRect } | null;
   studioOpen: boolean;
+  themeStudioOpen: boolean;
+  openThemeStudio: () => void;
+  closeThemeStudio: () => void;
   jumpTarget: JumpTarget | null;
   lightbox: LightboxImage | null;
   forwardMessageId: string | null;
@@ -86,6 +89,9 @@ export const useUiStore = create<UiState>()((set) => ({
   profilePopoverUserId: null,
   peek: null,
   studioOpen: false,
+  themeStudioOpen: false,
+  openThemeStudio: () => set({ themeStudioOpen: true, settingsOpen: false }),
+  closeThemeStudio: () => set({ themeStudioOpen: false }),
   jumpTarget: null,
   lightbox: null,
   forwardMessageId: null,

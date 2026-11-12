@@ -28,6 +28,8 @@ import { useEscape } from '../lib/escape';
 import { useSupabase } from '../lib/supabase';
 import { toast } from './Toaster';
 import { disablePush, enablePush, pushEnabled, pushSupported } from '../lib/push';
+import { customBackdrop } from '../theme/custom';
+import { DEFAULT_CUSTOM_THEME } from '../stores/settingsStore';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Shared form primitives
@@ -159,16 +161,27 @@ function AppearanceTab() {
   return (
     <div className="space-y-6">
       <Section title="Theme">
+        <button
+          type="button"
+          onClick={() => useUiStore.getState().openThemeStudio()}
+          className={`ae-lift mb-3 flex w-full items-center gap-4 overflow-hidden rounded-ae border p-3 text-left ${theme.custom?.enabled ? 'border-ae-accent ae-glow' : 'border-ae-border hover:border-ae-muted'}`}
+        >
+          <span className="h-14 w-24 shrink-0 rounded-md border border-ae-border" style={{ background: customBackdrop({ ...DEFAULT_CUSTOM_THEME, ...(theme.custom ?? {}), intensity: 75 }) }} />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Customize your theme{theme.custom?.enabled && <span className="ml-2 rounded bg-ae-accent/20 px-1.5 text-[10px] text-ae-accent">ON</span>}</span>
+            <span className="block text-xs text-ae-muted">Your own colours, gradient and a moving background effect. Opens a panel so you can see the app change live.</span>
+          </span>
+        </button>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PRESET_ORDER.map((id) => {
             const preset = THEME_PRESETS[id];
             const t = preset.tokens;
-            const active = theme.presetId === id;
+            const active = theme.presetId === id && !theme.custom?.enabled;
             return (
               <button
                 key={id}
                 type="button"
-                onClick={() => setTheme({ presetId: id })}
+                onClick={() => setTheme({ presetId: id, custom: theme.custom ? { ...theme.custom, enabled: false } : null })}
                 className={`ae-lift overflow-hidden rounded-ae border text-left ${active ? 'border-ae-accent ae-glow' : 'border-ae-border hover:border-ae-muted'}`}
               >
                 <div className="flex h-16 gap-1 p-2" style={{ background: t.backdrop }}>

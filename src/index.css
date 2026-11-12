@@ -535,3 +535,141 @@ body {
 .ae-md[data-jumbo] p {
   line-height: 1.15;
 }
+
+/* ── Custom theme: translucent panels over the gradient, and background effects ───────────── */
+:root[data-ae-custom='true'] .ae-dialog,
+:root[data-ae-custom='true'] .ae-pop,
+:root[data-ae-custom='true'] [role='menu'],
+:root[data-ae-custom='true'] .ae-sheet {
+  backdrop-filter: blur(22px) saturate(1.3);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+}
+.ae-theme-fx {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.ae-theme-fx > i {
+  position: absolute;
+  display: block;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+/* Stars: twinkle in place */
+.ae-theme-fx[data-fx='stars'] > i {
+  width: calc(1px + var(--s) * 2.5px);
+  height: calc(1px + var(--s) * 2.5px);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--fx-tint) 60%, #fff);
+  animation: ae-fx-twinkle calc(var(--d) * 5s) ease-in-out infinite;
+}
+@keyframes ae-fx-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+/* Snow, petals and rain fall; bubbles and fireflies rise */
+.ae-theme-fx[data-fx='snow'] > i,
+.ae-theme-fx[data-fx='petals'] > i,
+.ae-theme-fx[data-fx='rain'] > i {
+  top: -5% !important;
+  animation-name: ae-fx-fall;
+  animation-duration: calc(var(--d) * 14s);
+}
+.ae-theme-fx[data-fx='snow'] > i {
+  width: calc(3px + var(--s) * 4px);
+  height: calc(3px + var(--s) * 4px);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.85);
+  filter: blur(0.5px);
+}
+.ae-theme-fx[data-fx='petals'] > i {
+  width: calc(7px + var(--s) * 7px);
+  height: calc(5px + var(--s) * 5px);
+  border-radius: 80% 0 80% 0;
+  background: color-mix(in srgb, var(--fx-tint) 45%, #ffc6d9);
+  opacity: 0.85;
+}
+.ae-theme-fx[data-fx='rain'] > i {
+  width: 1.5px;
+  height: calc(14px + var(--s) * 18px);
+  background: linear-gradient(transparent, rgb(255 255 255 / 0.55));
+  animation-duration: calc(var(--d) * 1.6s);
+  --x: 0.15;
+}
+@keyframes ae-fx-fall {
+  from {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate3d(calc(var(--x) * 12vw), 110vh, 0) rotate(calc(var(--x) * 540deg));
+  }
+}
+.ae-theme-fx[data-fx='bubbles'] > i,
+.ae-theme-fx[data-fx='fireflies'] > i {
+  top: 102% !important;
+  animation-name: ae-fx-rise;
+  animation-duration: calc(var(--d) * 18s);
+}
+.ae-theme-fx[data-fx='bubbles'] > i {
+  width: calc(8px + var(--s) * 22px);
+  height: calc(8px + var(--s) * 22px);
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  background: radial-gradient(circle at 30% 30%, rgb(255 255 255 / 0.35), transparent 60%);
+}
+.ae-theme-fx[data-fx='fireflies'] > i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--fx-tint) 40%, #fff6a8);
+  box-shadow: 0 0 10px 3px color-mix(in srgb, var(--fx-tint) 50%, #ffe66d);
+}
+@keyframes ae-fx-rise {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(calc(var(--x) * 15vw), -115vh, 0);
+    opacity: 0;
+  }
+}
+/* Aurora: slow drifting colour blobs */
+.ae-fx-blob {
+  position: absolute;
+  width: 70vw;
+  height: 60vh;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--fx-tint) 55%, transparent), transparent);
+  filter: blur(40px);
+  opacity: 0.55;
+  animation: ae-fx-aurora 26s ease-in-out infinite alternate;
+}
+.ae-fx-blob:nth-child(2) {
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--fx-tint2) 55%, transparent), transparent);
+}
+@keyframes ae-fx-aurora {
+  to {
+    transform: translate3d(12vw, 8vh, 0) scale(1.25) rotate(25deg);
+  }
+}
+:root[data-ae-reduce-motion='true'] .ae-theme-fx > *,
+:root[data-ae-animations='off'] .ae-theme-fx > * {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ae-theme-fx > * {
+    animation-play-state: paused;
+  }
+}

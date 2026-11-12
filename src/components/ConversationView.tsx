@@ -25,7 +25,7 @@ function MemberRow({ userId, owner }: { userId: string; owner: boolean }) {
         onClick={() => showProfile(userId)}
         className={`flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left hover:bg-ae-hover ${status === 'offline' ? 'opacity-50' : ''}`}
       >
-        <span className="relative">
+        <span className="relative inline-block shrink-0 leading-none">
           <Avatar profile={p} size={32} showFrame={false} />
           <PresenceDot status={status} size={11} className="absolute -right-0.5 -bottom-0.5 z-10" />
         </span>

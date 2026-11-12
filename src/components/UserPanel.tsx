@@ -179,7 +179,7 @@ export function UserPanel({ userId }: { userId: string }) {
           {...plateProps(me?.nameplate, me?.decor)}
           onClick={() => setMenu((m) => !m)}
         >
-          <span className="relative">
+          <span className="relative inline-block shrink-0 leading-none">
             <Avatar profile={me} size={32} speaking={voice.isSpeaking} />
             <PresenceDot status={shownStatus} className="absolute -right-0.5 -bottom-0.5 z-10" />
           </span>

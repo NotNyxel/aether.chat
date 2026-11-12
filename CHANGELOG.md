@@ -3,6 +3,32 @@
 All notable changes to aether.chat. Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.5.0] - 2026-11-12
+
+**Avatar decorations and illustrated frames; one entry per style**
+
+- **35 expressive avatar decorations:**
+  - **Ears and horns:** cat, fox, bunny, bear, devil horns, unicorn horn, antlers.
+  - **Headwear:** halo, crown, flower crown, Santa hat, witch hat, party hat, beanie, maid headband, big bow,
+    headphones, snow cap, fire crown.
+  - **Anime-style marks:** anger mark, sweat drop, crying, blush, sleepy Zzz, confused, shocked, in love, fuming,
+    dizzy, idea, rain cloud, butterflies.
+  - **Outfits:** maid outfit, bow tie, scarf.
+  - Many are animated (the anger mark pulses, tears fall, Zzz float), and each takes two colours from the
+    colour pickers.
+- **24 illustrated profile frames:** clouds, spray paint, ink splatter, lace, washi tape, Polaroid, film strip,
+  sakura branch, sparkles, bubbles, snowdrift, drips, thorns, chains, pixel hearts, stickers, sketchbook,
+  candy cane, crystals, ribbons, comic dots, autumn leaves, and moon & stars. Each takes two colours.
+- **No more colour copies:** nameplates, rings and frames now have one entry per style. Pick its colours with
+  the colour picker instead.
+  - **Profile effects:** one entry per particle type, with a Motion option (fall, drift, rise, twinkle,
+    wander).
+  - **Profile themes:** one entry per pattern, with an Intensity slider.
+  - **Name effects:** a fill plus a Finish option (glow, outline, 3D…).
+  - **Shapes and banner colours:** trimmed to distinct options.
+  - Choices you made in 1.4.0 keep working.
+- **Fixed:** on iPhone and iPad, a profile's online/offline dot could float away from the avatar.
+
 ## [1.4.0] - 2026-11-12
 
 **Hundreds of new cosmetics, instant messages, push notifications, Android, and more**

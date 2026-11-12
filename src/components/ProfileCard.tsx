@@ -18,7 +18,8 @@ import { ActivitySections } from './ActivityCards';
 import { ScopedCss } from './ThemeEngine';
 import { useEscape } from '../lib/escape';
 import { DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY } from '../lib/profileDecor';
-import { effectDef, frameProps, loadNameFont, nameEffectAttrs, nameFontFamily, shapeDef, type Crop, type EffectDef } from '../lib/cosmetics';
+import { avatarDecoStyle } from '../lib/decoArt';
+import { effectDef, frameProps, loadNameFont, nameEffectAttrs, nameFontFamily, shapeDef, type Crop, type EffectDef, type Motion } from '../lib/cosmetics';
 import { cardFrameAttrs, cardVars } from '../lib/cardDecor';
 import { themeAttrs } from '../lib/cosmetics';
 
@@ -92,18 +93,20 @@ export function Avatar({ profile, size = 40, speaking = false, showFrame = true 
   const name = profile?.display_name || profile?.username || '?';
   const frame = showFrame && profile?.avatar_frame ? profile.avatar_frame : 'none';
   const gen = frameProps(frame, profile?.decor);
+  const deco = avatarDecoStyle(frame, profile?.decor?.deco);
   const shape = shapeDef(profile?.avatar_shape);
   const style = {
     '--avatar-size': `${size}px`,
     '--frame-color': isHexColor(profile?.accent_color) ? profile.accent_color : DEFAULT_PROFILE_ACCENT,
     ...gen.style,
+    ...(deco ?? {}),
     ...(shape ? { '--shape-clip': shape.clip ?? 'none', '--shape-radius': shape.radius ?? '0' } : {}),
   } as CSSProperties;
 
   useEffect(() => setBroken(false), [profile?.avatar_url]);
 
   return (
-    <div className="ae-avatar" data-frame={frame} data-fs={gen.fam} data-shape={profile?.avatar_shape ?? 'circle'} data-shape-custom={shape ? '' : undefined} data-speaking={speaking} style={style}>
+    <div className="ae-avatar" data-frame={frame} data-fs={gen.fam} data-deco={deco ? '' : undefined} data-shape={profile?.avatar_shape ?? 'circle'} data-shape-custom={shape ? '' : undefined} data-speaking={speaking} style={style}>
       <div
         className="ae-avatar-inner"
         style={{
@@ -179,11 +182,11 @@ const EFFECTS: Record<Exclude<ProfileEffect, 'none'>, { glyphs: string[]; count:
 };
 const CONFETTI_COLORS = ['#ff5f6d', '#ffc371', '#5ee6a8', '#4facfe', '#a18cd1', '#f9f871'];
 
-export function ProfileEffectLayer({ effect, color, angle = 12, decorColor }: { effect: ProfileEffect | null | undefined; color?: string; angle?: number; decorColor?: string }) {
+export function ProfileEffectLayer({ effect, color, angle = 12, decorColor, motion }: { effect: ProfileEffect | null | undefined; color?: string; angle?: number; decorColor?: string; motion?: Motion }) {
   const parts = useMemo(() => {
     if (!effect || effect === 'none') return [];
     const legacy = EFFECTS[effect as Exclude<ProfileEffect, 'none'>] as EffectDef | undefined;
-    const fx = legacy ? { ...legacy, aligned: effect === 'rain' } : effectDef(effect);
+    const fx = legacy ? { ...legacy, aligned: effect === 'rain' } : effectDef(effect, motion);
     if (!fx) return [];
     const rad = (Math.max(-45, Math.min(45, angle)) * Math.PI) / 180;
     const slide = Math.tan(rad) * 620; // sideways travel over the card's height at this angle
@@ -221,7 +224,7 @@ export function ProfileEffectLayer({ effect, color, angle = 12, decorColor }: { 
       } as CSSProperties;
       return { glyph: fx.glyphs[i % fx.glyphs.length]!, style };
     });
-  }, [effect, color, angle, decorColor]);
+  }, [effect, color, angle, decorColor, motion]);
   if (parts.length === 0) return null;
   return (
     <div className="ae-fx" aria-hidden="true">
@@ -326,7 +329,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
       }
     >
       <ScopedCss css={profile.custom_css} scopeSelector={`[data-ae-profile="${scopeId}"]`} />
-      <ProfileEffectLayer effect={profile.profile_effect} color={isHexColor(profile.accent_color) ? profile.accent_color : undefined} angle={profile.decor?.effectAngle} decorColor={profile.decor?.effect} />
+      <ProfileEffectLayer effect={profile.profile_effect} color={isHexColor(profile.accent_color) ? profile.accent_color : undefined} angle={profile.decor?.effectAngle} decorColor={profile.decor?.effect} motion={profile.decor?.effectMotion} />
 
       <div className="ae-profile-banner h-28 w-full" style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}>
         {profile.banner_url && <img src={profile.banner_url} alt="" className="h-full w-full object-cover" draggable={false} style={cropStyle(profile.decor?.bannerCrop)} />}

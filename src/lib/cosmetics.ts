@@ -7,6 +7,7 @@
  * Ids are short and stable because they're stored in the database (e.g. "pl-sheen-violet").
  */
 import type { CSSProperties } from 'react';
+import { AVATAR_DECOS, CARD_ARTS, cardArtStyle } from './decoArt';
 
 // ── Palettes ────────────────────────────────────────────────────────────────────────────────
 export const PALETTES: { id: string; label: string; c: [string, string, string] }[] = [
@@ -28,8 +29,13 @@ export interface Decor {
   plate?: string[];
   frame?: string[];
   cardFrame?: string;
+  cardFrame2?: string;
   effect?: string;
   effectAngle?: number;
+  effectMotion?: Motion;
+  themeV?: number;
+  /** Colours for expressive avatar decorations (ears, hats, marks). */
+  deco?: string[];
   avatarCrop?: Crop;
   bannerCrop?: Crop;
 }
@@ -46,11 +52,12 @@ export interface Option {
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const cross = (prefix: string, families: [string, string][]): Option[] =>
-  families.flatMap(([fam, famLabel]) => PALETTES.map((p) => ({ id: `${prefix}-${fam}-${p.id}`, label: `${famLabel} · ${p.label}`, group: famLabel })));
+/** One entry per style; colours come from the colour pickers (users.decor). */
+const styles = (prefix: string, families: [string, string][], group: string): Option[] => families.map(([fam, label]) => ({ id: `${prefix}-${fam}`, label, group }));
+/** "pl-sheen" or the older "pl-sheen-violet" (palette ids from 1.4.0 keep working). */
 const parse = (id: string | null | undefined, prefix: string) => {
-  const m = id ? new RegExp(`^${prefix}-([a-z0-9]+)-([a-z0-9]+)$`).exec(id) : null;
-  return m ? { fam: m[1]!, pal: m[2]! } : null;
+  const m = id ? new RegExp(`^${prefix}-([a-z0-9]+)(?:-([a-z0-9]+))?$`).exec(id) : null;
+  return m ? { fam: m[1]!, pal: m[2] ?? 'violet' } : null;
 };
 
 // ── Nameplates ──────────────────────────────────────────────────────────────────────────────
@@ -66,7 +73,7 @@ const PLATE_FAMILIES: [string, string][] = [
   ['scan', 'Scanline'],
   ['spark', 'Sparkle'],
 ];
-export const GEN_NAMEPLATES = cross('pl', PLATE_FAMILIES);
+export const GEN_NAMEPLATES = styles('pl', PLATE_FAMILIES, 'Styles');
 
 export function plateProps(id: string | null | undefined, decor?: Decor | null): { 'data-plate': string; 'data-ps'?: string; style?: CSSProperties } {
   const g = parse(id, 'pl');
@@ -88,7 +95,7 @@ const FRAME_FAMILIES: [string, string][] = [
   ['flicker', 'Neon Flicker'],
   ['prism', 'Prism'],
 ];
-export const GEN_AVATAR_FRAMES = cross('fr', FRAME_FAMILIES);
+export const GEN_AVATAR_FRAMES = styles('fr', FRAME_FAMILIES, 'Rings');
 
 export function frameProps(id: string | null | undefined, decor?: Decor | null): { fam?: string; style?: Record<string, string> } {
   const g = parse(id, 'fr');
@@ -118,25 +125,25 @@ export interface ShapeDef {
 function buildShapes(): ShapeDef[] {
   const out: ShapeDef[] = [];
   const names = ['', '', '', 'Triangle', 'Diamond', 'Pentagon', 'Hexagon', 'Heptagon', 'Octagon', 'Nonagon', 'Decagon', 'Hendecagon', 'Dodecagon'];
-  for (let n = 3; n <= 12; n++) out.push({ id: `sh-poly-${n}`, label: names[n]!, group: 'Polygons', clip: polygon(polar(n, () => 1, n % 2 ? -Math.PI / 2 : -Math.PI / 2 + Math.PI / n)) });
-  for (let n = 4; n <= 12; n++)
-    for (const [d, dl] of [
-      [0.45, 'Sharp'],
-      [0.6, 'Bold'],
-      [0.75, 'Soft'],
-    ] as const)
-      out.push({ id: `sh-star-${n}-${Math.round(d * 100)}`, label: `${dl} ${n}-point star`, group: 'Stars', clip: polygon(polar(n * 2, (_, i) => (i % 2 ? d : 1))) });
-  for (let r = 8; r <= 48; r += 5) out.push({ id: `sh-round-${r}`, label: `Rounded ${r}%`, group: 'Rounded', radius: `${r}%` });
-  for (let n = 4; n <= 12; n++) out.push({ id: `sh-flower-${n}`, label: `${n}-petal flower`, group: 'Flowers', clip: polygon(polar(120, (t) => 0.8 + 0.2 * Math.cos(n * (t + Math.PI / 2)))) });
-  for (let n = 6; n <= 14; n++) out.push({ id: `sh-gear-${n}`, label: `${n}-tooth gear`, group: 'Gears', clip: polygon(polar(n * 4, (_, i) => (i % 4 < 2 ? 1 : 0.84))) });
-  for (let n = 8; n <= 20; n += 2) out.push({ id: `sh-scallop-${n}`, label: `Scallop ${n}`, group: 'Scallops', clip: polygon(polar(140, (t) => 0.93 + 0.07 * Math.abs(Math.cos((n / 2) * t)))) });
+  for (const n of [3, 4, 5, 6, 8]) out.push({ id: `sh-poly-${n}`, label: names[n]!, group: 'Polygons', clip: polygon(polar(n, () => 1, n % 2 ? -Math.PI / 2 : -Math.PI / 2 + Math.PI / n)) });
+  for (const [n, d] of [
+    [4, 0.45],
+    [5, 0.45],
+    [6, 0.6],
+    [8, 0.75],
+  ] as const)
+    out.push({ id: `sh-star-${n}-${Math.round(d * 100)}`, label: `${n}-point star`, group: 'Stars', clip: polygon(polar(n * 2, (_, i) => (i % 2 ? d : 1))) });
+  for (const r of [13, 33]) out.push({ id: `sh-round-${r}`, label: `Rounded ${r}%`, group: 'Rounded', radius: `${r}%` });
+  for (const n of [5, 8]) out.push({ id: `sh-flower-${n}`, label: `${n}-petal flower`, group: 'Flowers', clip: polygon(polar(120, (t) => 0.8 + 0.2 * Math.cos(n * (t + Math.PI / 2)))) });
+  for (const n of [10]) out.push({ id: `sh-gear-${n}`, label: `${n}-tooth gear`, group: 'Gears', clip: polygon(polar(n * 4, (_, i) => (i % 4 < 2 ? 1 : 0.84))) });
+  for (const n of [12]) out.push({ id: `sh-scallop-${n}`, label: `Scallop ${n}`, group: 'Scallops', clip: polygon(polar(140, (t) => 0.93 + 0.07 * Math.abs(Math.cos((n / 2) * t)))) });
   const blobs = [
     '60% 40% 30% 70% / 60% 30% 70% 40%', '30% 70% 70% 30% / 30% 30% 70% 70%', '50% 50% 20% 80% / 25% 80% 20% 75%', '67% 33% 47% 53% / 37% 20% 80% 63%',
     '39% 61% 54% 46% / 45% 37% 63% 55%', '73% 27% 26% 74% / 52% 64% 36% 48%', '45% 55% 62% 38% / 53% 51% 49% 47%', '58% 42% 75% 25% / 76% 46% 54% 24%',
     '32% 68% 39% 61% / 61% 42% 58% 39%', '70% 30% 52% 48% / 33% 60% 40% 67%', '41% 59% 28% 72% / 70% 31% 69% 30%', '64% 36% 64% 36% / 45% 55% 45% 55%',
     '25% 75% 70% 30% / 60% 45% 55% 40%', '80% 20% 55% 45% / 50% 70% 30% 50%', '48% 52% 33% 67% / 38% 68% 32% 62%', '55% 45% 40% 60% / 70% 60% 40% 30%',
   ];
-  blobs.forEach((b, i) => out.push({ id: `sh-blob-${i + 1}`, label: `Blob ${i + 1}`, group: 'Blobs', radius: b }));
+  blobs.slice(0, 4).forEach((b, i) => out.push({ id: `sh-blob-${i + 1}`, label: `Blob ${i + 1}`, group: 'Blobs', radius: b }));
   const misc: [string, string, Pt[]][] = [
     ['heart', 'Heart', Array.from({ length: 120 }, (_, i) => { const t = (i / 120) * Math.PI * 2; const x = 16 * Math.sin(t) ** 3; const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)); return [x / 17, y / 17 + 0.08] as Pt; })],
     ['shield', 'Shield', [[-0.9, -0.85], [0, -1], [0.9, -0.85], [0.85, 0.15], [0, 1], [-0.85, 0.15]]],
@@ -157,33 +164,41 @@ function buildShapes(): ShapeDef[] {
 }
 export const GEN_SHAPES = buildShapes();
 const SHAPE_BY_ID = new Map(GEN_SHAPES.map((s) => [s.id, s]));
-export const shapeDef = (id: string | null | undefined) => (id ? SHAPE_BY_ID.get(id) : undefined);
+/** Shapes by id, including parametric ones from 1.4.0 that are no longer listed (still render). */
+export function shapeDef(id: string | null | undefined): ShapeDef | undefined {
+  if (!id) return undefined;
+  const hit = SHAPE_BY_ID.get(id);
+  if (hit) return hit;
+  let m: RegExpExecArray | null;
+  if ((m = /^sh-poly-(\d+)$/.exec(id))) {
+    const n = +m[1]!;
+    return { id, label: id, group: '', clip: polygon(polar(n, () => 1, n % 2 ? -Math.PI / 2 : -Math.PI / 2 + Math.PI / n)) };
+  }
+  if ((m = /^sh-star-(\d+)-(\d+)$/.exec(id))) {
+    const n = +m[1]!;
+    const d = +m[2]! / 100;
+    return { id, label: id, group: '', clip: polygon(polar(n * 2, (_, i) => (i % 2 ? d : 1))) };
+  }
+  if ((m = /^sh-round-(\d+)$/.exec(id))) return { id, label: id, group: '', radius: `${m[1]}%` };
+  if ((m = /^sh-flower-(\d+)$/.exec(id))) {
+    const n = +m[1]!;
+    return { id, label: id, group: '', clip: polygon(polar(120, (t) => 0.8 + 0.2 * Math.cos(n * (t + Math.PI / 2)))) };
+  }
+  if ((m = /^sh-gear-(\d+)$/.exec(id))) return { id, label: id, group: '', clip: polygon(polar(+m[1]! * 4, (_, i) => (i % 4 < 2 ? 1 : 0.84))) };
+  if ((m = /^sh-scallop-(\d+)$/.exec(id))) {
+    const n = +m[1]!;
+    return { id, label: id, group: '', clip: polygon(polar(140, (t) => 0.93 + 0.07 * Math.abs(Math.cos((n / 2) * t)))) };
+  }
+  return undefined;
+}
 
 // ── Banner colours (primary + accent pairs) ─────────────────────────────────────────────────
-function hslHex(h: number, s: number, l: number): string {
-  s /= 100;
-  l /= 100;
-  const k = (n: number) => (n + h / 30) % 12;
-  const a = s * Math.min(l, 1 - l);
-  const f = (n: number) => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))));
-  return `#${[f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
-}
-export const BANNER_PRESETS: { id: string; label: string; primary: string; accent: string }[] = (() => {
-  const out: { id: string; label: string; primary: string; accent: string }[] = [];
-  const kinds: [string, (h: number) => [string, string]][] = [
-    ['Analogous', (h) => [hslHex(h, 70, 32), hslHex((h + 35) % 360, 85, 60)]],
-    ['Contrast', (h) => [hslHex(h, 65, 28), hslHex((h + 180) % 360, 85, 62)]],
-    ['Triad', (h) => [hslHex(h, 70, 35), hslHex((h + 120) % 360, 80, 58)]],
-    ['Tonal', (h) => [hslHex(h, 55, 18), hslHex(h, 90, 66)]],
-  ];
-  for (const [kind, fn] of kinds)
-    for (let i = 0; i < 25; i++) {
-      const h = Math.round((i * 360) / 25);
-      const [primary, accent] = fn(h);
-      out.push({ id: `${kind.toLowerCase()}-${h}`, label: `${kind} ${h}°`, primary, accent });
-    }
-  return out;
-})();
+export const BANNER_PRESETS: { id: string; label: string; primary: string; accent: string }[] = [
+  ['Midnight', '#151a3a', '#7c5cff'], ['Sunset', '#5c1a3a', '#ff8a4c'], ['Ocean', '#0b2a4a', '#00d4ff'], ['Forest', '#123524', '#3ddc84'],
+  ['Rose', '#4a1030', '#ff6fb5'], ['Ember', '#3a1408', '#ff512f'], ['Ice', '#1b2c40', '#a1c4fd'], ['Gold', '#2e2208', '#f7d774'],
+  ['Mono', '#151515', '#cfcfcf'], ['Toxic', '#102010', '#b6ff00'], ['Lavender', '#2a1f45', '#c7a6ff'], ['Cherry', '#3d0a14', '#ff3d6b'],
+  ['Teal', '#06302e', '#2ee6d6'], ['Peach', '#45281c', '#ffb38a'], ['Storm', '#1c2230', '#8aa2c8'], ['Candy', '#3a1640', '#ff9be8'],
+].map(([label, primary, accent]) => ({ id: label!.toLowerCase(), label: label!, primary: primary!, accent: accent! }));
 
 // ── Profile effects ─────────────────────────────────────────────────────────────────────────
 export type Motion = 'fall' | 'rise' | 'twinkle' | 'wander' | 'drift';
@@ -225,12 +240,13 @@ const MOTIONS: [Motion, string][] = [
   ['twinkle', 'Twinkle'],
   ['wander', 'Wander'],
 ];
-export const GEN_EFFECTS: Option[] = GLYPHS.flatMap(([g, gl]) => MOTIONS.map(([m, ml]) => ({ id: `ef-${g}-${m}`, label: `${gl} · ${ml}`, group: gl })));
-export function effectDef(id: string): EffectDef | null {
-  const m = /^ef-([a-z]+)-([a-z]+)$/.exec(id);
+export const GEN_EFFECTS: Option[] = GLYPHS.map(([g, gl]) => ({ id: `ef-${g}`, label: gl, group: 'Particles' }));
+export const EFFECT_MOTIONS = MOTIONS;
+export function effectDef(id: string, motionOverride?: Motion): EffectDef | null {
+  const m = /^ef-([a-z]+)(?:-([a-z]+))?$/.exec(id);
   const g = m && GLYPHS.find((x) => x[0] === m[1]);
   if (!m || !g) return null;
-  const motion = m[2] as Motion;
+  const motion = (motionOverride ?? m[2] ?? (g[4] ? 'fall' : 'drift')) as Motion;
   return { glyphs: g[2], count: motion === 'twinkle' ? 14 : motion === 'wander' ? 12 : 18, motion, size: g[3], aligned: g[4] };
 }
 
@@ -247,13 +263,15 @@ const CARD_FRAME_FAMILIES: [string, string][] = [
   ['deco', 'Art Deco'],
   ['pixel', 'Pixel'],
 ];
-export const GEN_CARD_FRAMES = cross('cf', CARD_FRAME_FAMILIES);
+export const GEN_CARD_FRAMES = styles('cf', CARD_FRAME_FAMILIES, 'Borders');
 export function cardFrameProps(id: string | null | undefined, decor?: Decor | null, accent?: string): { 'data-cardframe': string; 'data-cfs'?: string; style?: Record<string, string> } {
   const g = parse(id, 'cf');
   if (id === 'roses' || id === 'crimson-roses') {
     const color = decor?.cardFrame ?? (id === 'crimson-roses' ? '#b3123a' : '#f4f4fb');
     return { 'data-cardframe': 'roses', style: { '--rose-custom': `url("${roseSvg(color)}")` } };
   }
+  const art = id?.startsWith('ca-') ? cardArtStyle(id, decor?.cardFrame ? [decor.cardFrame, decor.cardFrame2 ?? decor.cardFrame] : null) : null;
+  if (art) return { 'data-cardframe': id!, 'data-cfs': 'art', style: art };
   if (!g) return { 'data-cardframe': id || 'none' };
   const pal = paletteOf(g.pal);
   return { 'data-cardframe': id!, 'data-cfs': g.fam, style: { '--cfa': decor?.cardFrame ?? pal[0], '--cfb': pal[1] ?? accent ?? pal[0] } };
@@ -296,6 +314,8 @@ const TREATMENTS: [string, string][] = [
   ['flicker', 'Flicker'],
   ['emboss', 'Emboss'],
 ];
+export const NAME_FILLS = FILLS;
+export const NAME_FINISHES = TREATMENTS;
 export const GEN_NAME_EFFECTS: Option[] = FILLS.flatMap(([f, fl]) => TREATMENTS.map(([t, tl]) => ({ id: `fx-${f}-${t}`, label: `${fl} · ${tl}`, group: fl })));
 export function nameEffectAttrs(id: string | null | undefined): { fill?: string; tr?: string } {
   const m = id ? /^fx-([a-z]+)-([a-z]+)$/.exec(id) : null;
@@ -325,12 +345,10 @@ const THEME_PATTERNS: [string, string][] = [
   ['duo', 'Duo Fade'],
   ['ink', 'Ink'],
 ];
-export const GEN_THEMES: Option[] = THEME_PATTERNS.flatMap(([p, pl]) =>
-  [1, 2, 3, 4, 5].map((v) => ({ id: `th-${p}-${v}`, label: `${pl} ${['I', 'II', 'III', 'IV', 'V'][v - 1]}`, group: pl })),
-);
-export function themeAttrs(id: string | null | undefined): { pattern?: string; v?: number } {
-  const m = id ? /^th-([a-z]+)-([1-5])$/.exec(id) : null;
-  return m ? { pattern: m[1], v: Number(m[2]) } : {};
+export const GEN_THEMES: Option[] = THEME_PATTERNS.map(([p, pl]) => ({ id: `th-${p}`, label: pl, group: 'Patterns' }));
+export function themeAttrs(id: string | null | undefined, decor?: Decor | null): { pattern?: string; v?: number } {
+  const m = id ? /^th-([a-z]+)(?:-([1-5]))?$/.exec(id) : null;
+  return m ? { pattern: m[1], v: decor?.themeV ?? (m[2] ? Number(m[2]) : 3) } : {};
 }
 
 // ── Name fonts (100, bundled and loaded on demand) ──────────────────────────────────────────
@@ -339,7 +357,7 @@ export { NAME_FONTS, loadNameFont, nameFontFamily } from './nameFonts';
 import { NAME_FONTS as _FONTS } from './nameFonts';
 /** Every generated cosmetic's label by id (for captions like "Nameplate: Sheen · Violet"). */
 export const ALL_COSMETICS = new Map<string, string>(
-  [...GEN_NAMEPLATES, ...GEN_AVATAR_FRAMES, ...GEN_SHAPES, ...GEN_EFFECTS, ...GEN_CARD_FRAMES, ...GEN_NAME_EFFECTS, ...GEN_THEMES, ..._FONTS].map((o) => [o.id, o.label] as [string, string]),
+  [...AVATAR_DECOS, ...CARD_ARTS, ...GEN_NAMEPLATES, ...GEN_AVATAR_FRAMES, ...GEN_SHAPES, ...GEN_EFFECTS, ...GEN_CARD_FRAMES, ...GEN_NAME_EFFECTS, ...GEN_THEMES, ..._FONTS].map((o) => [o.id, o.label] as [string, string]),
 );
 
 export const groupsOf = (opts: Option[]) => [...new Set(opts.map((o) => o.group))];

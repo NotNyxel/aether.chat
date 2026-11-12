@@ -18,8 +18,9 @@ import { ColorField, Field, inputCls, Section, Slider } from './SettingsPanel';
 import { toast } from './Toaster';
 import { useEscape } from '../lib/escape';
 import { CropDialog } from './CropDialog';
+import { AVATAR_DECOS, CARD_ARTS } from '../lib/decoArt';
 import { cropStyle } from './ProfileCard';
-import { type Crop, BANNER_PRESETS, GEN_NAME_EFFECTS, NAME_FONTS, GEN_AVATAR_FRAMES, GEN_CARD_FRAMES, GEN_EFFECTS, GEN_NAMEPLATES, GEN_SHAPES, GEN_THEMES, plateProps, type Decor } from '../lib/cosmetics';
+import { type Crop, BANNER_PRESETS, EFFECT_MOTIONS, NAME_FILLS, NAME_FINISHES, nameEffectAttrs, NAME_FONTS, GEN_AVATAR_FRAMES, GEN_CARD_FRAMES, GEN_EFFECTS, GEN_NAMEPLATES, GEN_SHAPES, GEN_THEMES, plateProps, type Decor } from '../lib/cosmetics';
 import { EmojiButton } from './EmojiPicker';
 
 export const EDITABLE_KEYS: (keyof EditableProfile)[] = [
@@ -580,7 +581,8 @@ export function NamePicker({ base, onApply, onClose }: { base: UserProfile; onAp
   const preview = { ...base, name_font: hover?.font ?? font, name_effect: hover?.effect ?? effect, name_color_a: a, name_color_b: b } as UserProfile;
 
   const fonts = [...FONTS.map((f) => ({ id: f.id as string, label: f.label, group: 'Classic' })), ...NAME_FONTS.map((f) => ({ id: f.id, label: f.label, group: f.group }))];
-  const effects = [...NAME_EFFECTS.map((f) => ({ id: f.id as string, label: f.label, group: 'Classic' })), ...GEN_NAME_EFFECTS];
+  const finish = nameEffectAttrs(effect).tr ?? 'plain';
+  const effects = [...NAME_EFFECTS.map((f) => ({ id: f.id as string, label: f.label, group: 'Classic' })), ...NAME_FILLS.map(([f, label]) => ({ id: `fx-${f}-${finish}`, label, group: 'Fills' }))];
   const list = tab === 'font' ? fonts : effects;
   const groups = [...new Set(list.map((o) => o.group))];
   const q = query.trim().toLowerCase();
@@ -640,6 +642,18 @@ export function NamePicker({ base, onApply, onClose }: { base: UserProfile; onAp
           </button>
         )}
       </div>
+      {tab === 'effect' && nameEffectAttrs(effect).fill && (
+        <div>
+          <p className="mb-1.5 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Finish</p>
+          <div className="flex flex-wrap gap-1.5">
+            {NAME_FINISHES.map(([t, label]) => (
+              <button key={t} type="button" onClick={() => setEffect(`fx-${nameEffectAttrs(effect).fill}-${t}`)} className={`rounded-full border px-3 py-1 text-xs ${finish === t ? 'border-ae-accent bg-ae-accent/15 font-semibold' : 'border-ae-border text-ae-muted hover:text-ae-text'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {effect !== 'none' && effect !== 'rainbow' && (
         <div className="grid gap-3 sm:grid-cols-2">
           <ColorField label="Colour 1" value={a} onChange={setA} />
@@ -812,17 +826,22 @@ export function ExtraPickers({ picker, draft, merged, applyPatch, close }: { pic
     return (
       <Picker
         title="Avatar decoration"
-        options={[...AVATAR_FRAMES.map((f) => ({ id: f.id as string, label: f.label, group: 'Classic' })), ...GEN_AVATAR_FRAMES]}
+        options={[...AVATAR_DECOS.map((d) => ({ id: d.id, label: d.label, group: d.group })), ...GEN_AVATAR_FRAMES, ...AVATAR_FRAMES.map((f) => ({ id: f.id as string, label: f.label, group: 'Classic' }))]}
         current={draft.avatar_frame ?? 'none'}
         base={merged}
         apply={(id) => ({ avatar_frame: id === 'none' ? null : id })}
         renderTile={tileAvatar(60)}
         extra={() =>
           custom(
-            'Your colours (for the styles after Classic)',
+            'Colours (decorations and rings; leave empty for the defaults)',
             <div className="grid gap-3 sm:grid-cols-2">
-              {colorRow('Colour 1', decor.frame?.[0], (v) => setDecor({ frame: v ? [v, decor.frame?.[1] ?? v] : undefined }))}
-              {colorRow('Colour 2', decor.frame?.[1], (v) => setDecor({ frame: [decor.frame?.[0] ?? v ?? '#7c5cff', v ?? decor.frame?.[0] ?? '#7c5cff'] }))}
+              {colorRow('Main colour', decor.deco?.[0] ?? decor.frame?.[0], (v) =>
+                setDecor(v ? { deco: [v, decor.deco?.[1] ?? v], frame: [v, decor.frame?.[1] ?? v] } : { deco: undefined, frame: undefined }),
+              )}
+              {colorRow('Second colour', decor.deco?.[1] ?? decor.frame?.[1], (v) => {
+                const a = decor.deco?.[0] ?? decor.frame?.[0] ?? v ?? '#7c5cff';
+                setDecor({ deco: [a, v ?? a], frame: [a, v ?? a] });
+              })}
             </div>,
           )
         }
@@ -856,6 +875,19 @@ export function ExtraPickers({ picker, draft, merged, applyPatch, close }: { pic
           custom(
             'Colour and direction',
             <>
+              <div>
+                <p className="mb-1.5 text-xs font-semibold">Motion</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {EFFECT_MOTIONS.map(([m, label]) => (
+                    <button key={m} type="button" onClick={() => setDecor({ effectMotion: m })} className={`rounded-full border px-3 py-1 text-xs ${(decor.effectMotion ?? '') === m ? 'border-ae-accent bg-ae-accent/15 font-semibold' : 'border-ae-border text-ae-muted hover:text-ae-text'}`}>
+                      {label}
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => setDecor({ effectMotion: undefined })} className={`rounded-full border px-3 py-1 text-xs ${!decor.effectMotion ? 'border-ae-accent bg-ae-accent/15 font-semibold' : 'border-ae-border text-ae-muted hover:text-ae-text'}`}>
+                    Default
+                  </button>
+                </div>
+              </div>
               {colorRow('Particle colour (leave empty for the effect’s own)', decor.effect, (v) => setDecor({ effect: v ?? undefined }))}
               <Slider label="Falling angle" value={decor.effectAngle ?? 12} min={-45} max={45} step={1} format={(v) => `${v}°`} onChange={(v) => setDecor({ effectAngle: v })} />
             </>,
@@ -876,11 +908,14 @@ export function ExtraPickers({ picker, draft, merged, applyPatch, close }: { pic
         renderTile={(p) => <MiniCard profile={p} />}
         extra={() =>
           custom(
-            'Theme colours (your banner and accent colours)',
-            <div className="grid gap-3 sm:grid-cols-2">
-              {colorRow('Colour 1', draft.primary_color ?? undefined, (v) => applyPatch({ primary_color: v }))}
-              {colorRow('Colour 2', draft.accent_color ?? undefined, (v) => applyPatch({ accent_color: v }))}
-            </div>,
+            'Theme colours and intensity',
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {colorRow('Colour 1', draft.primary_color ?? undefined, (v) => applyPatch({ primary_color: v }))}
+                {colorRow('Colour 2', draft.accent_color ?? undefined, (v) => applyPatch({ accent_color: v }))}
+              </div>
+              <Slider label="Intensity" value={decor.themeV ?? 3} min={1} max={5} step={1} format={(v) => ['Subtle', 'Soft', 'Balanced', 'Strong', 'Bold'][v - 1]!} onChange={(v) => setDecor({ themeV: v })} />
+            </>,
           )
         }
         onApply={applyPatch}
@@ -949,12 +984,20 @@ export function ExtraPickers({ picker, draft, merged, applyPatch, close }: { pic
     return (
       <Picker
         title="Profile frame"
-        options={[...CARD_FRAMES.filter((n) => n.id !== 'crimson-roses').map((n) => ({ id: n.id as string, label: n.id === 'roses' ? 'Roses (any colour)' : n.label, group: 'Classic' })), ...GEN_CARD_FRAMES]}
+        options={[...CARD_ARTS.map((a) => ({ id: a.id, label: a.label, group: a.group })), ...CARD_FRAMES.filter((n) => n.id !== 'crimson-roses').map((n) => ({ id: n.id as string, label: n.id === 'roses' ? 'Roses (any colour)' : n.label, group: 'Classic' })), ...GEN_CARD_FRAMES]}
         current={draft.card_frame === 'crimson-roses' ? 'roses' : draft.card_frame || 'none'}
         base={merged}
         apply={(id) => ({ card_frame: id })}
         renderTile={(p) => <MiniCard profile={p} />}
-        extra={() => custom('Frame colour (roses and the styles after Classic)', colorRow('Colour', decor.cardFrame, (v) => setDecor({ cardFrame: v ?? undefined })))}
+        extra={() =>
+          custom(
+            'Frame colours (leave empty for the defaults)',
+            <div className="grid gap-3 sm:grid-cols-2">
+              {colorRow('Main colour', decor.cardFrame, (v) => setDecor({ cardFrame: v ?? undefined }))}
+              {colorRow('Second colour', decor.cardFrame2, (v) => setDecor({ cardFrame2: v ?? undefined }))}
+            </div>,
+          )
+        }
         onApply={applyPatch}
         onClose={close}
       />

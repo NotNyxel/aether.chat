@@ -17,6 +17,6 @@ export function cardFrameAttrs(p: CardProfile): { 'data-cardframe': string; 'dat
 /** CSS variables for generated themes and frames (merged into the card's style). */
 export function cardVars(p: CardProfile): Record<string, string> {
   const f = cardFrameProps(p.card_frame, p.decor, p.accent_color ?? undefined);
-  const t = themeAttrs(p.card_style);
+  const t = themeAttrs(p.card_style, p.decor);
   return { ...(f.style ?? {}), ...(t.v ? { '--ctv': String(t.v) } : {}) };
 }

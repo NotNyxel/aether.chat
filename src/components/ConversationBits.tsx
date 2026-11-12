@@ -57,7 +57,7 @@ export function ConversationAvatar({ conv, me, size = 32 }: { conv: Conversation
     );
   }
   return (
-    <span className="relative shrink-0">
+    <span className="relative inline-block shrink-0 align-middle leading-none" style={{ width: size, height: size }}>
       <Avatar profile={other} size={size} showFrame={false} />
       <PresenceDot status={status} size={Math.max(10, size * 0.34)} className="absolute -right-0.5 -bottom-0.5 z-10" />
     </span>

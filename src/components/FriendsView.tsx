@@ -49,7 +49,7 @@ function PersonRow({ userId, subtitle, actions }: { userId: string; subtitle?: s
       onClick={() => showProfile(userId)}
       onContextMenu={(e) => userMenu(e, userId)}
     >
-      <span className="relative">
+      <span className="relative inline-block shrink-0 leading-none">
         <Avatar profile={p} size={36} showFrame={false} />
         <PresenceDot status={status} className="absolute -right-0.5 -bottom-0.5 z-10" />
       </span>

@@ -45,7 +45,7 @@ function MemberRow({ userId, nickname, owner, offline, color, timedOut, me, serv
         {...plateProps((!offline && p?.nameplate) || 'none', p?.decor)}
         className={`ae-plate flex w-full items-center gap-2 rounded-ae px-2 py-1.5 text-left hover:bg-ae-hover ${offline ? 'opacity-45' : ''}`}
       >
-        <span className="relative">
+        <span className="relative inline-block shrink-0 leading-none">
           <Avatar profile={p && avatarOverride ? { ...p, avatar_url: avatarOverride } : p} size={32} showFrame={!offline} />
           <PresenceDot status={status} size={11} className="absolute -right-0.5 -bottom-0.5 z-10" />
         </span>

@@ -123,6 +123,21 @@
   animation: ae-spin 5s linear infinite reverse;
 }
 
+/* ═══ Expressive avatar decorations (SVG art from lib/decoArt.ts) ═══ */
+.ae-avatar[data-deco]::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--deco-art) center / contain no-repeat;
+}
+
+/* ═══ Illustrated profile frames ═══ */
+.ae-card[data-cfs='art']::after {
+  background: var(--cf-art);
+}
+
 /* ═══ Avatar shapes from the registry (clip-path or border-radius) ═══ */
 .ae-avatar[data-shape-custom] > .ae-avatar-inner,
 .ae-avatar[data-shape-custom]::before {

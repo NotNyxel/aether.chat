@@ -36,7 +36,7 @@ export function FullProfile({ profile, actions, boardEmpty, className = '' }: { 
       data-ae-profile={scopeId}
       className={`ae-profile-card ae-card @container relative w-full overflow-hidden rounded-[calc(var(--ae-radius)+6px)] border border-ae-border text-ae-text shadow-2xl ${className}`}
       data-card={profile.card_style ?? 'solid'}
-      data-ct={themeAttrs(profile.card_style).pattern}
+      data-ct={themeAttrs(profile.card_style, profile.decor).pattern}
       {...cardFrameAttrs(profile)}
       style={
         {
@@ -52,7 +52,7 @@ export function FullProfile({ profile, actions, boardEmpty, className = '' }: { 
       }
     >
       <ScopedCss css={profile.custom_css} scopeSelector={`[data-ae-profile="${scopeId}"]`} />
-      <ProfileEffectLayer effect={profile.profile_effect} color={isHexColor(profile.accent_color) ? profile.accent_color : undefined} angle={profile.decor?.effectAngle} decorColor={profile.decor?.effect} />
+      <ProfileEffectLayer effect={profile.profile_effect} color={isHexColor(profile.accent_color) ? profile.accent_color : undefined} angle={profile.decor?.effectAngle} decorColor={profile.decor?.effect} motion={profile.decor?.effectMotion} />
 
       <div className="ae-profile-banner h-40 w-full @2xl:h-48" style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}>
         {profile.banner_url && <img src={profile.banner_url} alt="" className="h-full w-full object-cover" draggable={false} style={cropStyle(profile.decor?.bannerCrop)} />}

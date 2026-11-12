@@ -3,6 +3,21 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.6.3] - 2026-11-12
+
+**Every platform, including iPhone and iPad**
+
+- **iPhone and iPad:** an `.ipa` for sideloading is on the Releases page. Install it with SideStore, AltStore or
+  Sideloadly using your own Apple ID; no paid developer account needed. With a free Apple ID the app has to be
+  re-signed every 7 days (SideStore and AltStore do it for you).
+- **Android:**
+  - the app updates itself: when a new version is out it offers it, downloads the APK, and Android installs it over
+    the current app with your sign-in kept (install 1.6.3 by hand once to get this);
+  - the right app icon instead of the default one;
+  - the new phone layout from 1.6.2.
+- **macOS and Linux** catch up with everything since 1.5.1: the Aether name, profile cards, the DM profile panel,
+  new emoji, Customize your theme and the web app's new look.
+
 ## [1.6.2] - 2026-11-12
 
 **A new look for phones and the web app**

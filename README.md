@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/icon.svg" width="96" alt="aether.chat logo" />
+  <img src="public/icon.svg" width="96" alt="Aether logo" />
 </p>
 
-<h1 align="center">aether.chat</h1>
+<h1 align="center">Aether</h1>
 
 <p align="center">
   A lightweight Discord-style chat app with peer-to-peer voice and video, built to run at <b>$0</b>.<br/>
@@ -27,19 +27,23 @@
 
 ## Install
 
-1. Download **[aether.chat-Setup.exe](https://github.com/NotNyxel/aether.chat-releases/releases/latest/download/aether.chat-Setup.exe)**.
-2. Run it. It installs in one click, for your Windows user only (no admin prompt), and opens aether.chat.
+1. Download **[Aether-Setup.exe](https://github.com/NotNyxel/aether.chat-releases/releases/latest/download/Aether-Setup.exe)**.
+2. Run it. It installs in one click, for your Windows user only (no admin prompt), and opens Aether.
 3. Sign up with a username, email and password.
 
 That's it. There's nothing to configure. The app keeps itself up to date: every time it starts, it checks for a
 new version and installs it before opening.
 
 **macOS and Linux:** download from the [Releases page](https://github.com/NotNyxel/aether.chat-releases/releases/latest):
-- macOS (Apple Silicon and Intel): `aether.chat_<version>_macos-universal.dmg`. The app isn't notarised by Apple yet, so
-  the first time, right-click it and choose **Open** (or run `xattr -cr "/Applications/aether.chat.app"`).
+- macOS (Apple Silicon and Intel): `Aether_<version>_macos-universal.dmg`. The app isn't notarised by Apple yet, so
+  the first time, right-click it and choose **Open** (or run `xattr -cr "/Applications/Aether.app"`).
 - Linux: `…_linux-x86_64.AppImage` (updates itself; `chmod +x` it and run) or `…_linux-amd64.deb`.
 
-**Android:** install `aether.chat_<version>_android.apk` from the Releases page (allow installing from your browser
+**iPhone and iPad:** `Aether_<version>_ios-unsigned.ipa` is on the Releases page. Install it with SideStore, AltStore
+or Sideloadly using your own Apple ID (no paid developer account). A free Apple ID has to re-sign the app every 7
+days, which SideStore and AltStore do for you.
+
+**Android:** install `Aether_<version>_android.apk` from the Releases page (allow installing from your browser
 when Android asks).
 
 **No install?** Use the web app at **[aether-chat-beta.vercel.app](https://aether-chat-beta.vercel.app)** in any browser,
@@ -147,7 +151,7 @@ and previews live in **Settings → Notifications & Sounds**. Do Not Disturb sil
 
 ### ⚙️ App
 - **Automatic, signed updates** from GitHub Releases, installed at startup before the app opens.
-- **One-click installer** (aether.chat Setup) and a **web app** with a phone layout.
+- **One-click installer** (Aether Setup) and a **web app** with a phone layout.
 - **Built-in server bot** with slash commands (`/roll`, `/8ball`, `/purge`, `/slowmode` and more) and welcome messages.
 - **No default browser UI:** custom title bar, menus, pickers, media players and dialogs; Twemoji for emoji.
 - **40 themes.**
@@ -162,7 +166,7 @@ and previews live in **Settings → Notifications & Sounds**. Do Not Disturb sil
 ## How it works
 
 ```
- aether.chat (Tauri + WebView2)          Supabase (free tier)                 Other users
+ Aether (Tauri + WebView2)          Supabase (free tier)                 Other users
 ┌──────────────────────────────┐  HTTPS ┌───────────────────────────┐
 │ React 19 · Zustand · TanStack├───────►│ Postgres + Row-Level Sec. │
 │ ThemeEngine · VoiceEngine    │  WSS   │ Realtime (changes, presence, typing)
@@ -260,7 +264,7 @@ Permissions use a Discord-style 64-bit mask (`src/lib/permissions.ts` mirrors `p
 
 ## Releasing & auto-updates
 
-aether.chat uses two GitHub repos:
+Aether uses two GitHub repos:
 
 | Repo | Visibility | Holds |
 |---|---|---|
@@ -274,7 +278,7 @@ To release:
 2. Add a section to `CHANGELOG.md`. It becomes the release notes and the text in the in-app update card.
 3. Commit, then run `node scripts/release.mjs`.
 
-The script builds and signs the installer, builds **aether.chat Setup** (`installer/`, a small Tauri app that
+The script builds and signs the installer, builds **Aether Setup** (`installer/`, a small Tauri app that
 embeds the signed installer and runs it silently), writes `latest.json`, tags the commit, publishes to both repos
 and deploys the web app (`npm run deploy:web`, Vercel; sign in once with `npx vercel login`). Only `dist/` is
 uploaded to Vercel. The

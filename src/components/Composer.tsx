@@ -24,6 +24,7 @@ import { customEmojiToken, useServerEmojis } from '../lib/customEmoji';
 import { StickerPicker, stickerAttachment } from './Stickers';
 import { VoiceRecorder } from './VoiceMessage';
 import { ScheduleDialog, ScheduledChip, useSyncedDraft } from './ScheduledMessages';
+import { GifPicker, gifAttachment } from './GifPicker';
 
 interface Suggestion {
   key: string;
@@ -82,6 +83,7 @@ export function Composer(props: ComposerProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
   const [stickersOpen, setStickersOpen] = useState(false);
+  const [gifsOpen, setGifsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState(0);
@@ -549,15 +551,24 @@ export function Composer(props: ComposerProps) {
           />
           {draft.length > 3600 && <span className={`mb-2 text-[11px] tabular-nums ${draft.length >= 4000 ? 'text-ae-danger' : 'text-ae-muted'}`}>{4000 - draft.length}</span>}
           <div className="flex items-center">
-            <button type="button" data-tip="Attach" aria-label="Attach a file" className="ae-press grid h-8 w-8 place-items-center rounded-full text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={() => fileRef.current?.click()}>
+            <button type="button" data-tip="Attach" aria-label="Attach a file" className="ae-desktop-only ae-press grid h-8 w-8 place-items-center rounded-full text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={() => fileRef.current?.click()}>
               <AttachIcon size={18} />
+            </button>
+            <button
+              type="button"
+              data-tip="GIFs"
+              aria-label="GIFs"
+              className={`ae-press grid h-8 w-8 place-items-center rounded-full text-[11px] font-black tracking-tight hover:bg-ae-hover ${gifsOpen ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
+              onClick={() => (setGifsOpen((o) => !o), setStickersOpen(false), setPickerOpen(false))}
+            >
+              <span className="rounded-[4px] border-[1.5px] border-current px-[2px] leading-[13px]">GIF</span>
             </button>
             <button
               type="button"
               data-tip="Stickers"
               aria-label="Stickers"
               className={`ae-press grid h-8 w-8 place-items-center rounded-full hover:bg-ae-hover ${stickersOpen ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
-              onClick={() => (setStickersOpen((o) => !o), setPickerOpen(false))}
+              onClick={() => (setStickersOpen((o) => !o), setPickerOpen(false), setGifsOpen(false))}
             >
               <StickerIcon size={18} />
             </button>
@@ -589,6 +600,15 @@ export function Composer(props: ComposerProps) {
               </button>
             )}
           </div>
+          {gifsOpen && (
+            <GifPicker
+              onClose={() => setGifsOpen(false)}
+              onPick={(g) => {
+                setGifsOpen(false);
+                sendAttachment(gifAttachment(g));
+              }}
+            />
+          )}
           {stickersOpen && (
             <StickerPicker
               onClose={() => setStickersOpen(false)}

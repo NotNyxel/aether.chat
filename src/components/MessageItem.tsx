@@ -23,6 +23,7 @@ import { Avatar, StyledName } from './ProfileCard';
 import { BOT_NAME } from '../lib/botCommands';
 import { StickerView, type StickerAttachment } from './Stickers';
 import { VoiceMessagePlayer, type VoiceAttachment } from './VoiceMessage';
+import { GifView } from './GifPicker';
 
 export function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -50,6 +51,7 @@ function AttachmentView({ a }: { a: Attachment }) {
   const [revealed, setRevealed] = useState(!a.spoiler);
 
   if ((a as StickerAttachment).sticker) return <StickerView a={a as StickerAttachment} />;
+  if (a.gif) return <GifView a={a} />;
   if ((a as VoiceAttachment).voice) return <VoiceMessagePlayer a={a as VoiceAttachment} />;
   const body = a.content_type.startsWith('image/') ? (
     <button type="button" onClick={() => (revealed ? openLightbox({ url: a.url, alt: a.alt, name: a.name }) : setRevealed(true))} title={a.alt ?? a.name}>

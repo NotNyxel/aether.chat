@@ -229,6 +229,8 @@ export interface Attachment {
   /** Server sticker. */
   sticker?: boolean;
   sticker_id?: string;
+  /** GIF from the GIF picker (plays on a loop, no sound). */
+  gif?: boolean;
 }
 
 export interface Poll {

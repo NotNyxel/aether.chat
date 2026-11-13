@@ -3,6 +3,17 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.7.2] - 2026-11-13
+
+**GIFs, and groundwork for bot protection and account emails**
+
+- **GIF picker:** the new **GIF** button in the message box shows trending GIFs and searches GIPHY. Picking one
+  sends it; GIFs loop silently in chat. (Switches on once the server has a GIPHY key.)
+- **Bot check on sign-up and sign-in** (Cloudflare Turnstile), ready to switch on with a site key.
+- **Account emails through a proper email service** (confirmation, password reset), ready to switch on: one
+  command sets it up, and turns sign-up confirmation back on without the 2-emails-an-hour limit.
+- On phones the paperclip is tucked away (upload is still under **+**) to make room in the message box.
+
 ## [1.7.1] - 2026-11-13
 
 **Voice messages, stickers, scheduled messages and better calls on phones**

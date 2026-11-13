@@ -8,6 +8,7 @@ import { isTauri, openExternal } from '../lib/platform';
 import { DownloadIcon } from './icons';
 import { authRedirectUrl } from '../lib/authLinks';
 import { useSupabase } from '../lib/supabase';
+import { captchaEnabled, Turnstile } from './Turnstile';
 
 const input = 'ae-input w-full';
 
@@ -72,6 +73,8 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(linkError ?? null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaRound, setCaptchaRound] = useState(0);
   useEffect(() => setError(linkError ?? null), [linkError]);
 
   const submit = async (e: FormEvent) => {
@@ -79,21 +82,27 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
     setBusy(true);
     setError(null);
     setNotice(null);
+    if (captchaEnabled && !captcha) {
+      setBusy(false);
+      setError('Please complete the human check first.');
+      return;
+    }
+    const captchaToken = captcha ?? undefined;
     try {
       if (mode === 'signin') {
-        const { error: err } = await sb.auth.signInWithPassword({ email, password });
+        const { error: err } = await sb.auth.signInWithPassword({ email, password, options: { captchaToken } });
         if (err) throw err;
       } else if (mode === 'signup') {
         if (!/^[A-Za-z0-9_.]{2,32}$/.test(username)) throw new Error('Usernames are 2–32 characters: letters, numbers, _ and .');
         const { data, error: err } = await sb.auth.signUp({
           email,
           password,
-          options: { data: { username, display_name: username }, emailRedirectTo: authRedirectUrl() },
+          options: { data: { username, display_name: username }, emailRedirectTo: authRedirectUrl(), captchaToken },
         });
         if (err) throw err;
         if (!data.session) setNotice(`We emailed a confirmation link to ${email}. Open it on this computer and ${APP_NAME} signs you straight in.`);
       } else {
-        const { error: err } = await sb.auth.resetPasswordForEmail(email, { redirectTo: authRedirectUrl() });
+        const { error: err } = await sb.auth.resetPasswordForEmail(email, { redirectTo: authRedirectUrl(), captchaToken });
         if (err) throw err;
         setNotice(`If ${email} has an account, a reset link is on its way. Open it on this computer to choose a new password.`);
       }
@@ -101,6 +110,11 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
+      // A token works once: get a fresh one for the next try.
+      if (captchaEnabled) {
+        setCaptcha(null);
+        setCaptchaRound((n) => n + 1);
+      }
     }
   };
 
@@ -130,6 +144,7 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
         {error && <p className="ae-enter rounded-ae bg-ae-danger/10 px-3 py-2 text-sm text-ae-danger">{error}</p>}
         {notice && <p className="ae-enter rounded-ae bg-ae-success/10 px-3 py-2 text-sm text-ae-success">{notice}</p>}
 
+        <Turnstile onToken={setCaptcha} resetKey={`${mode}-${captchaRound}`} />
         <Submit busy={busy}>{mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}</Submit>
       </form>
 

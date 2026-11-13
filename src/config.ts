@@ -29,4 +29,4 @@ export const RELEASES_REPO = 'NotNyxel/aether.chat-releases';
  * Cloudflare Turnstile site key (public by design). Empty = no bot check on sign-up and sign-in.
  * The matching secret goes in Supabase Auth → captcha (scripts/auth-config.mjs --captcha).
  */
-export const TURNSTILE_SITE_KEY = '';
+export const TURNSTILE_SITE_KEY = '0x4AAAAAAF_ENSpjsctkBq4Q';

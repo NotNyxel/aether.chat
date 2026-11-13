@@ -3,6 +3,14 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.7.5] - 2026-11-13
+
+**GIFs are on, and a bot check on sign-up**
+
+- **The GIF picker works:** the GIF button in the message box searches GIPHY.
+- **Bot check:** signing up, signing in and resetting a password now include a quick Cloudflare check (usually
+  invisible or a single tick), to keep spam accounts out.
+
 ## [1.7.4] - 2026-11-13
 
 **The new web address is joinaether.vercel.app**

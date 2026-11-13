@@ -3,6 +3,29 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.7.7] - 2026-11-13
+
+**Community requests: favourite GIFs, one expressions menu, smoother chat**
+
+- **One menu for Emoji, GIFs and Stickers:** the three buttons open the same menu on their tab, so only one is
+  ever open.
+- **Favourite GIFs:** a star on every GIF saves it. The **Favorites** button (with one of your saved GIFs as its
+  background) shows them all.
+- **Image viewer:** new buttons at the top right: **Download**, **Forward**, **Save as GIF** (turns the picture
+  into a GIF and adds it to your favourites), **Open original** and **Close**.
+- **Quick reactions follow you:** the reaction buttons show the emoji you use most, like Discord.
+- **Phones:** **Add reaction** from the press-and-hold menu opens the emoji sheet reliably.
+- **Emoji look right everywhere:** text boxes, names and previews now use your device's emoji instead of an outdated
+  emoji font that drew some (like 😭, 🥹 and flags) in pieces.
+- **Message box grows** as you type, wrapped lines included (it only grew on new lines before).
+- **Chats stay at the bottom** while you're there: new messages, pictures loading and the typing line no longer
+  leave you scrolled up.
+- **Reorder channels by touch:** Server menu (or hold a channel) → **Reorder channels**, then drag the handles.
+  Dragging with a mouse still works as before.
+- **Glass themes are frosted:** aetherOS Glass, Vaporwave and custom themes blur what's behind panels and are
+  denser, so text never mixes with what's underneath.
+- Database: `supabase/migrations/017_gif_favorites.sql`.
+
 ## [1.7.6] - 2026-11-13
 
 **Notifications open the chat, faster start, and a round of fixes**

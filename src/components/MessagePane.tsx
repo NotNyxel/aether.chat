@@ -211,7 +211,25 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
     };
   }, [jumpTarget, scope.id, fetchNextPage, clearJump, qc]);
 
-  const scrollToBottom = useCallback(() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }), []);
+  // Pinned to the newest message while you're at the bottom: whatever changes size (new messages,
+  // images loading, the typing line, the message box growing) keeps you there.
+  const pinned = useRef(true);
+  const scrollToBottom = useCallback(() => {
+    pinned.current = true;
+    const el = scrollRef.current;
+    if (el) el.scrollTop = 0; // column-reverse: 0 is the bottom
+  }, []);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const stick = () => {
+      if (pinned.current && el.scrollTop !== 0) el.scrollTop = 0;
+    };
+    const ro = new ResizeObserver(stick);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, []);
 
   // Stable callbacks so memoized rows don't re-render on every keystroke.
   const onReply = useCallback((m: Message) => setReplyTo(m), []);
@@ -301,7 +319,11 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
           <div
             ref={scrollRef}
             className="ae-scroll flex flex-1 flex-col-reverse overflow-y-auto pb-6"
-            onScroll={(e) => setAwayFromBottom((e.currentTarget.scrollTop ?? 0) < -500)}
+            onScroll={(e) => {
+              const top = e.currentTarget.scrollTop ?? 0;
+              pinned.current = top > -60;
+              setAwayFromBottom(top < -500);
+            }}
           >
             <ul className="flex flex-col-reverse">
               {list.map((m, i) => {

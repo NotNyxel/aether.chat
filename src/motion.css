@@ -281,26 +281,26 @@ nav[aria-label='Servers'] > button:hover {
 
 /* ── Display names ─────────────────────────────────────────────────────────────────────── */
 .ae-name[data-font='serif'] {
-  font-family: 'Twemoji', 'Playfair Display', Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
 }
 .ae-name[data-font='mono'] {
-  font-family: 'Twemoji', 'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace;
+  font-family: 'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace;
 }
 .ae-name[data-font='rounded'] {
-  font-family: 'Twemoji', 'Nunito', 'Segoe UI', sans-serif;
+  font-family: 'Nunito', 'Segoe UI', sans-serif;
   font-weight: 800;
 }
 .ae-name[data-font='display'] {
-  font-family: 'Twemoji', 'Bebas Neue', Impact, sans-serif;
+  font-family: 'Bebas Neue', Impact, sans-serif;
   letter-spacing: 0.04em;
   font-weight: 400;
 }
 .ae-name[data-font='handwritten'] {
-  font-family: 'Twemoji', 'Pacifico', 'Segoe Script', cursive;
+  font-family: 'Pacifico', 'Segoe Script', cursive;
   font-weight: 400;
 }
 .ae-name[data-font='pixel'] {
-  font-family: 'Twemoji', 'Press Start 2P', monospace;
+  font-family: 'Press Start 2P', monospace;
   font-size: 0.72em;
   font-weight: 400;
   line-height: 1.6;

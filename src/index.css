@@ -19,18 +19,9 @@
   --font-ae: var(--ae-font);
 }
 
-/* Twemoji (Discord-style emoji) as a colour font, so every emoji, including inside text boxes, uses
-   the same pack instead of Windows' Segoe UI Emoji. unicode-range keeps it to emoji codepoints, so
-   it never replaces letters or digits. Licence: src/assets/fonts/TWEMOJI-FONT-LICENSE.txt (OFL). */
-@font-face {
-  font-family: 'Twemoji';
-  src: url('./assets/fonts/twemoji.woff2') format('woff2');
-  font-display: swap;
-  unicode-range:
-    U+00A9, U+00AE, U+200D, U+203C, U+2049, U+20E3, U+2122, U+2139, U+2194-21AA, U+231A-23FF, U+24C2, U+25AA-27BF,
-    U+2934-2935, U+2B05-2B55, U+3030, U+303D, U+3297, U+3299, U+FE0F, U+1F000-1FAFF, U+E0020-E007F;
-}
-
+/* Emoji: messages draw them as up-to-date Twemoji images (src/lib/twemoji.tsx). Everywhere else
+   (text boxes, names, previews) uses the device's own emoji font: the old bundled Twemoji font was
+   missing newer emoji and drew some (😭, 🥹, flags) in pieces. */
 html,
 body,
 #root {
@@ -41,7 +32,7 @@ body,
 body {
   background: var(--ae-backdrop, #000);
   color: var(--ae-text, #f2f2f4);
-  font-family: 'Twemoji', var(--ae-font, system-ui, sans-serif);
+  font-family: var(--ae-font, system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
@@ -224,7 +215,7 @@ body {
   border: 1px solid var(--ae-border);
   border-radius: 4px;
   padding: 0 4px;
-  font-family: 'Twemoji', 'Cascadia Code', ui-monospace, monospace;
+  font-family: 'Cascadia Code', ui-monospace, monospace;
   font-size: 0.875em;
 }
 .ae-md pre {
@@ -877,4 +868,10 @@ html {
     -webkit-user-drag: none;
     user-select: none;
   }
+}
+
+/* ── 1.7.7: glass themes are frosted: whatever is behind a panel is blurred, never readable ─── */
+:root[data-ae-glass='true'] :is(.ae-shell > main, .ae-shell > aside, .ae-shell > nav, .ae-memberlist) {
+  backdrop-filter: blur(var(--ae-blur, 0px)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--ae-blur, 0px)) saturate(1.15);
 }

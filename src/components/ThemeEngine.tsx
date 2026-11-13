@@ -38,9 +38,9 @@ function customTokens(c: CustomTheme): ThemeTokens {
   return {
     ...base,
     backdrop: customBackdrop(c),
-    bg: `rgb(${shade} / ${light ? 0.42 : 0.28})`,
-    bgElevated: `rgb(${shade} / ${light ? 0.62 : 0.5})`,
-    bgSunken: `rgb(${shade} / ${light ? 0.5 : 0.38})`,
+    bg: `rgb(${shade} / ${light ? 0.55 : 0.42})`,
+    bgElevated: `rgb(${shade} / ${light ? 0.7 : 0.6})`,
+    bgSunken: `rgb(${shade} / ${light ? 0.6 : 0.48})`,
     surface: `rgb(${ink} / 0.07)`,
     surfaceHover: `rgb(${ink} / 0.12)`,
     border: `rgb(${ink} / 0.1)`,
@@ -216,6 +216,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const custom = !!theme.custom?.enabled;
     const light = custom ? theme.custom!.mode === 'light' : !!THEME_PRESETS[theme.presetId]?.light;
     root.dataset.aeCustom = String(custom);
+    root.dataset.aeGlass = String(!/^0(px)?$/.test(tokens.blur.trim()));
     if (!custom) {
       // Glass themes have see-through panels; floating things (menus, dialogs, settings) need an opaque colour.
       const see = /rgba|hsla|\/\s*0?\.\d|transparent/i.test(tokens.bgElevated);

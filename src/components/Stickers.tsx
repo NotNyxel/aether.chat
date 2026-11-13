@@ -7,7 +7,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState } from 'react';
 import { useServers } from '../hooks/useChatData';
 import { useMeId } from '../hooks/useMe';
-import { useEscape } from '../lib/escape';
 import { useSupabase } from '../lib/supabase';
 import type { Attachment, Server } from '../types/db';
 import { promptText } from './ConfirmDialog';
@@ -52,13 +51,12 @@ export function StickerView({ a }: { a: StickerAttachment }) {
   return <img src={a.url} alt={a.alt ?? a.name} title={a.alt ?? a.name} loading="lazy" draggable={false} className="h-40 w-40 object-contain" />;
 }
 
-/** The sticker picker that opens above the message box. */
-export function StickerPicker({ onPick, onClose, className = '' }: { onPick: (s: ServerSticker) => void; onClose: () => void; className?: string }) {
+/** The Stickers tab of the expressions menu. */
+export function StickerPanel({ onPick }: { onPick: (s: ServerSticker) => void }) {
   const me = useMeId();
   const { data: servers = [] } = useServers(me);
   const { data: stickers = [], isLoading } = useServerStickers(servers.map((s) => s.id));
   const [query, setQuery] = useState('');
-  useEscape(onClose);
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = q ? stickers.filter((s) => s.name.toLowerCase().includes(q) || (s.description ?? '').toLowerCase().includes(q)) : stickers;
@@ -66,9 +64,9 @@ export function StickerPicker({ onPick, onClose, className = '' }: { onPick: (s:
   }, [stickers, servers, query]);
 
   return (
-    <div className={`ae-pop absolute right-0 bottom-full z-40 mb-2 flex h-[min(420px,60vh)] w-[min(380px,calc(100vw-16px))] flex-col rounded-ae border border-ae-border bg-[var(--ae-bg-solid,var(--ae-bg-elevated))] shadow-2xl ${className}`}>
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="border-b border-ae-border p-2">
-        <input className="ae-input w-full" placeholder="Search stickers" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
+        <input className="ae-input w-full" placeholder="Search stickers" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
       <div className="ae-scroll min-h-0 flex-1 overflow-y-auto p-2">
         {isLoading && <p className="p-4 text-center text-sm text-ae-muted">Loading…</p>}

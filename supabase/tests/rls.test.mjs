@@ -1062,5 +1062,14 @@ await expectOk('a scheduled message you may no longer send is kept with the reas
   if (!r?.failed) throw new Error(JSON.stringify(r));
 });
 
+console.log('\nGIF favourites (1.7.7)');
+await expectOk('favourite GIFs are private', async () => {
+  await as(A, `insert into public.gif_favorites (url, preview) values ('https://x.example/a.mp4', 'https://x.example/a.webp')`);
+  const mine = (await as(A, `select count(*)::int n from public.gif_favorites`)).rows[0].n;
+  const theirs = (await as(B, `select count(*)::int n from public.gif_favorites`)).rows[0].n;
+  if (mine !== 1 || theirs !== 0) throw new Error(`${mine} ${theirs}`);
+});
+await expectError('favourites must be https links', () => as(A, `insert into public.gif_favorites (url, preview) values ('javascript:alert(1)', 'https://x.example/a.webp')`));
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

@@ -1,7 +1,7 @@
 {
   "name": "aetherchat",
   "private": true,
-  "version": "1.7.6",
+  "version": "1.7.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -132,6 +132,7 @@
     "@tauri-apps/plugin-updater": "^2.14.1",
     "emoji-regex": "^11.0.0",
     "emojibase-data": "^16.0.3",
+    "gifenc": "^1.0.3",
     "highlight.js": "^11.12.0",
     "lucide-react": "^1.72.0",
     "peerjs": "^1.5.4",

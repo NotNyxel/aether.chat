@@ -102,27 +102,60 @@ export function searchEmoji(data: EmojiData, query: string, limit = 60): EmojiEn
   return scored.sort((a, b) => b.s - a.s).slice(0, limit).map((x) => x.e);
 }
 
-// ── Recents (per device) ─────────────────────────────────────────────────────────────────────
+// ── Frequently used (per device) ─────────────────────────────────────────────────────────────
+// Like Discord: emoji you use often *and* recently come first. Each use adds a point; points fade
+// with a half-life of a few days, so a new favourite rises quickly and old ones drift down.
 
+const USAGE_KEY = 'aether.emoji.usage';
 const RECENT_KEY = 'aether.emoji.recent';
-const RECENT_MAX = 24;
+const HALF_LIFE_MS = 4 * 24 * 3600_000;
+const KEEP = 60;
 const DEFAULT_RECENTS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '👀', '✅', '💯', '🙏', '😎'];
 
-export function getRecentEmoji(): string[] {
+type Usage = Record<string, { n: number; at: number }>;
+
+function readUsage(): Usage {
   try {
-    const raw = localStorage.getItem(RECENT_KEY);
-    const list = raw ? (JSON.parse(raw) as string[]) : [];
-    return list.length ? list : DEFAULT_RECENTS;
+    const raw = localStorage.getItem(USAGE_KEY);
+    if (raw) return JSON.parse(raw) as Usage;
+    // First run after the update: seed from the old "recent" list so nothing is lost.
+    const old = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as string[];
+    const now = Date.now();
+    return Object.fromEntries(old.map((e, i) => [e, { n: Math.max(1, 5 - i * 0.2), at: now - i * 60_000 }]));
   } catch {
-    return DEFAULT_RECENTS;
+    return {};
   }
+}
+
+const score = (u: { n: number; at: number }, now: number) => u.n * Math.pow(0.5, (now - u.at) / HALF_LIFE_MS);
+
+/** Emoji ordered by how often and how recently you used them (reactions and the picker). */
+export function getRecentEmoji(): string[] {
+  const usage = readUsage();
+  const now = Date.now();
+  const ranked = Object.entries(usage)
+    .sort((a, b) => score(b[1], now) - score(a[1], now))
+    .map(([e]) => e);
+  return ranked.length ? [...ranked, ...DEFAULT_RECENTS.filter((e) => !ranked.includes(e))].slice(0, 24) : DEFAULT_RECENTS;
+}
+
+/** The emoji for the quick-reaction buttons: your most used ones. */
+export function quickReactions(count: number): string[] {
+  return getRecentEmoji().slice(0, count);
 }
 
 export function pushRecentEmoji(emoji: string): void {
   try {
-    const next = [emoji, ...getRecentEmoji().filter((e) => e !== emoji)].slice(0, RECENT_MAX);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+    const usage = readUsage();
+    const now = Date.now();
+    const cur = usage[emoji];
+    usage[emoji] = { n: (cur ? score(cur, now) : 0) + 1, at: now };
+    const kept = Object.entries(usage)
+      .sort((a, b) => score(b[1], now) - score(a[1], now))
+      .slice(0, KEEP);
+    localStorage.setItem(USAGE_KEY, JSON.stringify(Object.fromEntries(kept)));
+    window.dispatchEvent(new Event('aether-emoji-usage'));
   } catch {
-    // Storage unavailable: recents just don't persist.
+    // Storage unavailable: the order just doesn't adapt.
   }
 }

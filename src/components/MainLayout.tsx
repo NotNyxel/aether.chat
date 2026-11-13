@@ -44,6 +44,7 @@ import { ArrowLeftIcon as BackIcon } from './icons';
 import { ThemeStudio } from './ThemeStudio';
 import { AndroidUpdate } from './AndroidUpdate';
 import { CallBubble } from './CallBubble';
+import { ReactionPickerLayer } from './ReactionPicker';
 import { ThemeEffectLayer } from './ThemeEffectLayer';
 import { MobileHome, MobileInbox, MobileServersEmpty, MobileTabBar, MobileYou } from './MobileNav';
 
@@ -232,6 +233,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <ThemeStudio />
       <AndroidUpdate />
       <CallBubble />
+      <ReactionPickerLayer />
       <ThemeEffectLayer />
       {popoverUserId && <PopoverForUser me={userId} userId={popoverUserId} server={server} onClose={() => showProfile(null)} />}
       <ServerSettings servers={servers.data ?? []} userId={userId} />

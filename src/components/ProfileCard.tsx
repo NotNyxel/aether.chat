@@ -155,7 +155,7 @@ export function StyledName({ profile, text, color, className = '' }: { profile: 
       data-effect={effect}
       data-fill={fx.fill}
       data-tr={fx.tr}
-      style={{ '--name-a': a, '--name-b': b, color: effect === 'none' ? (color ?? undefined) : undefined, ...(family ? { fontFamily: `'Twemoji', '${family}', system-ui, sans-serif` } : {}) } as CSSProperties}
+      style={{ '--name-a': a, '--name-b': b, color: effect === 'none' ? (color ?? undefined) : undefined, ...(family ? { fontFamily: `'${family}', system-ui, sans-serif` } : {}) } as CSSProperties}
     >
       {text ?? (profile?.display_name || profile?.username || '…')}
     </span>

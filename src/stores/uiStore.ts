@@ -23,6 +23,12 @@ export interface LightboxImage {
   url: string;
   alt?: string;
   name?: string;
+  /** The message it's in (for Forward) and its chat (for uploading a GIF copy). */
+  messageId?: string;
+  scopeId?: string;
+  contentType?: string;
+  width?: number;
+  height?: number;
 }
 
 interface UiState {

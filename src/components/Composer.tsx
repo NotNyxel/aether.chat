@@ -5,13 +5,13 @@
  */
 import { toast } from './Toaster';
 import { promptText } from './ConfirmDialog';
-import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { uploadAttachmentTo, useSendMessage, useUploadAttachment } from '../hooks/useChatData';
 import { searchEmoji, useEmojiData } from '../lib/emoji';
 import { playSound } from '../lib/sounds';
 import type { Attachment, Channel, Message, MessageScope, ServerRole } from '../types/db';
 import { useProfiles } from './ConversationBits';
-import { EmojiPicker } from './EmojiPicker';
+import { ExpressionPicker, type ExpressionTab } from './ExpressionPicker';
 import { DisplayName } from './MessageItem';
 import { StickerIcon, AttachIcon, BotIcon, ClockIcon, CloseIcon, EyeOffIcon, FileIcon, HashIcon, PlusIcon, PollIcon, ReplyIcon, SendIcon, SmileIcon, TimeoutIcon, TrashIcon, UploadIcon } from './icons';
 import { PollDialog } from './PollDialog';
@@ -21,10 +21,10 @@ import { useSupabase } from '../lib/supabase';
 import { useMeId } from '../hooks/useMe';
 import { useServers } from '../hooks/useChatData';
 import { customEmojiToken, useServerEmojis } from '../lib/customEmoji';
-import { StickerPicker, stickerAttachment } from './Stickers';
+import { stickerAttachment } from './Stickers';
 import { VoiceRecorder } from './VoiceMessage';
 import { ScheduleDialog, ScheduledChip, useSyncedDraft } from './ScheduledMessages';
-import { GifPicker, gifAttachment } from './GifPicker';
+import { gifAttachment } from './GifPicker';
 
 interface Suggestion {
   key: string;
@@ -79,17 +79,27 @@ export function Composer(props: ComposerProps) {
   const [dismissed, setDismissed] = useState(false);
   const [pending, setPending] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(0);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
-  const [stickersOpen, setStickersOpen] = useState(false);
-  const [gifsOpen, setGifsOpen] = useState(false);
+  // One expressions menu (emoji, GIFs, stickers): which tab it's open on, or closed.
+  const [expr, setExpr] = useState<ExpressionTab | null>(null);
+  const toggleExpr = (t: ExpressionTab) => setExpr((cur) => (cur === t ? null : t));
   const [recording, setRecording] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [, tick] = useState(0);
   const textRef = useRef<HTMLTextAreaElement>(null);
   useSyncedDraft(scope, draft, setDraft);
+
+  // The box grows with what you type, wrapped lines included, up to about 10 lines; then it scrolls.
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const max = Math.min(260, window.innerHeight * 0.4);
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
+  }, [draft]);
   const cooldownLeft = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
   useEffect(() => {
     if (cooldownUntil <= Date.now()) return;
@@ -536,8 +546,8 @@ export function Composer(props: ComposerProps) {
           </div>
           <textarea
             ref={textRef}
-            rows={Math.min(10, Math.max(1, draft.split('\n').length))}
-            className="ae-scroll block max-h-64 min-h-[32px] w-full resize-none bg-transparent px-1 py-[6px] text-[15px] leading-5 !shadow-none !outline-none placeholder:text-ae-muted/80"
+            rows={1}
+            className="ae-scroll block min-h-[32px] w-full resize-none bg-transparent px-1 py-[6px] text-[15px] leading-5 !shadow-none !outline-none placeholder:text-ae-muted/80"
             placeholder={recording ? 'Recording…' : props.placeholder}
             disabled={recording}
             maxLength={4000}
@@ -558,8 +568,9 @@ export function Composer(props: ComposerProps) {
               type="button"
               data-tip="GIFs"
               aria-label="GIFs"
-              className={`ae-press grid h-8 w-8 place-items-center rounded-full text-[11px] font-black tracking-tight hover:bg-ae-hover ${gifsOpen ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
-              onClick={() => (setGifsOpen((o) => !o), setStickersOpen(false), setPickerOpen(false))}
+              className={`ae-press grid h-8 w-8 place-items-center rounded-full text-[11px] font-black tracking-tight hover:bg-ae-hover ${expr === 'gif' ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
+              data-expr-toggle
+              onClick={() => toggleExpr('gif')}
             >
               <span className="rounded-[4px] border-[1.5px] border-current px-[2px] leading-[13px]">GIF</span>
             </button>
@@ -567,8 +578,9 @@ export function Composer(props: ComposerProps) {
               type="button"
               data-tip="Stickers"
               aria-label="Stickers"
-              className={`ae-press grid h-8 w-8 place-items-center rounded-full hover:bg-ae-hover ${stickersOpen ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
-              onClick={() => (setStickersOpen((o) => !o), setPickerOpen(false), setGifsOpen(false))}
+              className={`ae-press grid h-8 w-8 place-items-center rounded-full hover:bg-ae-hover ${expr === 'sticker' ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
+              data-expr-toggle
+              onClick={() => toggleExpr('sticker')}
             >
               <StickerIcon size={18} />
             </button>
@@ -576,8 +588,9 @@ export function Composer(props: ComposerProps) {
               type="button"
               data-tip="Emoji"
               aria-label="Emoji"
-              className={`ae-press group grid h-8 w-8 place-items-center rounded-full hover:bg-ae-hover ${pickerOpen ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
-              onClick={() => setPickerOpen((o) => !o)}
+              className={`ae-press group grid h-8 w-8 place-items-center rounded-full hover:bg-ae-hover ${expr === 'emoji' ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
+              data-expr-toggle
+              onClick={() => toggleExpr('emoji')}
             >
               <SmileIcon size={19} className="transition-transform group-hover:scale-110 group-hover:rotate-12" />
             </button>
@@ -600,31 +613,22 @@ export function Composer(props: ComposerProps) {
               </button>
             )}
           </div>
-          {gifsOpen && (
-            <GifPicker
-              onClose={() => setGifsOpen(false)}
-              onPick={(g) => {
-                setGifsOpen(false);
+          {expr && (
+            <ExpressionPicker
+              tab={expr}
+              onTab={setExpr}
+              onClose={() => setExpr(null)}
+              onEmoji={(e) => {
+                insertAtCaret(e);
+                setExpr(null);
+              }}
+              onGif={(g) => {
+                setExpr(null);
                 sendAttachment(gifAttachment(g));
               }}
-            />
-          )}
-          {stickersOpen && (
-            <StickerPicker
-              onClose={() => setStickersOpen(false)}
-              onPick={(st) => {
-                setStickersOpen(false);
+              onSticker={(st) => {
+                setExpr(null);
                 sendAttachment(stickerAttachment(st));
-              }}
-            />
-          )}
-          {pickerOpen && (
-            <EmojiPicker
-              allowCustom
-              onClose={() => setPickerOpen(false)}
-              onPick={(e) => {
-                insertAtCaret(e);
-                setPickerOpen(false);
               }}
             />
           )}

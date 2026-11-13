@@ -194,9 +194,10 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
     tokens: {
       backdrop:
         'radial-gradient(900px 600px at 0% 0%, #3b2a8a 0%, transparent 60%), radial-gradient(800px 600px at 100% 100%, #0f6b8f 0%, transparent 55%), #0b1020',
-      bg: 'rgba(12, 16, 32, 0.55)',
-      bgElevated: 'rgba(255, 255, 255, 0.06)',
-      bgSunken: 'rgba(0, 0, 0, 0.28)',
+      // Frosted, not see-through: dense enough that text behind never competes with text in front.
+      bg: 'rgba(12, 16, 32, 0.78)',
+      bgElevated: 'rgba(26, 30, 56, 0.76)',
+      bgSunken: 'rgba(6, 8, 18, 0.6)',
       surface: 'rgba(255, 255, 255, 0.08)',
       surfaceHover: 'rgba(255, 255, 255, 0.14)',
       border: 'rgba(255, 255, 255, 0.14)',
@@ -255,7 +256,7 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
   vaporwave: preset('vaporwave', 'Vaporwave', 'Pastel glass and dreamy gradients.', {
     backdrop:
       'radial-gradient(900px 600px at 0% 0%, #ff9ad5 0%, transparent 55%), radial-gradient(900px 600px at 100% 100%, #7ee8fa 0%, transparent 55%), #2b2142',
-    bg: 'rgba(43, 33, 66, 0.55)', bgElevated: 'rgba(255, 255, 255, 0.08)', bgSunken: 'rgba(20, 12, 36, 0.35)',
+    bg: 'rgba(43, 33, 66, 0.8)', bgElevated: 'rgba(60, 45, 92, 0.76)', bgSunken: 'rgba(20, 12, 36, 0.62)',
     surface: 'rgba(255, 255, 255, 0.1)', surfaceHover: 'rgba(255, 255, 255, 0.17)', border: 'rgba(255, 255, 255, 0.18)',
     text: '#fff5fd', textMuted: '#d9c6ec', accent: '#ff9ad5', radius: '16px', blur: '20px',
     glow: '0 0 18px color-mix(in srgb, var(--ae-accent) 40%, transparent)',

@@ -13,6 +13,8 @@ import { buildMessageLink, extractEmbedUrls } from '../lib/messageLinks';
 import { Markdown } from '../lib/markdown';
 import { Emoji, EmojiText, emojiSize } from '../lib/twemoji';
 import { getRecentEmoji, pushRecentEmoji } from '../lib/emoji';
+import { isPhoneLayout } from '../lib/phone';
+import { openReactionPicker, useQuickReactions } from './ReactionPicker';
 import { useUiStore } from '../stores/uiStore';
 import type { Attachment, Message, PollVote } from '../types/db';
 import { EmojiPicker } from './EmojiPicker';
@@ -46,7 +48,7 @@ export function DisplayName({ userId }: { userId: string | null }) {
   return <>{data?.display_name || data?.username || 'Unknown'}</>;
 }
 
-function AttachmentView({ a }: { a: Attachment }) {
+function AttachmentView({ a, messageId, scopeId }: { a: Attachment; messageId?: string; scopeId?: string | null }) {
   const openLightbox = useUiStore((s) => s.openLightbox);
   const [revealed, setRevealed] = useState(!a.spoiler);
 
@@ -54,7 +56,7 @@ function AttachmentView({ a }: { a: Attachment }) {
   if (a.gif) return <GifView a={a} />;
   if ((a as VoiceAttachment).voice) return <VoiceMessagePlayer a={a as VoiceAttachment} />;
   const body = a.content_type.startsWith('image/') ? (
-    <button type="button" onClick={() => (revealed ? openLightbox({ url: a.url, alt: a.alt, name: a.name }) : setRevealed(true))} title={a.alt ?? a.name}>
+    <button type="button" onClick={() => (revealed ? openLightbox({ url: a.url, alt: a.alt, name: a.name, messageId, scopeId: scopeId ?? undefined, contentType: a.content_type, width: a.width, height: a.height }) : setRevealed(true))} title={a.alt ?? a.name}>
       <img src={a.url} alt={a.alt ?? a.name} loading="lazy" className="max-h-80 max-w-sm rounded-ae border border-ae-border object-contain" />
     </button>
   ) : a.content_type.startsWith('video/') ? (
@@ -135,7 +137,6 @@ export interface MessageItemProps {
   onVote: (id: string, optionIds: number[]) => void;
 }
 
-const QUICK = ['👍', '❤️', '😂', '🔥'];
 
 /** "🧵 Thread name · 12 messages · 3h ago" under a message that started a thread. */
 function ThreadChip({ parentId, threadId, onOpen }: { parentId: string; threadId: string; onOpen: () => void }) {
@@ -182,6 +183,15 @@ function MessageItemImpl(props: MessageItemProps) {
   const embeds = editing ? [] : extractEmbedUrls(message.content);
   const inviteCodes = editing ? [] : inviteCodesIn(message.content);
 
+  // Reacting counts toward your most-used emoji (which become the quick reactions).
+  const react = (emoji: string) => {
+    const active = props.reactions?.get(emoji)?.includes(me) ?? false;
+    if (!active) pushRecentEmoji(emoji);
+    props.onReact(message.id, emoji, active);
+  };
+  const quick = useQuickReactions(4);
+  // Phones and tablets: the picker opens as its own sheet, not inside the hover toolbar.
+  const openPicker = () => (isPhoneLayout() ? openReactionPicker(react) : setPicker(true));
   const rowRef = useRef<HTMLLIElement>(null);
   useEffect(() => {
     const el = rowRef.current;
@@ -196,11 +206,10 @@ function MessageItemImpl(props: MessageItemProps) {
       ref={rowRef}
       id={`msg-${message.id}`}
       className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-4 pt-0.5 pb-px' : 'py-px'} ${mentioned && !mine ? 'ae-mentioned' : ''} ${(message as { pending?: boolean }).pending ? 'ae-msg-pending pointer-events-none' : ''}`}
-      onMouseLeave={() => setPicker(false)}
       onContextMenu={(e) => {
         if (editing) return;
         openContextMenu(e, [
-          { label: 'Add reaction', icon: <ReactIcon size={15} />, onClick: () => setPicker(true) },
+          { label: 'Add reaction', icon: <ReactIcon size={15} />, onClick: openPicker },
           { label: 'Reply', icon: <ReplyIcon size={15} />, onClick: () => props.onReply(message) },
           { label: 'Forward', icon: <ForwardIcon size={15} />, onClick: () => openForward(message.id) },
           props.canThread && message.channel_id
@@ -252,9 +261,7 @@ function MessageItemImpl(props: MessageItemProps) {
                   className="grid h-11 w-11 place-items-center rounded-full bg-ae-surface text-2xl active:scale-90"
                   onClick={() => {
                     closeContextMenu();
-                    const active = props.reactions?.get(emoji)?.includes(me) ?? false;
-                    props.onReact(message.id, emoji, active);
-                    pushRecentEmoji(emoji);
+                    react(emoji);
                   }}
                 >
                   <Emoji emoji={emoji} className="!m-0" />
@@ -266,7 +273,7 @@ function MessageItemImpl(props: MessageItemProps) {
               className="grid h-11 w-11 place-items-center rounded-full bg-ae-surface text-ae-muted"
               onClick={() => {
                 closeContextMenu();
-                setPicker(true);
+                openPicker();
               }}
             >
               <ReactIcon size={20} />
@@ -382,7 +389,7 @@ function MessageItemImpl(props: MessageItemProps) {
           {message.attachments.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-2">
               {message.attachments.map((a) => (
-                <AttachmentView key={a.url} a={a} />
+                <AttachmentView key={a.url} a={a} messageId={message.id} scopeId={message.channel_id ?? message.conversation_id} />
               ))}
             </div>
           )}
@@ -426,9 +433,9 @@ function MessageItemImpl(props: MessageItemProps) {
 
       {!editing && (
         <div className="ae-pop absolute -top-4 right-4 z-10 hidden items-center gap-0.5 rounded-lg border border-ae-border bg-ae-elevated p-0.5 shadow-lg group-hover:flex">
-          {QUICK.map((e) => (
-            <ToolbarButton key={e} title={`React ${e}`} onClick={() => props.onReact(message.id, e, props.reactions?.get(e)?.includes(me) ?? false)}>
-              {e}
+          {quick.map((e) => (
+            <ToolbarButton key={e} title={`React ${e}`} onClick={() => react(e)}>
+              <Emoji emoji={e} className="!m-0 !h-[18px] !w-[18px]" />
             </ToolbarButton>
           ))}
           <ToolbarButton title="Add reaction" onClick={() => setPicker((p) => !p)}>
@@ -493,7 +500,7 @@ function MessageItemImpl(props: MessageItemProps) {
               className="top-8 right-0"
               onClose={() => setPicker(false)}
               onPick={(e) => {
-                props.onReact(message.id, e, props.reactions?.get(e)?.includes(me) ?? false);
+                react(e);
                 setPicker(false);
               }}
             />

@@ -16,7 +16,7 @@ import { useUiStore } from '../stores/uiStore';
 import type { Channel, ChannelSubtype, ChannelType, Server } from '../types/db';
 import { useCall } from './CallContext';
 import { Dialog, PromptForm } from './Dialog';
-import { BellIcon, BellOffIcon, CheckIcon, ChevronDownIcon, ForumIcon, HashIcon, ImageIcon, LinkIcon, LogOutIcon, MegaphoneIcon, PlusIcon, SettingsIcon, StageIcon, TrashIcon, VolumeIcon } from './icons';
+import { BellIcon, BellOffIcon, CheckIcon, ChevronDownIcon, ForumIcon, HashIcon, ImageIcon, LinkIcon, LogOutIcon, MegaphoneIcon, PlusIcon, SettingsIcon, StageIcon, TrashIcon, VolumeIcon, GripIcon } from './icons';
 import { UserPanel } from './UserPanel';
 
 type NewChannelKind = 'text' | 'announcement' | 'forum' | 'media' | 'voice' | 'stream' | 'category';
@@ -89,10 +89,49 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
   const [menuOpen, setMenuOpen] = useState(false);
   const [drag, setDrag] = useState<Channel | null>(null);
   const [dropHint, setDropHint] = useState<string | null>(null);
+  /** Touch screens can't drag-and-drop natively: "Reorder channels" shows handles you drag with a finger. */
+  const [reordering, setReordering] = useState(false);
+  const pointerDrag = (ch: Channel) => (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDrag(ch);
+    let over: string | null = null;
+    const valid = (t: Channel | undefined) => !!t && t.id !== ch.id && !(ch.type === 'category' && t.type !== 'category');
+    const move = (ev: PointerEvent) => {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>('[data-reorder-id]');
+      const id = el?.dataset.reorderId ?? null;
+      over = valid(channels.find((c) => c.id === id)) ? id : null;
+      setDropHint(over);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      const target = channels.find((c) => c.id === over);
+      if (target) drop(target, ch);
+      else {
+        setDrag(null);
+        setDropHint(null);
+      }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+  const grip = (ch: Channel) =>
+    reordering && canManageChannels ? (
+      <span
+        role="button"
+        aria-label={`Drag to move ${ch.name}`}
+        className="grid h-8 w-6 shrink-0 cursor-grab touch-none place-items-center text-ae-muted active:cursor-grabbing"
+        onPointerDown={pointerDrag(ch)}
+      >
+        <GripIcon size={16} />
+      </span>
+    ) : null;
 
   /** Builds the new ordering after dropping `dragged` on a channel (insert before) or a category (append). */
-  const drop = (target: Channel) => {
-    const dragged = drag;
+  const drop = (target: Channel, dragged: Channel | null = drag) => {
     setDrag(null);
     setDropHint(null);
     if (!dragged || dragged.id === target.id) return;
@@ -215,6 +254,16 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                 >
                   Create category <PlusIcon size={14} />
                 </button>
+                <button
+                  type="button"
+                  className={menuItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setReordering(true);
+                  }}
+                >
+                  Reorder channels <GripIcon size={14} />
+                </button>
               </>
             )}
             <div className="my-1 h-px bg-ae-border" />
@@ -234,6 +283,15 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
 
       <EventsBar server={server} />
       <div className="ae-scroll flex-1 space-y-3 overflow-y-auto px-2 py-3">
+        {reordering && (
+          <div className="sticky top-0 z-10 flex items-center gap-2 rounded-ae border border-ae-accent/40 bg-ae-accent/10 px-2.5 py-2 text-xs">
+            <GripIcon size={14} className="shrink-0 text-ae-accent" />
+            <span className="flex-1">Drag the handles to move channels and categories.</span>
+            <button type="button" className="rounded-md bg-ae-accent px-2.5 py-1 font-semibold text-ae-on-accent" onClick={() => setReordering(false)}>
+              Done
+            </button>
+          </div>
+        )}
         {channelActions.reorder.error && <p className="px-2 text-xs text-ae-danger">{channelActions.reorder.error.message}</p>}
         {groups.map(({ category, items }) =>
           !category && items.length === 0 ? null : (
@@ -241,9 +299,13 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
               {category && (
                 <div
                   {...dragProps(category)}
+                  data-reorder-id={category.id}
                   className={`group flex items-center justify-between rounded px-2 pb-1 ${dropHint === category.id ? 'ring-1 ring-ae-accent' : ''}`}
                 >
-                  <span className="text-[11px] font-bold tracking-wide text-ae-muted uppercase">{category.name}</span>
+                  <span className="flex min-w-0 items-center gap-1">
+                    {grip(category)}
+                    <span className="truncate text-[11px] font-bold tracking-wide text-ae-muted uppercase">{category.name}</span>
+                  </span>
                   <span className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100">
                     {canOpenChannelSettings && (
                       <button type="button" title="Edit category" className="text-ae-muted hover:text-ae-text" onClick={() => openChannelSettings(category.id)}>
@@ -274,7 +336,8 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                   const hasUnread = !isActive && !muted && isRowUnread(row);
                   const mentions = isActive ? 0 : (row?.mention_count ?? 0);
                   return (
-                    <li key={ch.id} className={`group/ch relative ${drag?.id === ch.id ? 'opacity-40' : ''}`} {...dragProps(ch)}>
+                    <li key={ch.id} data-reorder-id={ch.id} className={`group/ch relative ${reordering ? 'flex items-center' : ''} ${drag?.id === ch.id ? 'opacity-40' : ''}`} {...dragProps(ch)}>
+                      {grip(ch)}
                       {dropHint === ch.id && <span className="absolute -top-0.5 right-1 left-1 h-0.5 rounded bg-ae-accent" />}
                       {hasUnread && <span className="absolute top-1/2 -left-2 h-2 w-1 -translate-y-1/2 rounded-r-full bg-ae-text" />}
                       <button
@@ -290,6 +353,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                                 ? { label: 'Unmute channel', icon: <BellIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: ch.id, kind: 'channel', patch: { muted_until: null } }) }
                                 : { label: 'Mute channel for 1 hour', icon: <BellOffIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: ch.id, kind: 'channel', patch: { muted_until: muteUntil(60) } }) }),
                             canOpenChannelSettings && { label: 'Edit channel', icon: <SettingsIcon size={15} />, onClick: () => openChannelSettings(ch.id) },
+                            canManageChannels && { label: 'Reorder channels', icon: <GripIcon size={15} />, onClick: () => setReordering(true) },
                             'divider',
                             {
                               label: 'Copy channel link',

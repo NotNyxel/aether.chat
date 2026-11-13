@@ -1,6 +1,6 @@
 [package]
 name = "aetherchat-setup"
-version = "1.7.6"
+version = "1.7.7"
 description = "aether.chat Setup: one-click installer"
 edition = "2021"
 publish = false

@@ -14,6 +14,7 @@ import { AdminIcon, AuditIcon, BannedIcon, CheckIcon, CloseIcon, DashboardIcon, 
 import { BADGE_CATALOG, BadgeRow } from './ProfileCard';
 import { Section, Toggle } from './SettingsPanel';
 import { toast } from './Toaster';
+import { openExternal } from '../lib/platform';
 
 interface Stats {
   users: number;
@@ -453,7 +454,6 @@ function Config() {
   const { data: cfg } = useConfig();
   const [limit, setLimit] = useState<string | null>(null);
   const [group, setGroup] = useState<string | null>(null);
-  const [announce, setAnnounce] = useState<string | null>(null);
   const set = async (key: string, value: unknown) => {
     const { error } = await sb.rpc('admin_set_config', { p_key: key, p_value: value });
     if (error) return toast.error(error.message);
@@ -463,7 +463,6 @@ function Config() {
   if (!cfg) return <div className="ae-skeleton h-32" />;
   const limitValue = limit ?? String(cfg.message_request_limit ?? 3);
   const groupValue = group ?? String(cfg.group_dm_limit ?? 10);
-  const announceValue = announce ?? ((cfg.announcement as string | null) ?? '');
   return (
     <div className="space-y-5">
       <div>
@@ -508,18 +507,7 @@ function Config() {
         checked={cfg.people_search_enabled !== false}
         onChange={(v) => void set('people_search_enabled', v)}
       />
-      <div>
-        <p className="flex items-center gap-1.5 text-sm font-semibold">
-          <MegaphoneIcon size={14} /> Announcement
-        </p>
-        <p className="mb-2 text-xs text-ae-muted">Shown as a banner at the top of the app for everyone. Leave empty to hide it.</p>
-        <div className="flex gap-2">
-          <input className="ae-input w-full" maxLength={200} placeholder="Scheduled maintenance tonight at 22:00 UTC" value={announceValue} onChange={(e) => setAnnounce(e.target.value)} />
-          <button type="button" className="ae-press shrink-0 rounded-ae bg-ae-surface px-4 text-sm hover:bg-ae-hover" onClick={() => void set('announcement', announceValue.trim() || null)}>
-            {announceValue.trim() ? 'Publish' : 'Clear'}
-          </button>
-        </div>
-      </div>
+      <AnnouncementEditor current={cfg.announcement} onSave={(v) => set('announcement', v)} />
     </div>
   );
 }
@@ -671,10 +659,109 @@ export function AdminTab({ userId }: { userId: string }) {
   );
 }
 
+export type AnnouncementTone = 'info' | 'update' | 'warning' | 'party';
+export interface Announcement {
+  id: string;
+  text: string;
+  tone: AnnouncementTone;
+  link?: { url: string; label: string } | null;
+}
+const TONES: { id: AnnouncementTone; label: string; cls: string }[] = [
+  { id: 'info', label: 'Info', cls: 'bg-ae-accent text-ae-on-accent' },
+  { id: 'update', label: 'Update', cls: 'bg-[#3b82f6] text-white' },
+  { id: 'warning', label: 'Warning', cls: 'bg-ae-warning text-black' },
+  { id: 'party', label: 'Celebration', cls: 'bg-gradient-to-r from-[#ff7eb3] via-[#7c5cff] to-[#00d4ff] text-white' },
+];
+
+/** Older versions stored a plain string; newer ones an object. Empty = no banner. */
+export function readAnnouncement(v: unknown): Announcement | null {
+  if (typeof v === 'string') return v.trim() ? { id: v, text: v, tone: 'info' } : null;
+  if (v && typeof v === 'object' && typeof (v as Announcement).text === 'string' && (v as Announcement).text.trim()) {
+    const a = v as Announcement;
+    return { id: a.id || a.text, text: a.text, tone: TONES.some((t) => t.id === a.tone) ? a.tone : 'info', link: a.link ?? null };
+  }
+  return null;
+}
+
+function AnnouncementView({ a, onDismiss }: { a: Announcement; onDismiss?: () => void }) {
+  const tone = TONES.find((t) => t.id === a.tone) ?? TONES[0]!;
+  return (
+    <div className={`flex items-center gap-2 px-4 py-1.5 text-sm font-semibold ${tone.cls}`}>
+      <MegaphoneIcon size={15} className="shrink-0" />
+      <span className="min-w-0 flex-1 truncate text-center">
+        {a.text}
+        {a.link?.url && (
+          <button type="button" className="ml-2 underline underline-offset-2" onClick={() => void openExternal(a.link!.url)}>
+            {a.link.label || 'Learn more'}
+          </button>
+        )}
+      </span>
+      {onDismiss && (
+        <button type="button" aria-label="Dismiss" onClick={onDismiss} className="shrink-0 opacity-80 hover:opacity-100">
+          <CloseIcon size={15} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Admin Panel → App settings → Announcement: write, style, preview, publish or remove. */
+function AnnouncementEditor({ current, onSave }: { current: unknown; onSave: (v: unknown) => Promise<void> | void }) {
+  const live = readAnnouncement(current);
+  const [text, setText] = useState(live?.text ?? '');
+  const [tone, setTone] = useState<AnnouncementTone>(live?.tone ?? 'info');
+  const [url, setUrl] = useState(live?.link?.url ?? '');
+  const [label, setLabel] = useState(live?.link?.label ?? '');
+  const linkOk = !url.trim() || /^https:\/\/\S+$/.test(url.trim());
+  const draft: Announcement = { id: 'preview', text: text.trim() || 'Your announcement', tone, link: url.trim() && linkOk ? { url: url.trim(), label: label.trim() } : null };
+  return (
+    <div className="space-y-2.5 rounded-ae border border-ae-border p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-sm font-semibold">
+          <MegaphoneIcon size={14} /> Announcement
+        </p>
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${live ? 'bg-ae-success/15 text-ae-success' : 'bg-ae-surface text-ae-muted'}`}>{live ? 'Live' : 'Off'}</span>
+      </div>
+      <p className="text-xs text-ae-muted">A banner at the top of the app for everyone. People can dismiss it; publishing again shows it again.</p>
+      <textarea className="ae-input min-h-16 w-full resize-y text-sm" maxLength={200} placeholder="Scheduled maintenance tonight at 22:00 UTC" value={text} onChange={(e) => setText(e.target.value)} />
+      <div className="flex flex-wrap gap-1.5">
+        {TONES.map((t) => (
+          <button key={t.id} type="button" onClick={() => setTone(t.id)} className={`rounded-full border px-3 py-1 text-xs ${tone === t.id ? 'border-ae-accent bg-ae-accent/15 font-semibold' : 'border-ae-border text-ae-muted hover:text-ae-text'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-[1fr_160px]">
+        <input className={`ae-input text-sm ${linkOk ? '' : '!border-ae-danger'}`} placeholder="Optional link (https://…)" value={url} onChange={(e) => setUrl(e.target.value)} />
+        <input className="ae-input text-sm" placeholder="Link text" maxLength={30} value={label} onChange={(e) => setLabel(e.target.value)} />
+      </div>
+      <p className="text-[11px] font-bold tracking-wide text-ae-muted uppercase">Preview</p>
+      <div className="overflow-hidden rounded-md">
+        <AnnouncementView a={draft} />
+      </div>
+      <div className="flex justify-end gap-2">
+        {live && (
+          <button type="button" className="ae-press rounded-ae px-4 py-2 text-sm text-ae-danger hover:bg-ae-hover" onClick={() => (void onSave({ text: '' }), setText(''), setUrl(''), setLabel(''))}>
+            Remove banner
+          </button>
+        )}
+        <button
+          type="button"
+          disabled={!text.trim() || !linkOk}
+          className="ae-press rounded-ae bg-ae-accent px-4 py-2 text-sm font-semibold text-ae-on-accent disabled:opacity-40"
+          onClick={() => void onSave({ id: String(Date.now()), text: text.trim(), tone, link: draft.link })}
+        >
+          {live ? 'Update banner' : 'Publish'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** App-wide announcement banner (set by admins). */
 export function AnnouncementBar() {
   const { data: cfg } = useConfig();
-  const text = typeof cfg?.announcement === 'string' ? cfg.announcement : null;
+  const a = readAnnouncement(cfg?.announcement);
   const [hidden, setHidden] = useState<string | null>(() => {
     try {
       return localStorage.getItem('aether.announce.hidden');
@@ -682,25 +769,20 @@ export function AnnouncementBar() {
       return null;
     }
   });
-  if (!text || hidden === text) return null;
+  if (!a || hidden === a.id) return null;
   return (
-    <div className="ae-enter flex items-center gap-2 bg-ae-accent px-4 py-1.5 text-sm font-semibold text-ae-on-accent">
-      <MegaphoneIcon size={15} />
-      <span className="min-w-0 flex-1 truncate text-center">{text}</span>
-      <button
-        type="button"
-        aria-label="Dismiss"
-        onClick={() => {
-          setHidden(text);
+    <div className="ae-enter">
+      <AnnouncementView
+        a={a}
+        onDismiss={() => {
+          setHidden(a.id);
           try {
-            localStorage.setItem('aether.announce.hidden', text);
+            localStorage.setItem('aether.announce.hidden', a.id);
           } catch {
             // ignore
           }
         }}
-      >
-        <CloseIcon size={15} />
-      </button>
+      />
     </div>
   );
 }

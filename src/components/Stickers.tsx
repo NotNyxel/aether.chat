@@ -66,7 +66,7 @@ export function StickerPicker({ onPick, onClose, className = '' }: { onPick: (s:
   }, [stickers, servers, query]);
 
   return (
-    <div className={`ae-pop absolute right-0 bottom-full z-40 mb-2 flex h-[min(420px,60vh)] w-[min(380px,calc(100vw-16px))] flex-col rounded-ae border border-ae-border bg-ae-elevated shadow-2xl ${className}`}>
+    <div className={`ae-pop absolute right-0 bottom-full z-40 mb-2 flex h-[min(420px,60vh)] w-[min(380px,calc(100vw-16px))] flex-col rounded-ae border border-ae-border bg-[var(--ae-bg-solid,var(--ae-bg-elevated))] shadow-2xl ${className}`}>
       <div className="border-b border-ae-border p-2">
         <input className="ae-input w-full" placeholder="Search stickers" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
       </div>
@@ -82,7 +82,7 @@ export function StickerPicker({ onPick, onClose, className = '' }: { onPick: (s:
         )}
         {groups.map((g) => (
           <section key={g.server.id} className="mb-2">
-            <p className="sticky top-0 bg-ae-elevated px-1 py-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">{g.server.name}</p>
+            <p className="sticky top-0 bg-[var(--ae-bg-solid,var(--ae-bg-elevated))] px-1 py-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">{g.server.name}</p>
             <div className="grid grid-cols-3 gap-1.5">
               {g.items.map((s) => (
                 <button key={s.id} type="button" title={s.description || s.name} onClick={() => onPick(s)} className="ae-press grid aspect-square place-items-center rounded-ae p-1.5 hover:bg-ae-hover">

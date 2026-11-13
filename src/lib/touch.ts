@@ -24,6 +24,15 @@ function fireContextMenu(target: EventTarget, x: number, y: number) {
 export function installTouchControls(): void {
   if (typeof window === 'undefined' || !('ontouchstart' in window)) return;
 
+  // Safari ignores user-scalable=no: stop pinch zoom ourselves (double-tap zoom is off via touch-action in CSS).
+  for (const type of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+  document.addEventListener('touchmove', (e) => e.touches.length > 1 && e.preventDefault(), { passive: false });
+  // Long-press on images and links: the browser's own menu never shows (ours does).
+  document.addEventListener('contextmenu', (e) => {
+    const t = e.target as Element;
+    if (t.closest('img, a, video') && !(e as MouseEvent & { aetherTouch?: boolean }).aetherTouch && !t.closest('[data-allow-native-menu]')) e.preventDefault();
+  });
+
   let timer: ReturnType<typeof setTimeout> | undefined;
   let start: { x: number; y: number; t: number; el: Element } | null = null;
   let held = false;

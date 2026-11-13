@@ -8,7 +8,7 @@ const RELEASES = 'NotNyxel/aether.chat-releases';
 
 // Links from account emails and the installed web app belong to the app, not this page.
 const { search, hash } = window.location;
-if (/access_token|refresh_token|error_description|[?&]code=/.test(hash + search) || window.matchMedia('(display-mode: standalone)').matches) {
+if (/access_token|refresh_token|error_description|[?&]code=|#goto=/.test(hash + search) || window.matchMedia('(display-mode: standalone)').matches) {
   window.location.replace(`/app${search}${hash}`);
 }
 

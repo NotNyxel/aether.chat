@@ -34,13 +34,14 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      const client = windows[0];
+      // The web app lives at /app (/ is the website): use an open app window if there is one.
+      const client = windows.find((w) => new URL(w.url).pathname.startsWith('/app')) ?? windows.find((w) => !/^\/(?:index\.html)?$/.test(new URL(w.url).pathname));
       if (client) {
         await client.focus();
         client.postMessage({ type: 'aether-goto', ...d });
         return;
       }
-      await self.clients.openWindow(`/${hash}`);
+      await self.clients.openWindow(`/app${hash}`);
     })(),
   );
 });

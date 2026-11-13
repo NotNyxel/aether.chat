@@ -861,3 +861,20 @@ body:has(.ae-solid-layer) .ae-theme-fx > * {
     max-width: 100% !important;
   }
 }
+
+/* ── 1.7.6: touch screens behave like an app, not a web page ─────────────────────────────── */
+html {
+  /* No pinch zoom or double-tap zoom (the layout is built for the screen). */
+  touch-action: pan-x pan-y;
+}
+@media (pointer: coarse) {
+  /* Press-and-hold opens Aether's menu, never the browser's "Open image / Copy link" bubble. */
+  img,
+  a,
+  video,
+  svg {
+    -webkit-touch-callout: none !important;
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+}

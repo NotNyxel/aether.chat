@@ -3,6 +3,24 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.7.6] - 2026-11-13
+
+**Notifications open the chat, faster start, and a round of fixes**
+
+- **Clicking a notification opens that chat**: in the desktop app, the web app and the Android app (which now
+  shows real Android notifications). Call notifications open the call's chat.
+- **Opens instantly:** your chats, servers and the latest messages of recent chats are kept on your device and show
+  straight away; fresh ones load behind them.
+- **Emoji picker, rebuilt:** no more sideways scrolling or flicker, fits any width, and slides up as a sheet on
+  phones and tablets. **Add reaction** from the press-and-hold menu works again.
+- **Phones and tablets:** pinch-to-zoom is off, and holding a picture or link no longer pops up the browser's
+  "Open image / Copy link" menu alongside Aether's.
+- **iPhone/iPad web app:** the top of the screen is no longer blurred (iOS 26). Remove Aether from your Home Screen
+  and add it again once to pick this up.
+- **Your profile pop-up** (click your name, bottom left) is no longer cut off in the web app.
+- **Admin Panel → Announcement:** rebuilt. Write the banner, pick a style (Info, Update, Warning, Celebration), add
+  an optional link, see a live preview, then **Publish**, **Update** or **Remove** it. Removing it no longer fails.
+
 ## [1.7.5] - 2026-11-13
 
 **GIFs are on, and a bot check on sign-up**

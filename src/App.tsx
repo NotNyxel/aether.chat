@@ -2,7 +2,7 @@
 import { MailIcon, PartyIcon } from './components/icons';
 import type { Session } from '@supabase/supabase-js';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AuthScreen, MfaChallenge, NewPasswordScreen } from './components/AuthScreen';
 import { ConfirmLayer } from './components/ConfirmDialog';
 import { ContextMenuLayer } from './components/ContextMenu';
@@ -20,6 +20,7 @@ import { trackAccounts } from './lib/accounts';
 import { isTauri } from './lib/platform';
 import { resolveBackendConfig, SupabaseProvider, useSupabase } from './lib/supabase';
 import { installTouchControls } from './lib/touch';
+import { clearCache, hydrateCache, persistCache } from './lib/persistCache';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,7 +90,16 @@ function AuthGate() {
     };
   }, [sb, userId]);
 
+  // Show last session's chats and messages instantly, then refresh them in the background.
+  const hydrated = useRef<string | null>(null);
+  if (userId && hydrated.current !== userId) {
+    hydrateCache(qc, userId);
+    hydrated.current = userId;
+  }
+  useEffect(() => (userId ? persistCache(qc, userId) : undefined), [qc, userId]);
+
   const signOut = () => {
+    clearCache(userId);
     void sb.auth.signOut();
     qc.clear();
   };

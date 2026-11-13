@@ -4,6 +4,7 @@
  * Switch Accounts and Copy User ID.
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useProfile, useUpdateProfile } from '../hooks/useChatData';
 import { activeCustomStatus } from '../hooks/useDesktop';
 import { PresenceDot, STATUS_LABELS, type VisibleStatus } from '../hooks/usePresence';
@@ -88,10 +89,15 @@ export function UserPopout({ userId, shownStatus, onClose, onEditStatus }: { use
   const primary = isHexColor(me.primary_color) ? me.primary_color : DEFAULT_PROFILE_PRIMARY;
   const accent = isHexColor(me.accent_color) ? me.accent_color : DEFAULT_PROFILE_ACCENT;
 
-  return (
+  // Drawn on top of everything (not inside the side panel, which may clip it), just above your name.
+  const anchor = document.querySelector('[data-user-panel]')?.getBoundingClientRect();
+  const left = Math.max(8, Math.min((anchor?.left ?? 8), window.innerWidth - 328));
+  const bottom = anchor ? Math.max(8, window.innerHeight - anchor.top + 8) : 72;
+  return createPortal(
     <div
       ref={ref}
-      className="ae-pop absolute bottom-full left-2 z-30 mb-2 w-[320px]"
+      className="ae-pop fixed z-[65] w-[320px] max-w-[calc(100vw-16px)]"
+      style={{ left, bottom, maxHeight: `calc(100dvh - ${bottom + 8}px)` }}
       onMouseLeave={() => setSub(null)}
     >
       <div
@@ -267,6 +273,7 @@ export function UserPopout({ userId, shownStatus, onClose, onEditStatus }: { use
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

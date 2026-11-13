@@ -11,9 +11,12 @@ import { isTauri } from './platform';
 
 let permission: Promise<boolean> | null = null;
 
+/** The desktop app or the Android/iOS app: native notifications through the Tauri plugin. */
+const nativeShell = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+
 async function canNotify(): Promise<boolean> {
   permission ??= (async () => {
-    if (isTauri) {
+    if (nativeShell) {
       const n = await import('@tauri-apps/plugin-notification');
       if (await n.isPermissionGranted()) return true;
       return (await n.requestPermission()) === 'granted';
@@ -28,12 +31,46 @@ async function canNotify(): Promise<boolean> {
   return ok;
 }
 
-/** Shows an OS notification. `onClick` only works in the browser; on desktop clicking focuses the app. */
+// Clicking a native notification: the plugin reports it to onAction with the notification's id.
+const clickHandlers = new Map<number, () => void>();
+let listening: Promise<unknown> | null = null;
+let nextId = Math.floor(Date.now() / 1000) % 1_000_000;
+
+async function bringToFront(): Promise<void> {
+  if (!isTauri) return; // phones open the app by themselves
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    const w = getCurrentWindow();
+    await w.show();
+    await w.unminimize();
+    await w.setFocus();
+  } catch {
+    /* window already in front */
+  }
+}
+
+/** Shows an OS notification. Clicking it brings Aether to the front and runs `onClick` (e.g. opens the chat). */
 export async function notify(title: string, body: string, onClick?: () => void): Promise<void> {
   if (!(await canNotify())) return;
-  if (isTauri) {
+  if (nativeShell) {
     const n = await import('@tauri-apps/plugin-notification');
-    n.sendNotification({ title, body });
+    listening ??= n
+      .onAction((ev) => {
+        if (ev.actionId !== 'tap' && ev.actionId !== 'default') return;
+        void bringToFront();
+        const id = ev.notification?.id;
+        const fn = id != null ? clickHandlers.get(id) : undefined;
+        fn?.();
+        if (id != null) clickHandlers.delete(id);
+      })
+      .catch(() => null);
+    await listening;
+    const id = (nextId = (nextId + 1) % 2_000_000_000);
+    if (onClick) {
+      clickHandlers.set(id, onClick);
+      if (clickHandlers.size > 200) clickHandlers.delete(clickHandlers.keys().next().value!);
+    }
+    n.sendNotification({ id, title, body, autoCancel: true });
     return;
   }
   const note = new Notification(title, { body, icon: '/icon.svg', silent: true });

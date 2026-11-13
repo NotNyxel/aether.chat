@@ -94,7 +94,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (g: Gif) => void; onClo
   }
 
   return (
-    <div className="ae-pop absolute right-0 bottom-full z-40 mb-2 flex h-[min(460px,62vh)] w-[min(400px,calc(100vw-16px))] flex-col rounded-ae border border-ae-border bg-ae-elevated shadow-2xl">
+    <div className="ae-pop absolute right-0 bottom-full z-40 mb-2 flex h-[min(460px,62vh)] w-[min(400px,calc(100vw-16px))] flex-col rounded-ae border border-ae-border bg-[var(--ae-bg-solid,var(--ae-bg-elevated))] shadow-2xl">
       <div className="flex items-center gap-2 border-b border-ae-border p-2">
         <div className="flex flex-1 items-center gap-2 rounded-ae bg-ae-sunken px-2.5">
           <SearchIcon size={15} className="text-ae-muted" />

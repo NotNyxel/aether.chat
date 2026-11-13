@@ -60,7 +60,8 @@ export function listenForPushClicks(): void {
   const m = /^#goto=([^:]*):([^:]+):?(.*)$/.exec(location.hash);
   if (m) {
     history.replaceState(null, '', location.pathname);
-    setTimeout(() => go(m[1] || null, m[2]!, m[3] || undefined), 1500);
+    // Open the chat straight away; its messages appear as soon as they load.
+    go(m[1] || null, m[2]!, m[3] || undefined);
   }
   // Keep the worker registered so pushes still arrive after updates.
   void navigator.serviceWorker.getRegistration().then((r) => r && void r.update());

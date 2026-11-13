@@ -1034,5 +1034,33 @@ await expectOk('the owner hands the group over', async () => {
 });
 await expectError('the old owner can no longer remove people', () => as(A, `select public.remove_group_member($1, '${B}')`, [squad]), 'Only the group owner');
 
+console.log('\nStickers, drafts, scheduled messages (1.7)');
+await expectOk('stickers: managers add, everyone can see', async () => {
+  await as(A, `insert into public.server_stickers (server_id, name, url) values ($1, 'Wave', 'https://x.example/s.png')`, [discSrv]);
+  const n = (await as(C, `select count(*)::int n from public.server_stickers where name = 'Wave'`)).rows[0].n;
+  if (n !== 1) throw new Error(String(n));
+});
+await expectError('members cannot add stickers', () => as(C, `insert into public.server_stickers (server_id, name, url) values ($1, 'Nope', 'https://x.example/s.png')`, [discSrv]));
+await expectOk('drafts are private', async () => {
+  await as(A, `insert into public.message_drafts (scope_id, content) values ($1, 'half a thought')`, [dm]);
+  const mine = (await as(A, `select content from public.message_drafts where scope_id = $1`, [dm])).rows[0]?.content;
+  const theirs = (await as(B, `select count(*)::int n from public.message_drafts`)).rows[0].n;
+  if (mine !== 'half a thought' || theirs !== 0) throw new Error(`${mine} ${theirs}`);
+});
+await expectOk('a scheduled DM is sent as its author when due', async () => {
+  await as(A, `insert into public.scheduled_messages (conversation_id, content, send_at) values ($1, 'see you at 8', now())`, [squad]);
+  const sent = (await db.query(`select public.send_due_scheduled() n`)).rows[0].n;
+  const m = (await as(B, `select author_id from public.messages where conversation_id = $1 and content = 'see you at 8'`, [squad])).rows[0];
+  if (sent !== 1 || m?.author_id !== A) throw new Error(`${sent} ${JSON.stringify(m)}`);
+});
+await expectError('you cannot schedule into a chat you are not in', () => as(C, `insert into public.scheduled_messages (conversation_id, content, send_at) values ($1, 'hi', now() + interval '1 hour')`, [dm]));
+await expectOk('a scheduled message you may no longer send is kept with the reason', async () => {
+  await as(C, `insert into public.scheduled_messages (channel_id, content, send_at) values ($1, 'later', now())`, [discCh]);
+  await db.query(`delete from public.server_members where server_id = $1 and user_id = '${C}'`, [discSrv]);
+  await db.query(`select public.send_due_scheduled()`);
+  const r = (await db.query(`select failed from public.scheduled_messages where user_id = '${C}'`)).rows[0];
+  if (!r?.failed) throw new Error(JSON.stringify(r));
+});
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

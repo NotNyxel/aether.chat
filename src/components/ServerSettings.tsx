@@ -30,6 +30,7 @@ import { SoundboardTab } from './SoundboardSettings';
 import { BotTab, CommunityTab, EmojiTab } from './ServerExtras';
 import { ColorField, Field, inputCls, Section, Toggle } from './SettingsPanel';
 import { useEscape } from '../lib/escape';
+import { StickerTab } from './Stickers';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Shared
@@ -937,6 +938,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
     { id: 'moderation', label: 'Moderation', show: rank.can(Permission.MANAGE_MESSAGES) },
     { id: 'automod', label: 'AutoMod', show: rank.can(Permission.MANAGE_SERVER) },
     { id: 'emoji', label: 'Emoji', show: true },
+    { id: 'stickers', label: 'Stickers', show: true },
     { id: 'soundboard', label: 'Soundboard', show: true },
     { id: 'invites', label: 'Invites', show: rank.can(Permission.CREATE_INVITE) },
     { id: 'bans', label: 'Bans', show: rank.can(Permission.BAN_MEMBERS) },
@@ -978,6 +980,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
           {active === 'roles' && <RolesTab server={server} rank={rank} />}
           {active === 'members' && <MembersTab server={server} rank={rank} />}
           {active === 'emoji' && <EmojiTab server={server} canManage={rank.can(Permission.MANAGE_EXPRESSIONS)} />}
+          {active === 'stickers' && <StickerTab server={server} canManage={rank.can(Permission.MANAGE_EXPRESSIONS)} />}
           {active === 'soundboard' && <SoundboardTab server={server} canManage={rank.can(Permission.MANAGE_EXPRESSIONS)} />}
           {active === 'invites' && <InvitesTab server={server} rank={rank} userId={userId} />}
           {active === 'bans' && <BansTab server={server} />}

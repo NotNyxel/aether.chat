@@ -292,10 +292,10 @@ export function MobileServersEmpty() {
 }
 
 /** Back arrow shown at the start of chat headers on phones. */
-export function MobileBack() {
+export function MobileBack({ onClick }: { onClick?: () => void }) {
   const setPane = useUiStore((s) => s.setMobilePane);
   return (
-    <button type="button" aria-label="Back" className="ae-mobile-only -ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-full text-ae-text active:bg-ae-hover" onClick={() => setPane('nav')}>
+    <button type="button" aria-label="Back" className="ae-mobile-only -ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-full text-ae-text active:bg-ae-hover" onClick={onClick ?? (() => setPane('nav'))}>
       <ChevronRightIcon size={24} className="rotate-180" />
     </button>
   );

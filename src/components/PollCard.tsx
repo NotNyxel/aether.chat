@@ -39,7 +39,7 @@ export function PollCard({ message, votes, me, onVote }: {
   };
 
   return (
-    <div className="mt-1 w-full max-w-md rounded-ae border border-ae-border bg-ae-sunken p-3">
+    <div className="ae-poll mt-1 w-full max-w-md rounded-ae border border-ae-border bg-ae-sunken p-3">
       <p className="font-semibold">{poll.question}</p>
       <p className="mb-2 text-xs text-ae-muted">{poll.multi ? 'Select one or more answers' : 'Select one answer'}</p>
       <ul className="space-y-1.5">

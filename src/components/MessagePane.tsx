@@ -76,9 +76,11 @@ interface MessagePaneProps {
   top?: ReactNode;
   /** Right-hand panel when neither pins nor search is open, e.g. the member list. */
   aside?: ReactNode;
+  /** Phones: what the back arrow does (default: back to the list). */
+  onBack?: () => void;
 }
 
-export function MessagePane({ scope, userId, serverId, header, placeholder, emptyState, memberIds, channels = [], top, aside }: MessagePaneProps) {
+export function MessagePane({ scope, userId, serverId, header, placeholder, emptyState, memberIds, channels = [], top, aside, onBack }: MessagePaneProps) {
   const qc = useQueryClient();
   const messages = useMessages(scope);
   const reactionsQ = useReactions(scope);
@@ -249,7 +251,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
   return (
     <section className="flex min-w-0 flex-1 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ae-border px-4 ae-chat-header">
-        <MobileBack />
+        <MobileBack onClick={onBack} />
         {header}
         <div className="ml-3 flex shrink-0 items-center gap-2">
           <NotificationBell scope={scope} />

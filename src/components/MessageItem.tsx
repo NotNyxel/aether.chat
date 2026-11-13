@@ -21,6 +21,8 @@ import { LinkEmbed } from './LinkEmbed';
 import { PollCard } from './PollCard';
 import { Avatar, StyledName } from './ProfileCard';
 import { BOT_NAME } from '../lib/botCommands';
+import { StickerView, type StickerAttachment } from './Stickers';
+import { VoiceMessagePlayer, type VoiceAttachment } from './VoiceMessage';
 
 export function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -47,6 +49,8 @@ function AttachmentView({ a }: { a: Attachment }) {
   const openLightbox = useUiStore((s) => s.openLightbox);
   const [revealed, setRevealed] = useState(!a.spoiler);
 
+  if ((a as StickerAttachment).sticker) return <StickerView a={a as StickerAttachment} />;
+  if ((a as VoiceAttachment).voice) return <VoiceMessagePlayer a={a as VoiceAttachment} />;
   const body = a.content_type.startsWith('image/') ? (
     <button type="button" onClick={() => (revealed ? openLightbox({ url: a.url, alt: a.alt, name: a.name }) : setRevealed(true))} title={a.alt ?? a.name}>
       <img src={a.url} alt={a.alt ?? a.name} loading="lazy" className="max-h-80 max-w-sm rounded-ae border border-ae-border object-contain" />

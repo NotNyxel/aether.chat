@@ -6,14 +6,14 @@
 import { toast } from './Toaster';
 import { promptText } from './ConfirmDialog';
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
-import { useSendMessage, useUploadAttachment } from '../hooks/useChatData';
+import { uploadAttachmentTo, useSendMessage, useUploadAttachment } from '../hooks/useChatData';
 import { searchEmoji, useEmojiData } from '../lib/emoji';
 import { playSound } from '../lib/sounds';
 import type { Attachment, Channel, Message, MessageScope, ServerRole } from '../types/db';
 import { useProfiles } from './ConversationBits';
 import { EmojiPicker } from './EmojiPicker';
 import { DisplayName } from './MessageItem';
-import { AttachIcon, BotIcon, ClockIcon, CloseIcon, EyeOffIcon, FileIcon, HashIcon, PlusIcon, PollIcon, ReplyIcon, SendIcon, SmileIcon, TimeoutIcon, TrashIcon, UploadIcon } from './icons';
+import { StickerIcon, AttachIcon, BotIcon, ClockIcon, CloseIcon, EyeOffIcon, FileIcon, HashIcon, PlusIcon, PollIcon, ReplyIcon, SendIcon, SmileIcon, TimeoutIcon, TrashIcon, UploadIcon } from './icons';
 import { PollDialog } from './PollDialog';
 import { Avatar } from './ProfileCard';
 import { BOT_COMMANDS, parseBotCommand } from '../lib/botCommands';
@@ -21,6 +21,9 @@ import { useSupabase } from '../lib/supabase';
 import { useMeId } from '../hooks/useMe';
 import { useServers } from '../hooks/useChatData';
 import { customEmojiToken, useServerEmojis } from '../lib/customEmoji';
+import { StickerPicker, stickerAttachment } from './Stickers';
+import { VoiceRecorder } from './VoiceMessage';
+import { ScheduleDialog, ScheduledChip, useSyncedDraft } from './ScheduledMessages';
 
 interface Suggestion {
   key: string;
@@ -78,9 +81,13 @@ export function Composer(props: ComposerProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
+  const [stickersOpen, setStickersOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [, tick] = useState(0);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  useSyncedDraft(scope, draft, setDraft);
   const cooldownLeft = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
   useEffect(() => {
     if (cooldownUntil <= Date.now()) return;
@@ -279,6 +286,30 @@ export function Composer(props: ComposerProps) {
     );
   };
 
+  // Stickers and voice messages go out as a message of their own.
+  const sendAttachment = (attachment: Attachment) => {
+    if (props.timedOutUntil) return;
+    props.onSent();
+    playSound('messageSent');
+    sendQueue.current = sendQueue.current.then(() =>
+      send.mutateAsync({ content: '', replyToId: props.replyTo?.id ?? null, attachments: [attachment] }).then(
+        () => props.onCancelReply(),
+        (e: Error) => toast.error(e.message),
+      ),
+    );
+  };
+  const sendVoice = async (rec: { file: File; duration: number; waveform: number[] }) => {
+    setUploading((n) => n + 1);
+    try {
+      const att = await uploadAttachmentTo(sb, scope.id, rec.file);
+      sendAttachment({ ...att, name: 'Voice message', voice: true, duration: Math.round(rec.duration * 10) / 10, waveform: rec.waveform } as Attachment);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not send the voice message.');
+    } finally {
+      setUploading((n) => n - 1);
+    }
+  };
+
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (suggestions.length > 0) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -347,6 +378,7 @@ export function Composer(props: ComposerProps) {
 
   return (
     <div className="relative px-4 pb-1">
+      <ScheduledChip scope={scope} />
       {suggestions.length > 0 && (
         <ul className="absolute right-4 bottom-full left-4 z-30 mb-1 overflow-hidden rounded-ae border border-ae-border bg-ae-elevated py-1 shadow-2xl" role="listbox">
           <li className="px-3 pb-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">
@@ -485,6 +517,18 @@ export function Composer(props: ComposerProps) {
                 >
                   <PollIcon size={16} className="text-ae-muted" /> Create a poll
                 </button>
+                <button
+                  type="button"
+                  disabled={!draft.trim()}
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm hover:bg-ae-hover disabled:opacity-40 disabled:hover:bg-transparent"
+                  data-tip={draft.trim() ? undefined : 'Type a message first'}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setScheduleOpen(true);
+                  }}
+                >
+                  <ClockIcon size={16} className="text-ae-muted" /> Schedule message
+                </button>
               </div>
             )}
           </div>
@@ -492,7 +536,8 @@ export function Composer(props: ComposerProps) {
             ref={textRef}
             rows={Math.min(10, Math.max(1, draft.split('\n').length))}
             className="ae-scroll block max-h-64 min-h-[32px] w-full resize-none bg-transparent px-1 py-[6px] text-[15px] leading-5 !shadow-none !outline-none placeholder:text-ae-muted/80"
-            placeholder={props.placeholder}
+            placeholder={recording ? 'Recording…' : props.placeholder}
+            disabled={recording}
             maxLength={4000}
             value={draft}
             onChange={(e) => onChange(e.target.value, e.target.selectionStart)}
@@ -509,6 +554,15 @@ export function Composer(props: ComposerProps) {
             </button>
             <button
               type="button"
+              data-tip="Stickers"
+              aria-label="Stickers"
+              className={`ae-press grid h-8 w-8 place-items-center rounded-full hover:bg-ae-hover ${stickersOpen ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
+              onClick={() => (setStickersOpen((o) => !o), setPickerOpen(false))}
+            >
+              <StickerIcon size={18} />
+            </button>
+            <button
+              type="button"
               data-tip="Emoji"
               aria-label="Emoji"
               className={`ae-press group grid h-8 w-8 place-items-center rounded-full hover:bg-ae-hover ${pickerOpen ? 'text-ae-accent' : 'text-ae-muted hover:text-ae-text'}`}
@@ -516,11 +570,18 @@ export function Composer(props: ComposerProps) {
             >
               <SmileIcon size={19} className="transition-transform group-hover:scale-110 group-hover:rotate-12" />
             </button>
+            {!draft.trim() && pending.length === 0 && (
+              <VoiceRecorder disabled={!!props.timedOutUntil || uploading > 0} onRecordingChange={setRecording} onSend={(r) => void sendVoice(r)} />
+            )}
             {(draft.trim() || pending.length > 0) && (
               <button
                 type="button"
-                data-tip="Send (Enter)"
+                data-tip="Send (Enter) · right-click to schedule"
                 aria-label="Send"
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  if (draft.trim()) setScheduleOpen(true);
+                }}
                 className="ae-pop ae-press ml-0.5 grid h-8 w-8 place-items-center rounded-full bg-ae-accent text-ae-on-accent"
                 onClick={submit}
               >
@@ -528,6 +589,15 @@ export function Composer(props: ComposerProps) {
               </button>
             )}
           </div>
+          {stickersOpen && (
+            <StickerPicker
+              onClose={() => setStickersOpen(false)}
+              onPick={(st) => {
+                setStickersOpen(false);
+                sendAttachment(stickerAttachment(st));
+              }}
+            />
+          )}
           {pickerOpen && (
             <EmojiPicker
               allowCustom
@@ -544,6 +614,19 @@ export function Composer(props: ComposerProps) {
       {!cooldownLeft && !!props.slowmodeSeconds && <p className="mt-1 flex items-center gap-1 px-1 text-[11px] text-ae-muted"><ClockIcon size={12} /> Slow mode: one message every {props.slowmodeSeconds}s.</p>}
       {(send.isError || upload.isError) && <p className="text-xs text-ae-danger">{(send.error ?? upload.error)?.message}</p>}
 
+      {scheduleOpen && (
+        <ScheduleDialog
+          scope={scope}
+          content={draft.trim()}
+          replyToId={props.replyTo?.id ?? null}
+          onClose={() => setScheduleOpen(false)}
+          onScheduled={() => {
+            setScheduleOpen(false);
+            setDraft('');
+            props.onCancelReply();
+          }}
+        />
+      )}
       {pollOpen && (
         <PollDialog
           onClose={() => setPollOpen(false)}

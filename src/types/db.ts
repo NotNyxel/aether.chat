@@ -222,6 +222,13 @@ export interface Attachment {
   height?: number;
   spoiler?: boolean;
   alt?: string;
+  /** Voice message: length in seconds and a 0–100 waveform. */
+  voice?: boolean;
+  duration?: number;
+  waveform?: number[];
+  /** Server sticker. */
+  sticker?: boolean;
+  sticker_id?: string;
 }
 
 export interface Poll {

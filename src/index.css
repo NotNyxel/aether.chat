@@ -831,3 +831,33 @@ body:has(.ae-solid-layer) .ae-theme-fx > * {
 .ae-still .ae-fx > span:nth-child(n + 9) {
   display: none;
 }
+
+/* ── 1.7.1: threads, dialogs (polls, events…) on phones ────────────────────────────────── */
+:root[data-ae-phone='true'] {
+  /* A thread opens full screen over its channel; the back arrow closes it. */
+  .ae-thread-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    width: 100% !important;
+    border-left: 0;
+    background: linear-gradient(var(--ae-bg), var(--ae-bg)), var(--ae-backdrop, #000);
+    background-color: var(--ae-bg-solid, #111);
+  }
+  /* Dialogs (create a poll, events, invites…) slide up from the bottom as sheets. */
+  .ae-backdrop:has(> .ae-dialog) {
+    place-items: end center;
+    padding: 0;
+  }
+  .ae-backdrop > .ae-dialog {
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    border-radius: 20px 20px 0 0 !important;
+    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+    animation: ae-sheet-up 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  /* Polls and event cards use the whole width. */
+  .ae-poll {
+    max-width: 100% !important;
+  }
+}

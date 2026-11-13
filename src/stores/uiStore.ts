@@ -3,7 +3,7 @@ import { create } from 'zustand';
 
 export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows' | 'standing' | 'admin';
 
-export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit' | 'soundboard' | 'moderation' | 'automod' | 'community' | 'bot' | 'emoji';
+export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit' | 'soundboard' | 'moderation' | 'automod' | 'community' | 'bot' | 'emoji' | 'stickers';
 
 export interface PeekRect {
   left: number;

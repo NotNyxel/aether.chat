@@ -3,6 +3,29 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.7.1] - 2026-11-13
+
+**Voice messages, stickers, scheduled messages and better calls on phones**
+
+- **Voice messages:** the mic button in the message box (when it's empty).
+  - Phones: press and hold to record, let go to send, slide left to cancel.
+  - Computers: click to record, then send or bin it.
+  - They play in chat with a waveform you can tap to jump around, and 1×/1.5×/2× speed.
+- **Stickers:** servers upload up to 60 (Server Settings → **Stickers**). Send them from the new sticker button
+  next to emoji, in any chat.
+- **Scheduled messages:** **+ → Schedule message**, or right-click the Send button. Pick "in 1 hour",
+  "tonight", "tomorrow morning" or any time. Aether sends it then, even if you're offline. A chip above the
+  message box lists what's scheduled, to cancel or send now.
+- **Drafts follow you:** half-written messages are saved, so you can start on your phone and finish on your
+  computer.
+- **Calls on phones:**
+  - a floating **call bubble** (time, mute, hang up) while you look at other chats; drag it out of the way, tap it
+    to go back;
+  - the screen stays on during a call.
+- **Threads, polls and events on phones:** threads open full screen with a back arrow; create-a-poll, events and
+  other dialogs slide up from the bottom.
+- Database: `supabase/migrations/015_stickers.sql` and `016_drafts_scheduled.sql`.
+
 ## [1.7.0] - 2026-11-13
 
 **Fixes from the community's bug reports**

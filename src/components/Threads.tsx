@@ -85,9 +85,10 @@ export function ThreadPanel({ threadId, server, userId, channels, wide = false }
   const item = 'block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-ae-hover';
 
   return (
-    <aside className={`ae-enter flex min-w-0 shrink-0 flex-col border-l border-ae-border ${wide ? 'w-[min(640px,55%)]' : 'w-[440px]'}`}>
+    <aside className={`ae-thread-panel ae-enter flex min-w-0 shrink-0 flex-col border-l border-ae-border ${wide ? 'w-[min(640px,55%)]' : 'w-[440px]'}`}>
       <MessagePane
         key={thread.id}
+        onBack={() => useUiStore.getState().openThread(null)}
         scope={{ kind: 'channel', id: thread.id }}
         userId={userId}
         serverId={server.id}

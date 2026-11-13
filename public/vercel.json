@@ -4,20 +4,16 @@
   "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/home.html"
-    },
-    {
       "source": "/app",
-      "destination": "/index.html"
+      "destination": "/app.html"
     },
     {
       "source": "/app/(.*)",
-      "destination": "/index.html"
+      "destination": "/app.html"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/((?!site/|assets/).*)",
+      "destination": "/app.html"
     }
   ],
   "headers": [

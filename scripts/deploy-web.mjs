@@ -12,7 +12,7 @@
  * runs need nothing else.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -37,6 +37,10 @@ run('npm', ['run', 'build']);
 if (!existsSync(join(DIST, 'vercel.json'))) throw new Error('dist/vercel.json is missing (it comes from public/vercel.json).');
 // Website pictures (web/site) go to the web deploy only, not into the desktop app.
 cpSync(join(ROOT, 'web', 'site'), join(DIST, 'site'), { recursive: true });
+// On the web, / is the website and the app is /app: Vercel serves a real index.html before any
+// rewrite, so the website becomes index.html and the app becomes app.html (see public/vercel.json).
+renameSync(join(DIST, 'index.html'), join(DIST, 'app.html'));
+renameSync(join(DIST, 'home.html'), join(DIST, 'index.html'));
 
 const env = { ...process.env };
 if (existsSync(IDS)) {

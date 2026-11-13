@@ -3,6 +3,20 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.7.8] - 2026-11-13
+
+**Bug fixes from RankyTev's reports (thank you!)**
+
+- **Uploading several pictures at once** works: before, only the first finished and the rest spun forever.
+- **Unsent messages are kept** when you switch channels and come back.
+- **Spelling suggestions:** right-click a misspelled word in the message box for the system's suggestions and
+  "Add to dictionary".
+- **Right-click a picture:** View image, **Copy image**, **Save image**, Copy media link, Open media link.
+- **Image viewer:** zoom with the scroll wheel, a double-click or double-tap, two-finger pinch or the new **+ / −**
+  buttons, and drag to move around. Button labels now appear below the buttons, where you can read them.
+- **See who reacted:** hover a reaction for the names.
+- The time next to follow-up messages no longer wraps onto two lines.
+
 ## [1.7.7] - 2026-11-13
 
 **Community requests: favourite GIFs, one expressions menu, smoother chat**

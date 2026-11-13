@@ -26,6 +26,7 @@ import { BOT_NAME } from '../lib/botCommands';
 import { StickerView, type StickerAttachment } from './Stickers';
 import { VoiceMessagePlayer, type VoiceAttachment } from './VoiceMessage';
 import { GifView } from './GifPicker';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -192,6 +193,7 @@ function MessageItemImpl(props: MessageItemProps) {
   const quick = useQuickReactions(4);
   // Phones and tablets: the picker opens as its own sheet, not inside the hover toolbar.
   const openPicker = () => (isPhoneLayout() ? openReactionPicker(react) : setPicker(true));
+  const qcR = useQueryClient();
   const rowRef = useRef<HTMLLIElement>(null);
   useEffect(() => {
     const el = rowRef.current;
@@ -304,7 +306,7 @@ function MessageItemImpl(props: MessageItemProps) {
             <Avatar profile={avatarProfile} size={40} showFrame={false} />
           </button>
         ) : (
-          <time className="invisible block h-[22px] text-right text-[10px] leading-[22px] text-ae-muted tabular-nums group-hover:visible" dateTime={message.created_at}>
+          <time className="invisible -ml-2 block h-[22px] text-right text-[10px] leading-[22px] whitespace-nowrap text-ae-muted tabular-nums group-hover:visible" dateTime={message.created_at}>
             {new Date(message.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
           </time>
         )}
@@ -410,9 +412,14 @@ function MessageItemImpl(props: MessageItemProps) {
           <div className="mt-1 flex flex-wrap gap-1">
             {[...props.reactions].map(([emoji, users]) => {
               const active = users.includes(me);
+              // Who reacted, shown when you hover the reaction.
+              const names = users.map((id) => (id === me ? 'You' : (qcR.getQueryData<{ display_name?: string; username?: string } | null>(['profile', id])?.display_name || qcR.getQueryData<{ username?: string } | null>(['profile', id])?.username || 'Someone')));
+              const who = names.length > 6 ? `${names.slice(0, 6).join(', ')} and ${names.length - 6} more` : names.join(', ');
               return (
                 <button
                   key={emoji}
+                  data-tip={`${who} reacted with ${emoji}`}
+                  data-tip-side="top"
                   type="button"
                   onClick={() => props.onReact(message.id, emoji, active)}
                   className={`ae-press flex h-6 items-center gap-1.5 rounded-lg border px-1.5 text-xs font-semibold tabular-nums transition-colors ${

@@ -140,10 +140,11 @@ export function Composer(props: ComposerProps) {
   const addFiles = (files: FileList | File[]) => {
     for (const file of Array.from(files).slice(0, 10)) {
       setUploading((n) => n + 1);
-      upload.mutate(file, {
-        onSuccess: (a) => setPending((p) => [...p, a].slice(0, 10)),
-        onSettled: () => setUploading((n) => n - 1),
-      });
+      // Each file uploads on its own (a shared mutation only reports back for the last call).
+      void uploadAttachmentTo(sb, scope.id, file)
+        .then((a) => setPending((p) => [...p, a].slice(0, 10)))
+        .catch((e: Error) => toast.error(e.message))
+        .finally(() => setUploading((n) => n - 1));
     }
   };
 

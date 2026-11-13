@@ -16,6 +16,36 @@ import { toast } from './Toaster';
 
 type Editable = HTMLInputElement | HTMLTextAreaElement | HTMLElement;
 
+/** Copies a picture to the clipboard (as PNG, which every app can paste). */
+async function copyImage(url: string) {
+  try {
+    const bmp = await createImageBitmap(await (await fetch(url)).blob());
+    const c = document.createElement('canvas');
+    c.width = bmp.width;
+    c.height = bmp.height;
+    c.getContext('2d')!.drawImage(bmp, 0, 0);
+    const png = await new Promise<Blob>((r, j) => c.toBlob((b) => (b ? r(b) : j(new Error('encode'))), 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+    toast('Image copied');
+  } catch {
+    toast.error('Could not copy this image.');
+  }
+}
+
+async function saveImage(url: string, alt: string) {
+  try {
+    const blob = await (await fetch(url)).blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (alt || url.split('?')[0]!.split('/').pop() || 'image').slice(0, 80);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    toast.success('Saved to your Downloads.');
+  } catch {
+    void openExternal(url);
+  }
+}
+
 function isEditable(el: Element | null): el is Editable {
   if (!el) return false;
   if (el instanceof HTMLTextAreaElement) return !el.readOnly && !el.disabled;
@@ -112,9 +142,11 @@ export function NativeUiShim() {
   useEffect(() => {
     const onContext = (e: MouseEvent) => {
       if (e.defaultPrevented) return; // one of our own menus handled it
-      e.preventDefault();
       const target = e.target as HTMLElement;
       const editable = target.closest('input, textarea, [contenteditable="true"]');
+      // Text fields get the system's own menu: it has spelling suggestions and "Add to dictionary".
+      if (isEditable(editable) && !(editable instanceof HTMLInputElement && editable.type === 'password')) return;
+      e.preventDefault();
       const selection = window.getSelection()?.toString() ?? '';
 
       if (isEditable(editable)) {
@@ -159,8 +191,12 @@ export function NativeUiShim() {
         selection && { label: 'Copy', icon: <CopyIcon size={15} />, hint: 'Ctrl+C', onClick: () => void navigator.clipboard.writeText(selection) },
         link && /^https?:/i.test(link.href) && { label: 'Open link', icon: <ExternalLinkIcon size={15} />, onClick: () => void openExternal(link.href) },
         link && { label: 'Copy link', icon: <LinkIcon size={15} />, onClick: () => void navigator.clipboard.writeText(link.href).then(() => toast('Link copied')) },
-        img && img.src.startsWith('http') && { label: 'Open image', icon: <ImageIcon size={15} />, onClick: () => openLightbox({ url: img.src, alt: img.alt }) },
-        img && img.src.startsWith('http') && { label: 'Copy image link', icon: <LinkIcon size={15} />, onClick: () => void navigator.clipboard.writeText(img.src).then(() => toast('Link copied')) },
+        img && img.src.startsWith('http') && { label: 'View image', icon: <ImageIcon size={15} />, onClick: () => openLightbox({ url: img.src, alt: img.alt }) },
+        img && img.src.startsWith('http') && { label: 'Copy image', icon: <CopyIcon size={15} />, onClick: () => void copyImage(img.src) },
+        img && img.src.startsWith('http') && { label: 'Save image', icon: <ImageIcon size={15} />, onClick: () => void saveImage(img.src, img.alt) },
+        img && img.src.startsWith('http') && 'divider',
+        img && img.src.startsWith('http') && { label: 'Copy media link', icon: <LinkIcon size={15} />, onClick: () => void navigator.clipboard.writeText(img.src).then(() => toast('Link copied')) },
+        img && img.src.startsWith('http') && { label: 'Open media link', icon: <ExternalLinkIcon size={15} />, onClick: () => void openExternal(img.src) },
       ]);
     };
     document.addEventListener('contextmenu', onContext);

@@ -19,6 +19,9 @@ interface ScheduledRow {
   failed: string | null;
 }
 
+/** Unsent text per chat for this session, so switching away and back never loses it. */
+const localDrafts = new Map<string, string>();
+
 const col = (scope: MessageScope) => (scope.kind === 'channel' ? 'channel_id' : 'conversation_id');
 
 /** Keeps the message box in sync with your saved draft for this chat. */
@@ -30,6 +33,8 @@ export function useSyncedDraft(scope: MessageScope, draft: string, setDraft: Dis
   useEffect(() => {
     loaded.current = false;
     let gone = false;
+    const local = localDrafts.get(scope.id);
+    if (local) setDraft((cur) => cur || local);
     void sb
       .from('message_drafts')
       .select('content')
@@ -50,6 +55,8 @@ export function useSyncedDraft(scope: MessageScope, draft: string, setDraft: Dis
   }, [scope.id, sb]);
 
   useEffect(() => {
+    if (draft) localDrafts.set(scope.id, draft);
+    else localDrafts.delete(scope.id);
     if (!loaded.current || draft === last.current) return;
     const t = setTimeout(() => {
       last.current = draft;
@@ -58,6 +65,19 @@ export function useSyncedDraft(scope: MessageScope, draft: string, setDraft: Dis
     }, 1200);
     return () => clearTimeout(t);
   }, [draft, scope.id, sb]);
+
+  // Leaving the chat: save straight away instead of waiting for the typing pause.
+  const latest = useRef(draft);
+  latest.current = draft;
+  useEffect(
+    () => () => {
+      const text = latest.current;
+      if (text === last.current) return;
+      if (text.trim()) void sb.from('message_drafts').upsert({ scope_id: scope.id, content: text.slice(0, 4000), updated_at: new Date().toISOString() });
+      else void sb.from('message_drafts').delete().eq('scope_id', scope.id);
+    },
+    [scope.id, sb],
+  );
 }
 
 function localInput(d: Date): string {

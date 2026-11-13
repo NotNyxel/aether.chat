@@ -3,12 +3,19 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.7.4] - 2026-11-13
+
+**The new web address is joinaether.vercel.app**
+
+- Aether's website and web app are now at **[joinaether.vercel.app](https://joinaether.vercel.app)**. The address
+  1.7.3 used turned out to be reserved by another Vercel project, so it only showed a sign-in wall. Invite links
+  made in the apps now use the new address. The old aether-chat-beta.vercel.app keeps working.
+
 ## [1.7.3] - 2026-11-13
 
 **A website, a new address, and every platform**
 
-- **New address: [aetherapp.vercel.app](https://aetherapp.vercel.app).** The old one
-  (aether-chat-beta.vercel.app) and its invite links keep working.
+- **New address** (see 1.7.4). The old one (aether-chat-beta.vercel.app) and its invite links keep working.
 - **A real website at the front door:** what Aether is, screenshots on computer and phone, features, honest pros
   and cons, and a download button that picks your device (with every other platform listed below). **Log in**
   and **Sign up** open the web app, which now lives at **/app**; if you're already signed in it says

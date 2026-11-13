@@ -34,7 +34,7 @@
       <p>Open this invite in aether.chat to join the server.</p>
       <code id="code">…</code>
       <a class="btn primary" id="open" href="#">Open in aether.chat</a>
-      <a class="btn secondary" id="web" href="https://aetherapp.vercel.app">Open in your browser</a>
+      <a class="btn secondary" id="web" href="https://joinaether.vercel.app">Open in your browser</a>
       <a class="btn secondary" href="https://github.com/NotNyxel/aether.chat-releases/releases/latest/download/aether.chat-Setup.exe">Download aether.chat for Windows</a>
       <small>Already have it open? You can also paste the code into “Join a server”.</small>
     </main>
@@ -47,7 +47,7 @@
       var open = document.getElementById('open');
       if (code) {
         open.href = 'aetherchat://inv/' + encodeURIComponent(code);
-        document.getElementById('web').href = 'https://aetherapp.vercel.app/inv/' + encodeURIComponent(code);
+        document.getElementById('web').href = 'https://joinaether.vercel.app/inv/' + encodeURIComponent(code);
         // Try to open the app straight away.
         setTimeout(function () { location.href = open.href; }, 300);
       } else {

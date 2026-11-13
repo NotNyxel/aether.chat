@@ -66,10 +66,8 @@ const prod = !process.argv.includes('--preview');
 const url = capture('npx', [...VERCEL, 'deploy', `"${DIST}"`, ...(prod ? ['--prod'] : []), '--yes'], { env, stdio: ['inherit', 'pipe', 'pipe'] });
 // The production alias (e.g. aether-chat-beta.vercel.app) is the last vercel.app URL printed.
 const last = (url.match(/https:\/\/[a-z0-9.-]+\.vercel\.app/gi) ?? []).pop() ?? url;
-// Put our own address (WEB_APP_URL in src/config.ts) on this deployment too; the old address keeps working.
+// Our own address (WEB_APP_URL in src/config.ts) is a domain of the Vercel project, so every production
+// deploy gets it automatically; the old address keeps working too.
 const WEB = /WEB_APP_URL = 'https:\/\/([^']+)'/.exec(readFileSync(join(ROOT, 'src', 'config.ts'), 'utf8'))?.[1];
-const urls = url.match(/https:\/\/[a-z0-9.-]+\.vercel\.app/gi) ?? [];
-const deployment = urls.find((u) => /-[a-z0-9]{8,10}-/.test(u.replace('https://', ''))) ?? urls[0];
-if (prod && WEB && deployment) run('npx', [...VERCEL, 'alias', 'set', deployment, WEB], { env });
 writeFileSync(join(ROOT, '.secrets', 'vercel-last-deploy.txt'), `${WEB ? `https://${WEB}` : last}\n`);
 console.log(`\nDeployed: ${WEB ? `https://${WEB} (also ${last})` : last}`);

@@ -171,7 +171,8 @@ export function PresenceDot({ status, size = 12, className = '' }: { status: Vis
     <span
       className={`ae-status inline-grid shrink-0 place-items-center rounded-full bg-ae-elevated ${className}`}
       data-status={status}
-      style={{ width: size, height: size }}
+      // Always above the avatar (and its frame or decoration), unless the caller sets its own layer.
+      style={{ width: size, height: size, zIndex: /(^|\s)z-/.test(className) ? undefined : 5 }}
       title={STATUS_LABELS[status]}
       role="img"
       aria-label={STATUS_LABELS[status]}

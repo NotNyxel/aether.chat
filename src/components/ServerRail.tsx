@@ -93,7 +93,8 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
         data-tip-side="right"
         aria-label="Home"
         onClick={() => openHome()}
-        className={`relative grid h-12 w-12 place-items-center transition-all ${
+        // Phones have their own Messages tab, so the rail is servers only there.
+        className={`ae-desktop-only relative grid h-12 w-12 place-items-center transition-all ${
           activeId === null ? 'rounded-[16px] bg-ae-accent ae-glow' : 'rounded-[24px] bg-ae-surface hover:rounded-[16px] hover:bg-ae-hover'
         }`}
       >
@@ -104,7 +105,7 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
           </span>
         )}
       </button>
-      <div className="my-1 h-px w-8 bg-ae-border" />
+      <div className="ae-desktop-only my-1 h-px w-8 bg-ae-border" />
       {servers.map((s) => {
         const active = s.id === activeId;
         const state = perServer.get(s.id);

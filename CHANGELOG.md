@@ -16,6 +16,8 @@ GitHub Releases page, and installs from 0.3.0 onward update themselves.
   buttons, and drag to move around. Button labels now appear below the buttons, where you can read them.
 - **See who reacted:** hover a reaction for the names.
 - The time next to follow-up messages no longer wraps onto two lines.
+- **Phones, Servers tab:** the Home button at the top of the server list is gone (Messages has its own tab).
+- **Online status dots** sit on top of avatars, frames and decorations instead of behind them.
 
 ## [1.7.7] - 2026-11-13
 

@@ -12,7 +12,7 @@ import { isTauri } from './platform';
 export type AuthLinkKind = 'recovery' | 'signup' | 'email_change' | 'magiclink' | 'invite' | 'unknown';
 
 export function authRedirectUrl(): string {
-  return isTauri ? 'aetherchat://auth' : window.location.origin;
+  return isTauri ? 'aetherchat://auth' : `${window.location.origin}/app`;
 }
 
 function parse(url: string): { params: URLSearchParams; kind: AuthLinkKind } | null {

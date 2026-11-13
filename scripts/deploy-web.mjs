@@ -12,7 +12,7 @@
  * runs need nothing else.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -35,6 +35,8 @@ const capture = (cmd, args, opts = {}) => {
 
 run('npm', ['run', 'build']);
 if (!existsSync(join(DIST, 'vercel.json'))) throw new Error('dist/vercel.json is missing (it comes from public/vercel.json).');
+// Website pictures (web/site) go to the web deploy only, not into the desktop app.
+cpSync(join(ROOT, 'web', 'site'), join(DIST, 'site'), { recursive: true });
 
 const env = { ...process.env };
 if (existsSync(IDS)) {
@@ -60,5 +62,10 @@ const prod = !process.argv.includes('--preview');
 const url = capture('npx', [...VERCEL, 'deploy', `"${DIST}"`, ...(prod ? ['--prod'] : []), '--yes'], { env, stdio: ['inherit', 'pipe', 'pipe'] });
 // The production alias (e.g. aether-chat-beta.vercel.app) is the last vercel.app URL printed.
 const last = (url.match(/https:\/\/[a-z0-9.-]+\.vercel\.app/gi) ?? []).pop() ?? url;
-writeFileSync(join(ROOT, '.secrets', 'vercel-last-deploy.txt'), `${last}\n`);
-console.log(`\nDeployed: ${last}`);
+// Put our own address (WEB_APP_URL in src/config.ts) on this deployment too; the old address keeps working.
+const WEB = /WEB_APP_URL = 'https:\/\/([^']+)'/.exec(readFileSync(join(ROOT, 'src', 'config.ts'), 'utf8'))?.[1];
+const urls = url.match(/https:\/\/[a-z0-9.-]+\.vercel\.app/gi) ?? [];
+const deployment = urls.find((u) => /-[a-z0-9]{8,10}-/.test(u.replace('https://', ''))) ?? urls[0];
+if (prod && WEB && deployment) run('npx', [...VERCEL, 'alias', 'set', deployment, WEB], { env });
+writeFileSync(join(ROOT, '.secrets', 'vercel-last-deploy.txt'), `${WEB ? `https://${WEB}` : last}\n`);
+console.log(`\nDeployed: ${WEB ? `https://${WEB} (also ${last})` : last}`);

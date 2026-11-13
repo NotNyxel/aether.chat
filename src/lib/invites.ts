@@ -4,12 +4,13 @@
  * GitHub Pages site still work). Anything a user pastes (any of those links, the aetherchat://
  * deep link, or just the code) is accepted by parseInviteCode().
  */
-import { WEB_APP_URL } from '../config';
+import { OLD_WEB_HOSTS, WEB_APP_URL } from '../config';
 
 export const INVITE_PREFIX = 'aether.chat/inv/';
 /** Opens the invite in the web app, which also offers to open the desktop app. */
 export const WEB_INVITE_BASE = `${WEB_APP_URL}/inv/`;
-const WEB_HOST = WEB_APP_URL.replace(/^https:\/\//, '').replace(/\./g, '\\.');
+// The current web address and the earlier ones (their invite links still work).
+const WEB_HOST = `(?:${[WEB_APP_URL.replace(/^https:\/\//, ''), ...OLD_WEB_HOSTS].map((h) => h.replace(/\./g, '\\.')).join('|')})`;
 
 /** Matches invite links inside message text. Group 1 is the code. */
 export const INVITE_LINK_RE = new RegExp(

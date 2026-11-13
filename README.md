@@ -46,7 +46,7 @@ days, which SideStore and AltStore do for you.
 **Android:** install `Aether_<version>_android.apk` from the Releases page (allow installing from your browser
 when Android asks).
 
-**No install?** Use the web app at **[aether-chat-beta.vercel.app](https://aether-chat-beta.vercel.app)** in any browser,
+**No install?** Use the web app at **[aetherapp.vercel.app](https://aetherapp.vercel.app)** in any browser,
 on PC or phone.
 
 > Requires Windows 10/11 with the Microsoft Edge WebView2 runtime (preinstalled on Windows 11 and up-to-date Windows 10).

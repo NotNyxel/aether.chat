@@ -17,6 +17,6 @@ export default defineConfig({
     sourcemap: false,
     chunkSizeWarningLimit: 800,
     // splash.html is the desktop startup window (update check before the app opens).
-    rollupOptions: { input: { main: 'index.html', splash: 'splash.html' } },
+    rollupOptions: { input: { main: 'index.html', splash: 'splash.html', home: 'home.html' } },
   },
 });

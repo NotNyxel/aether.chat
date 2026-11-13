@@ -66,7 +66,8 @@ function Submit({ busy, children }: { busy: boolean; children: ReactNode }) {
 
 export function AuthScreen({ linkError }: { linkError?: string | null }) {
   const sb = useSupabase();
-  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
+  // The website's Sign up / Log in buttons open the app with ?auth=signup or ?auth=signin.
+  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(() => (new URLSearchParams(window.location.search).get('auth') === 'signup' ? 'signup' : 'signin'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');

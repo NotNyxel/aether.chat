@@ -104,7 +104,7 @@ export function UserPopout({ userId, shownStatus, onClose, onEditStatus }: { use
             '--card-a': primary,
             '--card-b': accent,
           ...cardVars(me),
-            background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 35%, var(--ae-bg-elevated)) 0%, var(--ae-bg-elevated) 50%)`,
+            background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 35%, var(--ae-bg-solid)) 0%, var(--ae-bg-solid) 50%)`,
           } as CSSProperties
         }
       >

@@ -3,6 +3,24 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.7.0] - 2026-11-13
+
+**Fixes from the community's bug reports**
+
+- **Settings, menus and pop-ups are no longer see-through** with glass themes (aetherOS Glass, Vaporwave…) or
+  your own custom theme. Settings still shows your theme's background, just solid.
+- **Settings is smoother:** the app behind it stops drawing while it's open.
+- **"Reduce motion" is now "Low detail mode":** besides stopping animations it turns off blur, glows, profile
+  effects and background effects, for slower devices.
+- **Tablets held upright get the phone layout** (bottom tabs and full-screen chats); turned sideways they get the
+  desktop layout. Before, a tablet in portrait got a squeezed desktop layout.
+- **Phones: quick reactions and Reply.** Press and hold a message: the top of the menu has your recent emoji to react
+  with one tap, more reactions, and a Reply button.
+- **Changing your profile effect on a phone no longer crashes:** the effect picker shows still previews (only the
+  chosen one moves) and fewer at a time.
+- If a screen ever does crash, Aether shows what went wrong with **Try again** and **Reload** instead of a blank
+  window.
+
 ## [1.6.3] - 2026-11-12
 
 **Every platform, including iPhone and iPad**

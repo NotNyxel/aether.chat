@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './components/ThemeEngine';
 import './index.css';
 import './motion.css';
@@ -13,13 +14,17 @@ import '@fontsource/pacifico/400.css';
 import '@fontsource/playfair-display/700.css';
 import '@fontsource/press-start-2p/400.css';
 import { isTauri } from './lib/platform';
+import { installPhoneLayout } from './lib/phone';
 
 document.documentElement.dataset.aeWeb = String(!isTauri);
+installPhoneLayout();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </ThemeProvider>
   </StrictMode>,
 );

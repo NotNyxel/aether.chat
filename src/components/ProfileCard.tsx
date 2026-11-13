@@ -323,7 +323,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
           '--card-a': primary,
           '--card-b': accent,
           ...cardVars(profile),
-          background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 35%, var(--ae-bg-elevated)) 0%, var(--ae-bg-elevated) 55%)`,
+          background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 35%, var(--ae-bg-solid)) 0%, var(--ae-bg-solid) 55%)`,
           contain: 'layout paint style',
           isolation: 'isolate',
         } as CSSProperties

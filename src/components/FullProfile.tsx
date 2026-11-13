@@ -78,7 +78,7 @@ export function FullProfile({
           '--card-a': primary,
           '--card-b': accent,
           ...cardVars(profile),
-          background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 26%, var(--ae-bg-elevated)) 0%, var(--ae-bg-elevated) 40%)`,
+          background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 26%, var(--ae-bg-solid)) 0%, var(--ae-bg-solid) 40%)`,
           contain: 'layout paint style',
           isolation: 'isolate',
         } as CSSProperties

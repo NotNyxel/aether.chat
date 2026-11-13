@@ -5,6 +5,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { create } from 'zustand';
+import { isPhoneLayout } from '../lib/phone';
 
 export interface MenuItem {
   label: string;
@@ -16,32 +17,34 @@ export interface MenuItem {
 }
 export type MenuEntry = MenuItem | 'divider' | null | false | '' | 0 | undefined;
 
-const useMenu = create<{ x: number; y: number; items: MenuEntry[] | null; set: (m: { x: number; y: number; items: MenuEntry[] | null }) => void }>()((set) => ({
+const useMenu = create<{ x: number; y: number; items: MenuEntry[] | null; header?: ReactNode; set: (m: { x: number; y: number; items: MenuEntry[] | null; header?: ReactNode }) => void }>()((set) => ({
   x: 0,
   y: 0,
   items: null,
+  header: null,
   set: (m) => set(m),
 }));
 
-export function openContextMenu(e: ReactMouseEvent | MouseEvent, items: MenuEntry[]) {
+/** `header` is shown above the items in the phone bottom sheet (e.g. quick reactions for a message). */
+export function openContextMenu(e: ReactMouseEvent | MouseEvent, items: MenuEntry[], header?: ReactNode) {
   e.preventDefault();
   e.stopPropagation();
   const clean = items.filter(Boolean) as (MenuItem | 'divider')[];
   // collapse leading/trailing/double dividers
   const tidy = clean.filter((it, i) => it !== 'divider' || (i > 0 && i < clean.length - 1 && clean[i - 1] !== 'divider'));
-  if (tidy.length) useMenu.getState().set({ x: e.clientX, y: e.clientY, items: tidy });
+  if (tidy.length) useMenu.getState().set({ x: e.clientX, y: e.clientY, items: tidy, header: header ?? null });
 }
 
 export function closeContextMenu() {
-  useMenu.getState().set({ x: 0, y: 0, items: null });
+  useMenu.getState().set({ x: 0, y: 0, items: null, header: null });
 }
 
 export function ContextMenuLayer() {
-  const { x, y, items } = useMenu();
+  const { x, y, items, header } = useMenu();
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y });
   // Phones get a bottom sheet with big rows instead of a tiny floating menu.
-  const sheet = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse) and (max-width: 767px)').matches;
+  const sheet = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches && isPhoneLayout();
 
   useLayoutEffect(() => {
     if (!items || !ref.current || sheet) return;
@@ -94,6 +97,7 @@ export function ContextMenuLayer() {
           onContextMenu={(e) => e.preventDefault()}
         >
           <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-ae-border" />
+          {header && <div className="mb-1 border-b border-ae-border px-1 pb-2">{header}</div>}
           {(items as (MenuItem | 'divider')[]).map((it, i) =>
             it === 'divider' ? (
               <div key={`d${i}`} className="my-1 h-px bg-ae-border" />

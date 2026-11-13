@@ -3,7 +3,7 @@ import { inviteCodesIn } from '../lib/invites';
 import { InviteEmbed } from './Invites';
 import { AudioPlayer, VideoPlayer } from './MediaPlayer';
 import { openExternal } from '../lib/platform';
-import { openContextMenu } from './ContextMenu';
+import { closeContextMenu, openContextMenu } from './ContextMenu';
 import { openReport } from './ReportDialog';
 import { toast } from './Toaster';
 import { isArchived, useAnnouncementActions, useThreads } from '../hooks/useThreads';
@@ -11,7 +11,8 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { buildMessageLink, extractEmbedUrls } from '../lib/messageLinks';
 import { Markdown } from '../lib/markdown';
-import { EmojiText, emojiSize } from '../lib/twemoji';
+import { Emoji, EmojiText, emojiSize } from '../lib/twemoji';
+import { getRecentEmoji, pushRecentEmoji } from '../lib/emoji';
 import { useUiStore } from '../stores/uiStore';
 import type { Attachment, Message, PollVote } from '../types/db';
 import { EmojiPicker } from './EmojiPicker';
@@ -232,7 +233,50 @@ function MessageItemImpl(props: MessageItemProps) {
             onClick: () => openReport({ messageId: message.id, userId: message.author_id, preview: message.content.slice(0, 280) }),
           },
           mine && { label: 'Delete message', icon: <TrashIcon size={15} />, danger: true, onClick: () => props.onDelete(message.id) },
-        ]);
+        ], (
+          // Phones: one-tap reactions and reply at the top of the sheet (the hover bar's job on desktop).
+          <div className="flex items-center gap-1.5">
+            {getRecentEmoji()
+              .slice(0, 5)
+              .map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  aria-label={`React ${emoji}`}
+                  className="grid h-11 w-11 place-items-center rounded-full bg-ae-surface text-2xl active:scale-90"
+                  onClick={() => {
+                    closeContextMenu();
+                    const active = props.reactions?.get(emoji)?.includes(me) ?? false;
+                    props.onReact(message.id, emoji, active);
+                    pushRecentEmoji(emoji);
+                  }}
+                >
+                  <Emoji emoji={emoji} className="!m-0" />
+                </button>
+              ))}
+            <button
+              type="button"
+              aria-label="More reactions"
+              className="grid h-11 w-11 place-items-center rounded-full bg-ae-surface text-ae-muted"
+              onClick={() => {
+                closeContextMenu();
+                setPicker(true);
+              }}
+            >
+              <ReactIcon size={20} />
+            </button>
+            <button
+              type="button"
+              className="ml-auto flex h-11 items-center gap-1.5 rounded-full bg-ae-accent px-4 text-sm font-bold text-ae-on-accent"
+              onClick={() => {
+                closeContextMenu();
+                props.onReply(message);
+              }}
+            >
+              <ReplyIcon size={16} /> Reply
+            </button>
+          </div>
+        ));
       }}
     >
       <div className="w-10 shrink-0">

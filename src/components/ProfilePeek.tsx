@@ -23,6 +23,7 @@ import { CalendarIcon, EditIcon, MoreIcon, OpenFullIcon, SendIcon } from './icon
 import { Avatar, BadgeRow, cropStyle, ProfileEffectLayer, StyledName } from './ProfileCard';
 import { MutualSummary, NoteFields, ProfileActionButtons, useRelationship } from './ProfileParts';
 import { toast } from './Toaster';
+import { isPhoneLayout } from '../lib/phone';
 
 const CARD_W = 300;
 
@@ -127,7 +128,7 @@ export function MiniProfile({
           '--card-a': primary,
           '--card-b': accent,
           ...cardVars(profile),
-          background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 30%, var(--ae-bg-elevated)) 0%, color-mix(in srgb, ${accent} 12%, var(--ae-bg-elevated)) 100%)`,
+          background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 30%, var(--ae-bg-solid)) 0%, color-mix(in srgb, ${accent} 12%, var(--ae-bg-solid)) 100%)`,
         } as CSSProperties
       }
       data-card={profile.card_style ?? 'solid'}
@@ -304,7 +305,7 @@ export function ProfilePeekLayer({ me, server }: { me: string; server: Server | 
   });
 
   if (!peek) return null;
-  const phone = window.matchMedia('(max-width: 767px)').matches;
+  const phone = isPhoneLayout();
   if (phone)
     return (
       <div className="ae-backdrop fixed inset-0 z-[60] bg-black/50" onMouseDown={(e) => e.target === e.currentTarget && close()}>

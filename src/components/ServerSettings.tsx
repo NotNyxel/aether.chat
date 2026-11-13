@@ -946,7 +946,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
   const active = visible.some((t) => t.id === tab) ? tab : 'overview';
 
   return (
-    <div className="ae-zoom-in absolute inset-0 z-50 flex bg-ae-bg" role="dialog" aria-modal="true" aria-label="Server settings">
+    <div className="ae-zoom-in absolute inset-0 z-50 flex ae-solid-layer" role="dialog" aria-modal="true" aria-label="Server settings">
       <nav className="ae-panel flex w-60 shrink-0 flex-col gap-1 border-r border-ae-border p-4">
         <p className="mb-2 truncate px-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">{server.name}</p>
         {visible.map((t) => (

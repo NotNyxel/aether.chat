@@ -288,7 +288,7 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
     list.find((x) => x.id === (id || fallback))?.label ?? ALL_COSMETICS.get(id || fallback) ?? (id || fallback);
 
   return (
-    <div className="ae-fade absolute inset-0 z-50 flex flex-col bg-ae-bg" role="dialog" aria-label="Edit profile">
+    <div className="ae-fade absolute inset-0 z-50 flex flex-col ae-solid-layer" role="dialog" aria-label="Edit profile">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-ae-border px-4">
         <button type="button" onClick={() => void close()} className="ae-press grid h-9 w-9 place-items-center rounded-full hover:bg-ae-hover" aria-label="Back">
           <ArrowLeftIcon size={18} />

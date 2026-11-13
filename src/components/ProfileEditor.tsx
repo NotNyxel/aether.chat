@@ -22,6 +22,7 @@ import { AVATAR_DECOS, CARD_ARTS } from '../lib/decoArt';
 import { cropStyle } from './ProfileCard';
 import { type Crop, BANNER_PRESETS, EFFECT_MOTIONS, NAME_FILLS, NAME_FINISHES, nameEffectAttrs, NAME_FONTS, GEN_AVATAR_FRAMES, GEN_CARD_FRAMES, GEN_EFFECTS, GEN_NAMEPLATES, GEN_SHAPES, GEN_THEMES, plateProps, type Decor } from '../lib/cosmetics';
 import { EmojiButton } from './EmojiPicker';
+import { isPhoneLayout } from '../lib/phone';
 
 export const EDITABLE_KEYS: (keyof EditableProfile)[] = [
   'username', 'display_name', 'custom_status', 'status_emoji', 'bio', 'avatar_url', 'avatar_frame', 'banner_url', 'primary_color',
@@ -104,9 +105,10 @@ export const COLOR_PRESETS: [string, string][] = [
 ];
 
 /** A shrunken, non-interactive ProfileCard for picker tiles. */
-export function MiniCard({ profile }: { profile: UserProfile }) {
+export function MiniCard({ profile, live = false }: { profile: UserProfile; live?: boolean }) {
+  // Tiles stay still (only the chosen one moves): dozens of animated previews at once can run a phone out of memory.
   return (
-    <div className="pointer-events-none relative h-[118px] w-full overflow-hidden">
+    <div className={`pointer-events-none relative h-[118px] w-full overflow-hidden ${live ? '' : 'ae-still'}`}>
       <div className="absolute top-0 left-1/2 w-[340px] origin-top -translate-x-1/2 scale-[0.3]">
         <ProfileCard profile={profile} />
       </div>
@@ -135,7 +137,7 @@ export function Picker<T extends string>({ title, options, current, base, apply,
   const groups = [...new Set(options.map((o) => o.group).filter(Boolean))] as string[];
   const [group, setGroup] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [limit, setLimit] = useState(36);
+  const [limit, setLimit] = useState(() => (isPhoneLayout() ? 12 : 36));
   const q = query.trim().toLowerCase();
   const filtered = options.filter((o) => (!group || o.group === group) && (!q || o.label.toLowerCase().includes(q)));
   const shown = hovered ?? selected;
@@ -163,7 +165,7 @@ export function Picker<T extends string>({ title, options, current, base, apply,
               <div className="mb-3 space-y-2">
                 <div className="ae-field">
                   <SearchIcon size={15} />
-                  <input className="ae-input" placeholder={`Search ${options.length} options`} value={query} onChange={(e) => (setQuery(e.target.value), setLimit(36))} />
+                  <input className="ae-input" placeholder={`Search ${options.length} options`} value={query} onChange={(e) => (setQuery(e.target.value), setLimit(isPhoneLayout() ? 12 : 36))} />
                 </div>
                 {groups.length > 1 && (
                   <div className="flex flex-wrap gap-1">
@@ -171,7 +173,7 @@ export function Picker<T extends string>({ title, options, current, base, apply,
                       <button
                         key={g ?? 'all'}
                         type="button"
-                        onClick={() => (setGroup(g), setLimit(36))}
+                        onClick={() => (setGroup(g), setLimit(isPhoneLayout() ? 12 : 36))}
                         className={`rounded-full border px-2.5 py-0.5 text-xs ${group === g ? 'border-ae-accent bg-ae-accent/15 font-semibold' : 'border-ae-border text-ae-muted hover:text-ae-text'}`}
                       >
                         {g ?? 'All'}
@@ -870,7 +872,7 @@ export function ExtraPickers({ picker, draft, merged, applyPatch, close }: { pic
         current={draft.profile_effect ?? 'none'}
         base={merged}
         apply={(id) => ({ profile_effect: id })}
-        renderTile={(p) => <MiniCard profile={p} />}
+        renderTile={(p, id) => <MiniCard profile={p} live={id === (draft.profile_effect ?? 'none')} />}
         extra={() =>
           custom(
             'Colour and direction',

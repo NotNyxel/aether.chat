@@ -386,7 +386,7 @@ input[type='checkbox'] {
 .ae-mobile-only {
   display: none !important;
 }
-@media (max-width: 767px) {
+:root[data-ae-phone='true'] {
   .ae-mobile-only {
     display: flex !important;
   }
@@ -679,7 +679,7 @@ body {
 .ae-tabbar {
   display: none;
 }
-@media (max-width: 767px) {
+:root[data-ae-phone='true'] {
   /* No window title bar on phones: every screen has its own header. */
   .ae-titlebar {
     display: none !important;
@@ -755,36 +755,79 @@ body {
 }
 
 /* ── 1.6.2: web app on a computer: floating rounded panels ───────────────────────────── */
-@media (min-width: 768px) {
-  :root[data-ae-web='true'] .ae-titlebar {
+:root:not([data-ae-phone='true']) {
+  &[data-ae-web='true'] .ae-titlebar {
     height: 44px;
     background: transparent;
     padding-left: 14px;
   }
-  :root[data-ae-web='true'] .ae-titlebar > img {
+  &[data-ae-web='true'] .ae-titlebar > img {
     width: 20px;
     height: 20px;
   }
-  :root[data-ae-web='true'] .ae-titlebar > span {
+  &[data-ae-web='true'] .ae-titlebar > span {
     font-size: 14px;
     color: var(--ae-text);
   }
-  :root[data-ae-web='true'] .ae-shell {
+  &[data-ae-web='true'] .ae-shell {
     gap: 8px;
     padding: 0 8px 8px;
   }
-  :root[data-ae-web='true'] .ae-shell > nav {
+  &[data-ae-web='true'] .ae-shell > nav {
     background: transparent;
     padding-top: 4px;
   }
-  :root[data-ae-web='true'] .ae-shell > aside,
-  :root[data-ae-web='true'] .ae-shell > main {
+  &[data-ae-web='true'] .ae-shell > aside,
+  &[data-ae-web='true'] .ae-shell > main {
     border: 1px solid var(--ae-border);
     border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 8px 30px rgb(0 0 0 / 0.18);
   }
-  :root[data-ae-web='true'] .ae-shell > main .ae-memberlist {
+  &[data-ae-web='true'] .ae-shell > main .ae-memberlist {
     border-left-color: var(--ae-border);
   }
+}
+
+/* ── 1.7.0: opaque settings and floating panels on glass / custom themes ─────────────────── */
+.ae-solid-layer {
+  background: linear-gradient(var(--ae-bg), var(--ae-bg)), var(--ae-backdrop, #000);
+  background-color: var(--ae-bg-solid, #111);
+}
+.bg-ae-elevated:is(.ae-pop, .ae-dialog, .ae-sheet, [role='menu'], [role='dialog'], [role='listbox']) {
+  background-color: var(--ae-bg-solid, var(--ae-bg-elevated));
+}
+
+/* ── Low detail mode: no motion, blur, glow or background effects (smooth on slow devices) ── */
+:root[data-ae-reduce-motion='true'] *,
+:root[data-ae-reduce-motion='true'] *::before,
+:root[data-ae-reduce-motion='true'] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+:root[data-ae-reduce-motion='true'] .ae-theme-fx,
+:root[data-ae-reduce-motion='true'] .ae-fx {
+  display: none !important;
+}
+:root[data-ae-reduce-motion='true'] {
+  --ae-blur: 0px;
+}
+/* While Settings (or another full-screen layer) is open, stop painting the app behind it. */
+body:has(.ae-solid-layer) .ae-shell,
+body:has(.ae-solid-layer) .ae-theme-fx {
+  visibility: hidden;
+}
+body:has(.ae-solid-layer) .ae-theme-fx > * {
+  animation-play-state: paused;
+}
+/* Picker tiles: previews stand still so a page of them stays light. */
+.ae-still,
+.ae-still * {
+  animation-play-state: paused !important;
+}
+.ae-still .ae-fx > span:nth-child(n + 9) {
+  display: none;
 }

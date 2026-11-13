@@ -216,7 +216,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const custom = !!theme.custom?.enabled;
     const light = custom ? theme.custom!.mode === 'light' : !!THEME_PRESETS[theme.presetId]?.light;
     root.dataset.aeCustom = String(custom);
-    if (!custom) root.style.removeProperty('--ae-bg-solid');
+    if (!custom) {
+      // Glass themes have see-through panels; floating things (menus, dialogs, settings) need an opaque colour.
+      const see = /rgba|hsla|\/\s*0?\.\d|transparent/i.test(tokens.bgElevated);
+      root.style.setProperty('--ae-bg-solid', see ? (light ? '#f3f3f7' : '#14141c') : tokens.bgElevated);
+    }
     root.dataset.aeLight = String(light);
     root.style.colorScheme = light ? 'light' : 'dark';
   }, [tokens, theme.presetId, theme.custom, theme.reduceMotion, theme.ambientBackground, theme.animations, theme.animateStatus]);

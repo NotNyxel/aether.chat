@@ -243,8 +243,8 @@ function AppearanceTab() {
           onChange={(v) => setTheme({ ambientBackground: v })}
         />
         <Toggle
-          label="Reduce motion"
-          hint="Stops every animation, including avatar frames and profile effects."
+          label="Low detail mode"
+          hint="Smoother on slower devices: turns off animations, blur, glows, profile effects and background effects."
           checked={theme.reduceMotion}
           onChange={(v) => setTheme({ reduceMotion: v })}
         />
@@ -787,7 +787,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
   if (!open) return null;
 
   return (
-    <div className="ae-zoom-in ae-settings absolute inset-0 z-50 flex bg-ae-bg" data-pane={mobileTab ? 'main' : 'nav'} role="dialog" aria-modal="true" aria-label="Settings">
+    <div className="ae-zoom-in ae-settings absolute inset-0 z-50 flex ae-solid-layer" data-pane={mobileTab ? 'main' : 'nav'} role="dialog" aria-modal="true" aria-label="Settings">
       <nav className="ae-panel ae-scroll flex w-64 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-ae-border p-4">
         {groups.map((g) => (
           <div key={g.title} className="mb-3">

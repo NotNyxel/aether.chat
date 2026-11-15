@@ -332,3 +332,13 @@ Features ship in themed batches, one minor version each. See **[ROADMAP.md](ROAD
   [twemoji-colr font](https://github.com/mozilla/twemoji-colr) (OFL 1.1).
 - Icons: [Lucide](https://lucide.dev) (ISC). Brand marks: [Simple Icons](https://simpleicons.org) (CC0).
 - Game artwork comes from Steam's public store search; album art from Apple's public iTunes Search API.
+
+## Licence
+
+Aether's source code is **public to read, not open source**: you're welcome to read it, learn from it, report bugs
+and suggest changes, but copying, modifying, redistributing or hosting it requires written permission. See
+[LICENSE](LICENSE).
+
+Found a bug or have an idea? Use the [issue forms](https://github.com/NotNyxel/aether.chat/issues/new/choose), or
+chat in [Discussions](https://github.com/NotNyxel/aether.chat/discussions).
+

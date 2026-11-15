@@ -1,0 +1,39 @@
+name: Bug report
+description: Something in Aether doesn't work the way it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: When I upload two pictures at once, only the first one finishes…
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we make it happen again?
+      placeholder: |
+        1. Open a DM
+        2. Pick two pictures
+        3. …
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where?
+      multiple: true
+      options: [Windows app, macOS app, Linux app, Android app, iPhone/iPad app, Web app on a computer, Web app on a phone or tablet]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Settings → bottom of the list (e.g. Aether v1.7.8).
+      placeholder: 1.7.8
+  - type: textarea
+    id: screens
+    attributes:
+      label: Screenshots or recordings
+      description: Drag them in here. Hide anything private first.

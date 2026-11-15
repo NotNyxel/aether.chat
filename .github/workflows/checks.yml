@@ -1,0 +1,26 @@
+# Runs on every push and pull request: type check, a production build of the app and website, and
+# the database security test suite (permissions, bans, scheduled messages… on a real Postgres).
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Type check
+        run: npx tsc --noEmit
+      - name: Build (app, splash and website)
+        run: npx vite build
+      - name: Database tests
+        run: npm run test:db

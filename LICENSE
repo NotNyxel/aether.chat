@@ -1,0 +1,9 @@
+Copyright (c) 2026 NotNyxel. All rights reserved.
+
+The source code of Aether is published so people can read it, learn from it, report bugs and
+suggest changes. It is not open source: no permission is granted to copy, modify, distribute,
+host or sell this software or any part of it, in source or binary form, without written
+permission from the copyright holder.
+
+Third-party components keep their own licences (see package.json, src-tauri/Cargo.toml and the
+licence files that come with them).

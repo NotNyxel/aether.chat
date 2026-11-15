@@ -15,6 +15,17 @@ on:
         description: all, desktop, android or ios
         required: false
         default: all
+  # Also used as a step of the one-click "Release" workflow (release.yml).
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: main
+      platforms:
+        type: string
+        required: false
+        default: all
 
 jobs:
   build:

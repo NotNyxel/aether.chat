@@ -25,3 +25,4 @@ installer/gen/
 
 # Vercel
 .vercel/
+release-out/

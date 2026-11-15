@@ -1,0 +1,130 @@
+# One-click release: Actions → Release → Run workflow (works from a phone too).
+# Builds every platform in the cloud, publishes both GitHub releases with the update feed
+# (latest.json), and deploys the website and web app.
+#
+# Before running: bump the version (package.json, src-tauri/tauri.conf.json, src-tauri/Cargo.toml),
+# add a CHANGELOG.md section for it, and push.
+#
+# Repository secrets used:
+#   TAURI_SIGNING_PRIVATE_KEY(_PASSWORD)   signs the updates (already set)
+#   ANDROID_KEYSTORE_B64 / _PASSWORD       signs the APK (already set)
+#   RELEASE_TOKEN                          a fine-grained token with Contents: read and write on
+#                                          NotNyxel/aether.chat and NotNyxel/aether.chat-releases
+#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID   deploys the web app (skipped if missing)
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "all = every platform; windows = Windows and web only"
+        required: false
+        default: all
+        type: choice
+        options: [all, windows]
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      sha: ${{ steps.v.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          V=$(node -p "require('./package.json').version")
+          grep -qE "^## \[?v?${V//./\.}\]?" CHANGELOG.md || { echo "::error::CHANGELOG.md has no section for $V"; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "Releasing $V from $GITHUB_SHA"
+
+  windows:
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri -> target
+            installer -> target
+      - run: npm ci
+      - name: Build the signed installer
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build
+      - name: Build Aether Setup (embeds the installer)
+        shell: pwsh
+        run: |
+          $v = node -p "require('./package.json').version"
+          $exe = Resolve-Path "src-tauri/target/release/bundle/nsis/Aether_${v}_x64-setup.exe"
+          (Get-Content installer/Cargo.toml) -replace '^version = ".*"', "version = `"$v`"" | Set-Content installer/Cargo.toml
+          (Get-Content installer/tauri.conf.json) -replace '"version": "[^"]*"', "`"version`": `"$v`"" | Set-Content installer/tauri.conf.json
+          $env:AETHER_INSTALLER = "$exe"
+          cargo build --release --manifest-path installer/Cargo.toml
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item $exe out/
+          Copy-Item "$exe.sig" out/
+          Copy-Item installer/target/release/aetherchat-setup.exe out/Aether-Setup.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aether-windows
+          path: out/*
+          if-no-files-found: error
+          retention-days: 14
+
+  others:
+    needs: prepare
+    if: inputs.platforms == 'all'
+    uses: ./.github/workflows/desktop-builds.yml
+    with:
+      ref: ${{ needs.prepare.outputs.sha }}
+      platforms: all
+    secrets: inherit
+
+  publish:
+    needs: [prepare, windows, others]
+    if: always() && needs.windows.result == 'success' && (needs.others.result == 'success' || needs.others.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Publish releases and the update feed
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: node scripts/ci-publish.mjs artifacts "${{ needs.prepare.outputs.version }}" "${{ needs.prepare.outputs.sha }}"
+
+  web:
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Deploy the website and web app
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then echo "::warning::No VERCEL_TOKEN secret: web deploy skipped"; exit 0; fi
+          node scripts/deploy-web.mjs

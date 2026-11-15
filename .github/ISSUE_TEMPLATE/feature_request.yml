@@ -1,0 +1,19 @@
+name: Idea or request
+description: Something you'd like Aether to have or do differently.
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why? What would it help with?
+  - type: textarea
+    id: example
+    attributes:
+      label: Examples or pictures (optional)
+      description: How another app does it, a sketch, a screenshot…

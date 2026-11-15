@@ -19,7 +19,8 @@ const ROOT = resolve(import.meta.dirname, '..');
 const DIST = join(ROOT, 'dist');
 const IDS = join(ROOT, '.secrets', 'vercel-project.json');
 const PROJECT = 'aether-chat';
-const VERCEL = ['--yes', 'vercel@65'];
+// In the Release workflow the token and project ids come from repository secrets instead of .secrets/.
+const VERCEL = ['--yes', 'vercel@65', ...(process.env.VERCEL_TOKEN ? ['--token', process.env.VERCEL_TOKEN] : [])];
 
 const run = (cmd, args, opts = {}) => {
   const r = spawnSync(cmd, args, { cwd: ROOT, stdio: 'inherit', shell: process.platform === 'win32', ...opts });
@@ -43,7 +44,9 @@ renameSync(join(DIST, 'index.html'), join(DIST, 'app.html'));
 renameSync(join(DIST, 'home.html'), join(DIST, 'index.html'));
 
 const env = { ...process.env };
-if (existsSync(IDS)) {
+if (env.VERCEL_ORG_ID && env.VERCEL_PROJECT_ID) {
+  // Given by the environment (CI).
+} else if (existsSync(IDS)) {
   const ids = JSON.parse(readFileSync(IDS, 'utf8'));
   env.VERCEL_ORG_ID = ids.orgId;
   env.VERCEL_PROJECT_ID = ids.projectId;
@@ -69,5 +72,6 @@ const last = (url.match(/https:\/\/[a-z0-9.-]+\.vercel\.app/gi) ?? []).pop() ?? 
 // Our own address (WEB_APP_URL in src/config.ts) is a domain of the Vercel project, so every production
 // deploy gets it automatically; the old address keeps working too.
 const WEB = /WEB_APP_URL = 'https:\/\/([^']+)'/.exec(readFileSync(join(ROOT, 'src', 'config.ts'), 'utf8'))?.[1];
+mkdirSync(join(ROOT, '.secrets'), { recursive: true });
 writeFileSync(join(ROOT, '.secrets', 'vercel-last-deploy.txt'), `${WEB ? `https://${WEB}` : last}\n`);
 console.log(`\nDeployed: ${WEB ? `https://${WEB} (also ${last})` : last}`);

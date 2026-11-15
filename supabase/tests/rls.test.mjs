@@ -17,7 +17,7 @@ const STUBS = `
 create role anon nologin; create role authenticated nologin; create role service_role nologin;
 create schema auth;
 create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid);
-create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb, email text, last_sign_in_at timestamptz, email_confirmed_at timestamptz, created_at timestamptz default now());
+create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb, raw_app_meta_data jsonb default '{}'::jsonb, email text, last_sign_in_at timestamptz, email_confirmed_at timestamptz, created_at timestamptz default now());
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;
 create schema extensions; grant usage on schema extensions to authenticated, anon;
@@ -1167,6 +1167,19 @@ await expectOk('members share chat keys with members, and switch encryption on',
 });
 await expectError('chat keys cannot be handed to outsiders', () => as(A, `insert into public.conversation_keys (conversation_id, user_id, wrapped_key, iv) values ($1, '${C}', 'k', 'i')`, [squad]));
 await expectError('outsiders cannot switch a chat\'s encryption', () => as(C, `select public.set_conversation_e2e($1, false)`, [squad]), "not in this chat");
+
+console.log('\nUnconfirmed account cleanup');
+await expectOk('sign-ups never confirmed after 7 days are removed; everyone else stays', async () => {
+  const ids = ['c1eaa001-0000-4000-8000-000000000001', 'c1eaa001-0000-4000-8000-000000000002', 'c1eaa001-0000-4000-8000-000000000003', 'c1eaa001-0000-4000-8000-000000000004'];
+  await db.exec(`insert into auth.users (id, raw_user_meta_data, raw_app_meta_data, email_confirmed_at, created_at) values
+    ('${ids[0]}', '{"username":"squatter"}', '{}', null, now() - interval '8 days'),
+    ('${ids[1]}', '{"username":"newbie"}', '{}', null, now() - interval '1 day'),
+    ('${ids[2]}', '{"username":"confirmed"}', '{}', now(), now() - interval '30 days'),
+    ('${ids[3]}', '{"username":"adminmade"}', '{"created_by_admin":true}', null, now() - interval '30 days')`);
+  const removed = (await db.query(`select public.purge_unconfirmed_accounts(now() - interval '1 year') n`)).rows[0].n;
+  const left = (await db.query(`select username from public.users where id = any($1::uuid[]) order by username`, [ids])).rows.map((r) => r.username).join(',');
+  if (removed !== 1 || left !== 'adminmade,confirmed,newbie') throw new Error(`${removed} ${left}`);
+});
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

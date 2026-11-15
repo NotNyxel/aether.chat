@@ -53,6 +53,8 @@ Deno.serve(async (req) => {
       password,
       email_confirm: body.verified === true,
       user_metadata: { username, display_name: display || username },
+      // Admin-made accounts may stay unverified on purpose: the unconfirmed-account cleanup skips them.
+      app_metadata: { created_by_admin: true },
     });
     if (error || !created.user) return json({ error: error?.message.includes('already') ? 'Another account already uses that email.' : (error?.message ?? 'Could not create the account.') }, 400);
     await admin.from('admin_audit').insert({

@@ -20,6 +20,8 @@ const DIST = join(ROOT, 'dist');
 const IDS = join(ROOT, '.secrets', 'vercel-project.json');
 const PROJECT = 'aether-chat';
 // In the Release workflow the token and project ids come from repository secrets instead of .secrets/.
+// Windows runs these through a shell, so paths need quotes there (and only there).
+const q = (path) => (process.platform === 'win32' ? `"${path}"` : path);
 const VERCEL = ['--yes', 'vercel@65', ...(process.env.VERCEL_TOKEN ? ['--token', process.env.VERCEL_TOKEN] : [])];
 
 const run = (cmd, args, opts = {}) => {
@@ -51,7 +53,7 @@ if (env.VERCEL_ORG_ID && env.VERCEL_PROJECT_ID) {
   env.VERCEL_ORG_ID = ids.orgId;
   env.VERCEL_PROJECT_ID = ids.projectId;
 } else {
-  run('npx', [...VERCEL, 'link', '--yes', '--project', PROJECT, '--cwd', `"${DIST}"`]);
+  run('npx', [...VERCEL, 'link', '--yes', '--project', PROJECT, '--cwd', q(DIST)]);
   mkdirSync(join(ROOT, '.secrets'), { recursive: true });
   copyFileSync(join(DIST, '.vercel', 'project.json'), IDS);
   const ids = JSON.parse(readFileSync(IDS, 'utf8'));
@@ -66,7 +68,7 @@ if (env.VERCEL_ORG_ID && env.VERCEL_PROJECT_ID) {
 }
 
 const prod = !process.argv.includes('--preview');
-const url = capture('npx', [...VERCEL, 'deploy', `"${DIST}"`, ...(prod ? ['--prod'] : []), '--yes'], { env, stdio: ['inherit', 'pipe', 'pipe'] });
+const url = capture('npx', [...VERCEL, 'deploy', q(DIST), ...(prod ? ['--prod'] : []), '--yes'], { env, stdio: ['inherit', 'pipe', 'pipe'] });
 // The production alias (e.g. aether-chat-beta.vercel.app) is the last vercel.app URL printed.
 const last = (url.match(/https:\/\/[a-z0-9.-]+\.vercel\.app/gi) ?? []).pop() ?? url;
 // Our own address (WEB_APP_URL in src/config.ts) is a domain of the Vercel project, so every production

@@ -18,6 +18,7 @@ import { useCall } from './CallContext';
 import { Dialog, PromptForm } from './Dialog';
 import { BellIcon, BellOffIcon, CheckIcon, ChevronDownIcon, ForumIcon, HashIcon, ImageIcon, LinkIcon, LogOutIcon, MegaphoneIcon, PlusIcon, SettingsIcon, StageIcon, TrashIcon, VolumeIcon, GripIcon } from './icons';
 import { UserPanel } from './UserPanel';
+import { openOnboarding } from './Onboarding';
 
 type NewChannelKind = 'text' | 'announcement' | 'forum' | 'media' | 'voice' | 'stream' | 'category';
 const NEW_CHANNEL_KINDS: { kind: NewChannelKind; label: string; hint: string; type: ChannelType; subtype: ChannelSubtype | null }[] = [
@@ -220,6 +221,18 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
             >
               Server settings <span><SettingsIcon size={15} className="ae-ico" /></span>
             </button>
+            {server.onboarding_enabled && (
+              <button
+                type="button"
+                className={menuItem}
+                onClick={() => {
+                  setMenuOpen(false);
+                  openOnboarding(server.id);
+                }}
+              >
+                Pick your roles <CheckIcon size={14} />
+              </button>
+            )}
             <button
               type="button"
               className={menuItem}

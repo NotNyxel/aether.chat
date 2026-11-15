@@ -31,6 +31,7 @@ import { DisplayName, MessageItem } from './MessageItem';
 import { PinsPanel, SearchPanel } from './MessagePanels';
 import { MobileBack } from './MobileNav';
 import { SeenLine, type ReadState } from './ReadReceipts';
+import { WatchButton, WatchPanel } from './WatchTogether';
 
 const GROUP_WINDOW_MS = 5 * 60_000;
 
@@ -111,6 +112,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
   const [dropped, setDropped] = useState<File[] | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
+  const [watchOpen, setWatchOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const styles = useMemberStyles(serverId);
@@ -276,6 +278,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
         <MobileBack onClick={onBack} />
         {header}
         <div className="ml-3 flex shrink-0 items-center gap-2">
+          <WatchButton scopeId={scope.id} onOpen={() => setWatchOpen((v) => !v)} />
           <NotificationBell scope={scope} />
           <button
             type="button"
@@ -302,6 +305,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
           </form>
         </div>
       </header>
+      <WatchPanel scopeId={scope.id} open={watchOpen} onOpenChange={setWatchOpen} />
       {top}
 
       <div className="flex min-h-0 flex-1">

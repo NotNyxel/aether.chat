@@ -48,6 +48,7 @@ import { ReactionPickerLayer } from './ReactionPicker';
 import { ThemeEffectLayer } from './ThemeEffectLayer';
 import { MobileHome, MobileInbox, MobileServersEmpty, MobileTabBar, MobileYou } from './MobileNav';
 import { useSavedMessages } from '../hooks/useSaved';
+import { OnboardingGate } from './Onboarding';
 
 /** Moderation tools for a member, shown in their profile card while you're viewing the server. */
 function ServerMemberTools({ server, me, userId }: { server: Server; me: string; userId: string }) {
@@ -239,6 +240,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <ThemeEffectLayer />
       {popoverUserId && <PopoverForUser me={userId} userId={popoverUserId} server={server} onClose={() => showProfile(null)} />}
       <ServerSettings servers={servers.data ?? []} userId={userId} />
+      {server && <OnboardingGate key={server.id} server={server} userId={userId} />}
       <CreateThreadDialog />
       <ReportDialog me={userId} />
       <EventsDialog servers={servers.data ?? []} channels={channels.data ?? []} userId={userId} />

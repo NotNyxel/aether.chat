@@ -1096,5 +1096,35 @@ await expectOk('outsiders see no read receipts', async () => {
   if (n !== 0) throw new Error(String(n));
 });
 
+console.log('\nWatch together and onboarding (1.8.1)');
+await expectOk('chat members can start and control a watch party', async () => {
+  await as(A, `insert into public.watch_parties (scope_id, video_id, title) values ($1, 'dQw4w9WgXcQ', 'Test')`, [squad]);
+  await as(B, `update public.watch_parties set playing = false, position = 42 where scope_id = $1`, [squad]);
+  const r = (await as(A, `select playing, position, updated_by from public.watch_parties where scope_id = $1`, [squad])).rows[0];
+  if (r.playing !== false || r.position !== 42 || r.updated_by !== B) throw new Error(JSON.stringify(r));
+});
+await expectError('outsiders cannot see or start a watch party', () => as(C, `insert into public.watch_parties (scope_id, video_id) values ($1, 'dQw4w9WgXcQ')`, [squad]));
+await expectOk('outsiders cannot read it either', async () => {
+  const n = (await as(C, `select count(*)::int n from public.watch_parties where scope_id = $1`, [squad])).rows[0].n;
+  if (n !== 0) throw new Error(String(n));
+});
+await expectError('only real YouTube ids are accepted', () => as(A, `update public.watch_parties set video_id = 'javascript:x' where scope_id = $1`, [squad]));
+const onboardee = (await db.query(`select user_id from public.server_members where server_id = $1 and user_id <> '${A}' limit 1`, [srv])).rows[0]?.user_id;
+await expectOk('members pick self-assignable roles during onboarding', async () => {
+  const pick = (await as(A, `insert into public.server_roles (server_id, name, position) values ($1, 'Gamer', 1) returning id`, [srv])).rows[0].id;
+  await as(A, `update public.server_roles set self_assignable = true where id = $1`, [pick]);
+  await as(onboardee, `select public.complete_onboarding($1, array[$2]::uuid[])`, [srv, pick]);
+  const has = (await db.query(`select count(*)::int n from public.member_roles where user_id = '${onboardee}' and role_id = $1`, [pick])).rows[0].n;
+  const done = (await db.query(`select onboarded_at from public.server_members where server_id = $1 and user_id = '${onboardee}'`, [srv])).rows[0].onboarded_at;
+  if (has !== 1 || !done) throw new Error(`${has} ${done}`);
+  await as(onboardee, `select public.complete_onboarding($1, '{}'::uuid[])`, [srv]);
+  const gone = (await db.query(`select count(*)::int n from public.member_roles where user_id = '${onboardee}' and role_id = $1`, [pick])).rows[0].n;
+  if (gone !== 0) throw new Error('role not removed');
+});
+await expectError('onboarding cannot hand out roles the server did not offer', async () => {
+  const mod = (await as(A, `insert into public.server_roles (server_id, name, position, permissions) values ($1, 'Boss', 2, 8) returning id`, [srv])).rows[0].id;
+  await as(onboardee, `select public.complete_onboarding($1, array[$2]::uuid[])`, [srv, mod]);
+}, "can't be picked");
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

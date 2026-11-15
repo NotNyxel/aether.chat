@@ -26,3 +26,12 @@ installer/gen/
 # Vercel
 .vercel/
 release-out/
+
+# Local tools and generated mobile projects (CI regenerates them)
+.idea/
+src-tauri/gen/android/
+src-tauri/gen/apple/
+src-tauri/icons/ios/
+src-tauri/icons/android/
+linux-out/
+*.apk

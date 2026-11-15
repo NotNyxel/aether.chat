@@ -1148,5 +1148,25 @@ await expectOk('message and reaction counts are kept', async () => {
   if (!(r?.messages > 0)) throw new Error(JSON.stringify(r));
 });
 
+console.log('\nEncrypted chats (1.8.3)');
+await expectOk('public keys are public, backups private', async () => {
+  await as(A, `insert into public.e2e_public_keys (public_key) values ('{"kty":"EC"}')`);
+  await as(A, `insert into public.e2e_key_backups (ciphertext, salt, iv) values ('x', 's', 'i')`);
+  const pub = (await as(B, `select count(*)::int n from public.e2e_public_keys where user_id = '${A}'`)).rows[0].n;
+  const backup = (await as(B, `select count(*)::int n from public.e2e_key_backups`)).rows[0].n;
+  if (pub !== 1 || backup !== 0) throw new Error(`${pub} ${backup}`);
+});
+await expectOk('members share chat keys with members, and switch encryption on', async () => {
+  await as(A, `insert into public.conversation_keys (conversation_id, user_id, wrapped_key, iv) values ($1, '${A}', 'k', 'i')`, [squad]);
+  const other = (await db.query(`select user_id from public.conversation_members where conversation_id = $1 and user_id <> '${A}' limit 1`, [squad])).rows[0].user_id;
+  await as(A, `insert into public.conversation_keys (conversation_id, user_id, wrapped_key, iv) values ($1, $2, 'k', 'i')`, [squad, other]);
+  await as(A, `select public.set_conversation_e2e($1, true)`, [squad]);
+  const on = (await db.query(`select e2e from public.conversations where id = $1`, [squad])).rows[0].e2e;
+  const seeOthers = (await as(A, `select count(*)::int n from public.conversation_keys where conversation_id = $1`, [squad])).rows[0].n;
+  if (!on || seeOthers !== 1) throw new Error(`${on} ${seeOthers}`);
+});
+await expectError('chat keys cannot be handed to outsiders', () => as(A, `insert into public.conversation_keys (conversation_id, user_id, wrapped_key, iv) values ($1, '${C}', 'k', 'i')`, [squad]));
+await expectError('outsiders cannot switch a chat\'s encryption', () => as(C, `select public.set_conversation_e2e($1, false)`, [squad]), "not in this chat");
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

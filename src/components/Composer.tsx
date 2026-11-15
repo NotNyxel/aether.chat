@@ -25,6 +25,7 @@ import { stickerAttachment } from './Stickers';
 import { VoiceRecorder } from './VoiceMessage';
 import { ScheduleDialog, ScheduledChip, useSyncedDraft } from './ScheduledMessages';
 import { gifAttachment } from './GifPicker';
+import { previewText } from './E2eChat';
 
 interface Suggestion {
   key: string;
@@ -35,6 +36,8 @@ interface Suggestion {
 }
 
 export interface ComposerProps {
+  /** Encrypted chats: turns the text into ciphertext before sending. */
+  encrypt?: (text: string) => Promise<string>;
   scope: MessageScope;
   placeholder: string;
   memberIds: string[];
@@ -290,8 +293,9 @@ export function Composer(props: ComposerProps) {
     props.onSent();
     playSound('messageSent');
     if (props.slowmodeSeconds) setCooldownUntil(Date.now() + props.slowmodeSeconds * 1000);
+    const encrypt = props.encrypt;
     sendQueue.current = sendQueue.current.then(() =>
-      send.mutateAsync(vars).catch((e: Error) => {
+      (encrypt ? encrypt(vars.content).then((content) => send.mutateAsync({ ...vars, content })) : send.mutateAsync(vars)).catch((e: Error) => {
         toast.error(e.message);
         // Give the text back, unless they've already started typing something new.
         setDraft((cur) => (cur.trim() ? cur : content));
@@ -423,7 +427,7 @@ export function Composer(props: ComposerProps) {
             <ReplyIcon size={14} className="shrink-0 text-ae-accent" />
             <span className="min-w-0 flex-1 truncate">
               Replying to <strong className="text-ae-text"><DisplayName userId={props.replyTo.author_id} /></strong>
-              {props.replyTo.content && <span className="ml-1.5 opacity-80">{props.replyTo.content.slice(0, 120)}</span>}
+              {props.replyTo.content && <span className="ml-1.5 opacity-80">{previewText(props.replyTo.content).slice(0, 120)}</span>}
             </span>
             <button type="button" className="grid h-5 w-5 place-items-center rounded-full hover:bg-ae-hover hover:text-ae-text" onClick={props.onCancelReply} aria-label="Cancel reply">
               <CloseIcon size={13} />

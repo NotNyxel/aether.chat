@@ -32,6 +32,9 @@ import { PinsPanel, SearchPanel } from './MessagePanels';
 import { MobileBack } from './MobileNav';
 import { SeenLine, type ReadState } from './ReadReceipts';
 import { WatchButton, WatchPanel } from './WatchTogether';
+import { useE2e } from './E2eChat';
+import { E2E_MAX_CHARS, encryptText } from '../lib/e2e';
+import { toast } from './Toaster';
 
 const GROUP_WINDOW_MS = 5 * 60_000;
 
@@ -242,7 +245,27 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
   const onStartEdit = useCallback((id: string) => setEditingId(id), []);
   const onCancelEdit = useCallback(() => setEditingId(null), []);
   const editMutate = edit.mutate;
-  const onSaveEdit = useCallback((id: string, content: string) => editMutate({ id, content }, { onSuccess: () => setEditingId(null) }), [editMutate]);
+  // Encrypted chats: messages are encrypted here, in the app, before they're sent or edited.
+  const e2e = useE2e();
+  const encrypt = useMemo(
+    () =>
+      e2e.on
+        ? async (text: string) => {
+            if (!e2e.key) throw new Error('This chat is encrypted. Unlock encrypted messages on this device to send here.');
+            if (text.length > E2E_MAX_CHARS) throw new Error(`Encrypted messages can be up to ${E2E_MAX_CHARS.toLocaleString()} characters.`);
+            return text ? encryptText(e2e.key, text) : text;
+          }
+        : undefined,
+    [e2e.on, e2e.key],
+  );
+  const onSaveEdit = useCallback(
+    (id: string, content: string) =>
+      void (encrypt ? encrypt(content) : Promise.resolve(content)).then(
+        (c) => editMutate({ id, content: c }, { onSuccess: () => setEditingId(null) }),
+        (e: Error) => toast.error(e.message),
+      ),
+    [editMutate, encrypt],
+  );
   const delMutate = del.mutate;
   const onDelete = useCallback(
     async (id: string) => {
@@ -439,6 +462,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             </p>
           ) : (
           <Composer
+            encrypt={encrypt}
             botCommands={botOn}
             scope={scope}
             placeholder={placeholder}

@@ -19,6 +19,7 @@ import { useSupabase } from '../lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from './Toaster';
 import { useConversationReads } from './ReadReceipts';
+import { E2eButton, E2eProvider, E2eUnlockBar } from './E2eChat';
 
 function MemberRow({ userId, owner, conv, me }: { userId: string; owner: boolean; conv: Conversation; me: string }) {
   const { data: p } = useProfile(userId);
@@ -181,6 +182,7 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
         <button type="button" title="Start video call" className="hover:text-ae-text" onClick={() => callConversation(conv.id, title, true)}>
           <CameraIcon size={20} />
         </button>
+        <E2eButton conv={conv} me={userId} />
         {conv.type === 'dm' && (
           <button
             type="button"
@@ -246,7 +248,7 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
     ) : undefined;
 
   return (
-    <>
+    <E2eProvider conv={conv} me={userId}>
       <MessagePane
         key={conv.id}
         scope={scope}
@@ -256,7 +258,12 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
         group={conv.type === 'group'}
         memberIds={memberIds}
         header={header}
-        top={top}
+        top={
+          <>
+            <E2eUnlockBar me={userId} />
+            {top}
+          </>
+        }
         aside={aside}
         placeholder={`Message ${conv.type === 'dm' ? '@' : ''}${title}`}
         emptyState={
@@ -276,6 +283,6 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
           existing={{ conversationId: conv.id, memberIds: conv.conversation_members.map((m) => m.user_id) }}
         />
       )}
-    </>
+    </E2eProvider>
   );
 }

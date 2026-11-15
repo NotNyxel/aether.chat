@@ -45,6 +45,7 @@ function channelTitle(qc: QueryClient, channelId: string): { title: string; serv
 
 function preview(m: Message, show: boolean): string {
   if (!show) return 'New message';
+  if (m.content?.startsWith('aether-e2e:')) return '🔒 Encrypted message';
   if (m.content?.trim()) return m.content.length > 180 ? `${m.content.slice(0, 177)}…` : m.content;
   if (m.poll) return `📊 ${m.poll.question}`;
   if (m.attachments?.length) return `📎 ${m.attachments.length === 1 ? m.attachments[0]!.name : `${m.attachments.length} files`}`;

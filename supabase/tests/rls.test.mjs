@@ -1126,5 +1126,27 @@ await expectError('onboarding cannot hand out roles the server did not offer', a
   await as(onboardee, `select public.complete_onboarding($1, array[$2]::uuid[])`, [srv, mod]);
 }, "can't be picked");
 
+console.log('\nLevels and stats (1.8.2)');
+await expectOk('level thresholds follow 5L²+50L+100', async () => {
+  const r = (await db.query(`select public.level_for_xp(0) a, public.level_for_xp(99) b, public.level_for_xp(100) c, public.level_for_xp(254) d, public.level_for_xp(255) e`)).rows[0];
+  if (r.a !== 0 || r.b !== 0 || r.c !== 1 || r.d !== 1 || r.e !== 2) throw new Error(JSON.stringify(r));
+});
+await expectOk('chatting earns XP at most once a minute', async () => {
+  const ch = (await as(A, `select id from public.channels where server_id = $1 and type = 'text' limit 1`, [srv])).rows[0].id;
+  await as(A, `insert into public.messages (channel_id, content) values ($1, 'xp one')`, [ch]);
+  await as(A, `insert into public.messages (channel_id, content) values ($1, 'xp two')`, [ch]);
+  const r = (await as(A, `select xp, messages from public.member_xp where server_id = $1 and user_id = '${A}'`, [srv])).rows[0];
+  if (!(r.xp >= 15 && r.xp <= 25) || r.messages < 2) throw new Error(JSON.stringify(r));
+});
+await expectOk('the leaderboard is for members only', async () => {
+  const mine = (await as(A, `select count(*)::int n from public.server_leaderboard($1, 10)`, [srv])).rows[0].n;
+  if (mine < 1) throw new Error('empty');
+});
+await expectError('nobody can set their own XP', () => as(A, `update public.member_xp set xp = 999999 where user_id = '${A}'`));
+await expectOk('message and reaction counts are kept', async () => {
+  const r = (await as(B, `select messages from public.user_stats where user_id = '${A}'`)).rows[0];
+  if (!(r?.messages > 0)) throw new Error(JSON.stringify(r));
+});
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

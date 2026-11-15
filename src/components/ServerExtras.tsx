@@ -54,6 +54,8 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
     discoverable: !!server.discoverable,
     discovery_category: server.discovery_category ?? 'social',
     onboarding_enabled: !!server.onboarding_enabled,
+    levels_enabled: server.levels_enabled !== false,
+    levels_announce: server.levels_announce !== false,
     onboarding_prompt: server.onboarding_prompt ?? '',
   });
   const [d, setD] = useState(initial);
@@ -121,6 +123,11 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
         )}
       </Section>
 
+      <Section title="Levels" description="Members earn XP for chatting (15–25 XP, at most once a minute) and level up. Shown on their profile in this server and on the leaderboard (server menu).">
+        <Toggle label="Levels and XP" checked={d.levels_enabled} onChange={(v) => editable && setD((x) => ({ ...x, levels_enabled: v }))} />
+        <Toggle label="Announce level-ups in chat" hint="The built-in bot congratulates people in the channel where they levelled up (needs the bot turned on in the Bot tab)." checked={d.levels_announce} onChange={(v) => editable && setD((x) => ({ ...x, levels_announce: v }))} />
+      </Section>
+
       <Section title="Onboarding" description="A welcome screen new members see before chatting: your welcome message, the rules to accept, and roles they can pick themselves (games, pronouns, which pings they want).">
         <Toggle label="Show the welcome screen to new members" checked={d.onboarding_enabled} onChange={(v) => editable && setD((x) => ({ ...x, onboarding_enabled: v }))} />
         <label className="mt-3 block text-sm">
@@ -157,6 +164,8 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
               discoverable: d.discoverable,
               discovery_category: d.discovery_category,
               onboarding_enabled: d.onboarding_enabled,
+              levels_enabled: d.levels_enabled,
+              levels_announce: d.levels_announce,
               onboarding_prompt: d.onboarding_prompt.trim() || null,
             },
           })

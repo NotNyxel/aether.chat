@@ -49,6 +49,7 @@ import { ThemeEffectLayer } from './ThemeEffectLayer';
 import { MobileHome, MobileInbox, MobileServersEmpty, MobileTabBar, MobileYou } from './MobileNav';
 import { useSavedMessages } from '../hooks/useSaved';
 import { OnboardingGate } from './Onboarding';
+import { LevelBar } from './Levels';
 
 /** Moderation tools for a member, shown in their profile card while you're viewing the server. */
 function ServerMemberTools({ server, me, userId }: { server: Server; me: string; userId: string }) {
@@ -78,6 +79,7 @@ function PopoverForUser({ me, userId, server, onClose }: { me: string; userId: s
       aboutExtra={
         me !== userId ? (
           <>
+            {server && server.levels_enabled !== false && <LevelBar serverId={server.id} userId={userId} />}
             {server && <ServerMemberTools server={server} me={me} userId={userId} />}
             <NoteFields me={me} userId={userId} />
           </>

@@ -24,6 +24,7 @@ import { Avatar, BadgeRow, cropStyle, ProfileEffectLayer, StyledName } from './P
 import { MutualSummary, NoteFields, ProfileActionButtons, useRelationship } from './ProfileParts';
 import { toast } from './Toaster';
 import { isPhoneLayout } from '../lib/phone';
+import { LevelBar } from './Levels';
 
 const CARD_W = 300;
 
@@ -210,6 +211,11 @@ export function MiniProfile({
         <div className="mt-2.5 space-y-2 empty:hidden">
           <ActivitySections userId={userId} />
         </div>
+        {serverId && (
+          <div className="mt-2.5">
+            <LevelBar serverId={serverId} userId={userId} />
+          </div>
+        )}
 
         {panel && (
           <>

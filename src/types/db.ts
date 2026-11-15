@@ -101,6 +101,8 @@ export interface Server {
   welcome_message?: string | null;
   rules?: string | null;
   onboarding_enabled?: boolean;
+  levels_enabled?: boolean;
+  levels_announce?: boolean;
   onboarding_prompt?: string | null;
   bot_enabled?: boolean;
   bot_welcome?: boolean;

@@ -21,6 +21,7 @@ import { themeAttrs } from '../lib/cosmetics';
 import { cropStyle } from './ProfileCard';
 import { EmojiText } from '../lib/twemoji';
 import { PresenceDot, usePresenceOf } from '../hooks/usePresence';
+import { AchievementsTab } from './Levels';
 
 export interface ProfileTab {
   id: string;
@@ -61,6 +62,7 @@ export function FullProfile({
   const tabs: ProfileTab[] = [
     { id: 'about', label: 'About me', content: null },
     { id: 'board', label: widgets.length ? `Board (${widgets.length})` : 'Board', content: null },
+    { id: 'achievements', label: 'Achievements', content: null },
     ...extraTabs,
   ];
 
@@ -195,6 +197,7 @@ export function FullProfile({
               empty={boardEmpty ?? <div className="grid h-28 place-items-center rounded-ae border border-dashed border-ae-border text-sm text-ae-muted">Nothing on the board yet.</div>}
             />
           )}
+          {tab === 'achievements' && <AchievementsTab profile={profile} />}
           {extraTabs.find((t) => t.id === tab)?.content}
         </div>
       </div>

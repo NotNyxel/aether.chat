@@ -184,6 +184,12 @@ export {
   ShieldX as BannedIcon,
   MousePointer2 as MousePointerIcon,
   // ── added in 1.6 ──
+  Bookmark as BookmarkIcon,
+  BookmarkCheck as BookmarkCheckIcon,
+  Tv as TvIcon,
+  Lock as E2eIcon,
+  Accessibility as AccessibilityIcon,
+  Medal as MedalIcon,
   PanelRight as SidePanelIcon,
   SquareArrowOutUpRight as OpenFullIcon,
   Shuffle as ShuffleIcon,

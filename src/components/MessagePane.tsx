@@ -30,6 +30,7 @@ import { Composer } from './Composer';
 import { DisplayName, MessageItem } from './MessageItem';
 import { PinsPanel, SearchPanel } from './MessagePanels';
 import { MobileBack } from './MobileNav';
+import { SeenLine, type ReadState } from './ReadReceipts';
 
 const GROUP_WINDOW_MS = 5 * 60_000;
 
@@ -76,11 +77,14 @@ interface MessagePaneProps {
   top?: ReactNode;
   /** Right-hand panel when neither pins nor search is open, e.g. the member list. */
   aside?: ReactNode;
+  /** DMs and groups: who has read up to where (for the "Seen" line). */
+  reads?: ReadState[];
+  group?: boolean;
   /** Phones: what the back arrow does (default: back to the list). */
   onBack?: () => void;
 }
 
-export function MessagePane({ scope, userId, serverId, header, placeholder, emptyState, memberIds, channels = [], top, aside, onBack }: MessagePaneProps) {
+export function MessagePane({ scope, userId, serverId, header, placeholder, emptyState, memberIds, channels = [], top, aside, onBack, reads, group }: MessagePaneProps) {
   const qc = useQueryClient();
   const messages = useMessages(scope);
   const reactionsQ = useReactions(scope);
@@ -326,6 +330,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             }}
           >
             <ul className="flex flex-col-reverse">
+              {reads && <SeenLine newest={list[0]} me={userId} reads={reads} group={!!group} />}
               {list.map((m, i) => {
                 const older = list[i + 1];
                 const newDay = !older || dayKey(older.created_at) !== dayKey(m.created_at);

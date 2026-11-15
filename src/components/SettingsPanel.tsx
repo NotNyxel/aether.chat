@@ -250,6 +250,8 @@ function AppearanceTab() {
         />
       </Section>
 
+      <A11ySection />
+
       <Section
         title="Custom CSS"
         description="Applies to the whole app, scoped so it cannot affect anything outside Aether. Override theme tokens with :scope { --ae-accent: #ff2fd6; }."
@@ -847,5 +849,41 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
         </button>
       </main>
     </div>
+  );
+}
+
+function A11ySection() {
+  const a = useSettingsStore((s) => s.a11y);
+  const set = useSettingsStore((s) => s.setA11y);
+  const range = (label: string, value: number, min: number, max: number, step: number, unit: string, onChange: (v: number) => void, reset: number) => (
+    <label className="block">
+      <span className="flex items-center justify-between text-sm font-semibold">
+        {label}
+        <span className="flex items-center gap-2 text-xs font-normal text-ae-muted tabular-nums">
+          {value}
+          {unit}
+          {value !== reset && (
+            <button type="button" className="text-ae-accent hover:underline" onClick={() => onChange(reset)}>
+              Reset
+            </button>
+          )}
+        </span>
+      </span>
+      <input type="range" className="mt-2 w-full" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </label>
+  );
+  return (
+    <Section title="Accessibility" description="Make Aether easier to read. These settings are saved on this device.">
+      <div className="space-y-5">
+        {range('Chat text size', a.chatSize, 12, 22, 1, 'px', (v) => set({ chatSize: v }), 15)}
+        <p className="-mt-3 rounded-ae bg-ae-sunken px-3 py-2" style={{ fontSize: a.chatSize }}>
+          This is how messages will look.
+        </p>
+        {range('Zoom (everything)', a.zoom, 75, 150, 5, '%', (v) => set({ zoom: v }), 100)}
+        <Toggle label="High contrast" hint="Brighter secondary text, stronger outlines and a clear focus ring for keyboard use." checked={a.highContrast} onChange={(v) => set({ highContrast: v })} />
+        <Toggle label="Always underline links" hint="So links stand out without relying on color." checked={a.underlineLinks} onChange={(v) => set({ underlineLinks: v })} />
+        <Toggle label="Always show message times" hint="Show the time beside every message, not only when you hover it." checked={a.alwaysShowTimes} onChange={(v) => set({ alwaysShowTimes: v })} />
+      </div>
+    </Section>
   );
 }

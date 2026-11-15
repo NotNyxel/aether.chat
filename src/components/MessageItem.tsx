@@ -18,7 +18,7 @@ import { openReactionPicker, useQuickReactions } from './ReactionPicker';
 import { useUiStore } from '../stores/uiStore';
 import type { Attachment, Message, PollVote } from '../types/db';
 import { EmojiPicker } from './EmojiPicker';
-import { BotIcon, CheckIcon, EditIcon, FileIcon, FlagIcon, ForwardIcon, LinkIcon, LockIcon, MegaphoneIcon, PinIcon, PinOffIcon, ReactIcon, ThreadIcon, TrashIcon, ReplyIcon, CopyIcon } from './icons';
+import { BotIcon, CheckIcon, EditIcon, FileIcon, FlagIcon, ForwardIcon, LinkIcon, LockIcon, MegaphoneIcon, PinIcon, PinOffIcon, ReactIcon, ThreadIcon, TrashIcon, ReplyIcon, CopyIcon, BookmarkIcon, BookmarkCheckIcon } from './icons';
 import { LinkEmbed } from './LinkEmbed';
 import { PollCard } from './PollCard';
 import { Avatar, StyledName } from './ProfileCard';
@@ -27,6 +27,7 @@ import { StickerView, type StickerAttachment } from './Stickers';
 import { VoiceMessagePlayer, type VoiceAttachment } from './VoiceMessage';
 import { GifView } from './GifPicker';
 import { useQueryClient } from '@tanstack/react-query';
+import { useToggleSaved } from '../hooks/useSaved';
 
 export function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -194,6 +195,8 @@ function MessageItemImpl(props: MessageItemProps) {
   // Phones and tablets: the picker opens as its own sheet, not inside the hover toolbar.
   const openPicker = () => (isPhoneLayout() ? openReactionPicker(react) : setPicker(true));
   const qcR = useQueryClient();
+  const toggleSaved = useToggleSaved();
+  const isSaved = !!qcR.getQueryData<{ message_id: string }[]>(['saved-messages'])?.some((r) => r.message_id === message.id);
   const rowRef = useRef<HTMLLIElement>(null);
   useEffect(() => {
     const el = rowRef.current;
@@ -214,6 +217,15 @@ function MessageItemImpl(props: MessageItemProps) {
           { label: 'Add reaction', icon: <ReactIcon size={15} />, onClick: openPicker },
           { label: 'Reply', icon: <ReplyIcon size={15} />, onClick: () => props.onReply(message) },
           { label: 'Forward', icon: <ForwardIcon size={15} />, onClick: () => openForward(message.id) },
+          {
+            label: isSaved ? 'Remove from saved' : 'Save message',
+            icon: isSaved ? <BookmarkCheckIcon size={15} /> : <BookmarkIcon size={15} />,
+            onClick: () =>
+              toggleSaved.mutate(
+                { message, saved: isSaved },
+                { onSuccess: () => toast(isSaved ? 'Removed from saved' : 'Saved. Find it in Inbox → Saved.', <BookmarkIcon size={14} />), onError: (e) => toast.error(e.message) },
+              ),
+          },
           props.canThread && message.channel_id
             ? {
                 label: message.thread_id ? 'Open thread' : 'Create thread',

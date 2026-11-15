@@ -107,6 +107,8 @@ export interface ActivityPrefs {
 
 interface SettingsState {
   theme: ThemeSettings;
+  a11y: A11yPrefs;
+  setA11y: (patch: Partial<A11yPrefs>) => void;
   audio: AudioProcessingSettings;
   screen: ScreenShareOptions;
   keybinds: Keybinds;
@@ -154,12 +156,27 @@ export const DEFAULT_SOUNDS: SoundSettings = {
 
 export const DEFAULT_NOTIFICATIONS: NotificationPrefs = { desktop: true, showPreview: true, taskbarBadge: true, flashOnCall: true };
 export const DEFAULT_SYSTEM: SystemPrefs = { closeToTray: true, globalShortcuts: true, autoIdleMinutes: 10 };
+/** Accessibility: Settings → Appearance → Accessibility. */
+export interface A11yPrefs {
+  /** Message text size in px (default 15). */
+  chatSize: number;
+  /** Whole-app zoom in percent (default 100). */
+  zoom: number;
+  /** Brighter secondary text and stronger outlines. */
+  highContrast: boolean;
+  /** Links always underlined, not just colored. */
+  underlineLinks: boolean;
+  /** Show the time on every message, not only on hover. */
+  alwaysShowTimes: boolean;
+}
+export const DEFAULT_A11Y: A11yPrefs = { chatSize: 15, zoom: 100, highContrast: false, underlineLinks: false, alwaysShowTimes: false };
 export const DEFAULT_ACTIVITY: ActivityPrefs = { shareActivity: false, shareSpotify: false, customGames: [] };
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       theme: DEFAULT_THEME,
+      a11y: DEFAULT_A11Y,
       audio: DEFAULT_AUDIO_SETTINGS,
       screen: DEFAULT_SCREEN_SHARE,
       keybinds: DEFAULT_KEYBINDS,
@@ -169,6 +186,7 @@ export const useSettingsStore = create<SettingsState>()(
       activity: DEFAULT_ACTIVITY,
       profileAccent: null,
       setTheme: (patch) => set((s) => ({ theme: { ...s.theme, ...patch } })),
+      setA11y: (patch) => set((s) => ({ a11y: { ...s.a11y, ...patch } })),
       setAudio: (patch) => set((s) => ({ audio: { ...s.audio, ...patch } })),
       setScreen: (patch) => set((s) => ({ screen: { ...s.screen, ...patch } })),
       setKeybinds: (patch) => set((s) => ({ keybinds: { ...s.keybinds, ...patch } })),
@@ -190,6 +208,7 @@ export const useSettingsStore = create<SettingsState>()(
           ...current,
           ...p,
           theme: { ...current.theme, ...p.theme },
+          a11y: { ...current.a11y, ...p.a11y },
           audio: { ...current.audio, ...p.audio },
           screen: { ...current.screen, ...p.screen },
           keybinds: { ...current.keybinds, ...p.keybinds },

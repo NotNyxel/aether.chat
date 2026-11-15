@@ -14,6 +14,8 @@ export interface ProfileLink {
 }
 
 export interface UserProfile {
+  /** Shows "Seen" in DMs (two-way). */
+  read_receipts?: boolean;
   id: string;
   username: string;
   display_name: string | null;
@@ -72,6 +74,7 @@ export type EditableProfile = Pick<
   | 'profile_widgets'
   | 'decor'
   | 'discoverable'
+  | 'read_receipts'
   | 'status_emoji'
   | 'bio'
   | 'avatar_url'

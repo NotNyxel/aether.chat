@@ -18,6 +18,7 @@ import { useUserMenu } from '../hooks/useUserMenu';
 import { useSupabase } from '../lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from './Toaster';
+import { useConversationReads } from './ReadReceipts';
 
 function MemberRow({ userId, owner, conv, me }: { userId: string; owner: boolean; conv: Conversation; me: string }) {
   const { data: p } = useProfile(userId);
@@ -152,6 +153,7 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
   const dmPartner = usePresenceOf(conv.type === 'dm' ? others[0] : null);
 
   const scope = useMemo(() => ({ kind: 'conversation' as const, id: conv.id }), [conv.id]);
+  const reads = useConversationReads(conv.id);
   const memberIds = useMemo(() => conv.conversation_members.map((m) => m.user_id).filter((id) => id !== userId), [conv.conversation_members, userId]);
 
   const inThisCall = room?.kind === 'conversation' && room.id === conv.id && voice.status !== 'idle';
@@ -250,6 +252,8 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
         scope={scope}
         userId={userId}
         serverId={null}
+        reads={reads}
+        group={conv.type === 'group'}
         memberIds={memberIds}
         header={header}
         top={top}

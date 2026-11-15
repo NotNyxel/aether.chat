@@ -13,9 +13,10 @@ import { useSupabase } from '../lib/supabase';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, Conversation, Message, Server, UnreadRow } from '../types/db';
 import { ConversationAvatar, useConversationTitle } from './ConversationBits';
-import { CheckIcon, CloseIcon, HashIcon, InboxIcon, SparklesIcon } from './icons';
+import { CheckIcon, CloseIcon, HashIcon, InboxIcon, SparklesIcon, BookmarkIcon } from './icons';
 import { Avatar } from './ProfileCard';
 import { useEscape } from '../lib/escape';
+import { useSavedMessages } from '../hooks/useSaved';
 
 type ChannelInfo = Pick<Channel, 'id' | 'name' | 'server_id'>;
 
@@ -102,7 +103,8 @@ export function InboxButton({ userId, servers }: { userId: string; servers: Serv
 
 export function InboxPanel({ userId, servers, onClose, inline = false }: { userId: string; servers: Server[]; onClose: () => void; inline?: boolean }) {
   const sb = useSupabase();
-  const [tab, setTab] = useState<'mentions' | 'unreads'>('mentions');
+  const [tab, setTab] = useState<'mentions' | 'unreads' | 'saved'>('mentions');
+  const saved = useSavedMessages(tab === 'saved');
   const goTo = useUiStore((s) => s.goTo);
   const markRead = useMarkRead();
   const { data: unread = [] } = useUnreadSummary();
@@ -139,8 +141,9 @@ export function InboxPanel({ userId, servers, onClose, inline = false }: { userI
     const ids = new Set<string>();
     for (const m of mentionsQ.data ?? []) if (m.channel_id) ids.add(m.channel_id);
     for (const r of unreadRows) if (r.server_id) ids.add(r.scope_id);
+    for (const r of saved.data ?? []) if (r.messages?.channel_id) ids.add(r.messages.channel_id);
     return [...ids];
-  }, [mentionsQ.data, unreadRows]);
+  }, [mentionsQ.data, unreadRows, saved.data]);
   const { data: channelInfo = [] } = useChannelNames(channelIds);
   const channelById = useMemo(() => new Map(channelInfo.map((c) => [c.id, c])), [channelInfo]);
   const serverById = useMemo(() => new Map(servers.map((s) => [s.id, s])), [servers]);
@@ -190,13 +193,40 @@ export function InboxPanel({ userId, servers, onClose, inline = false }: { userI
         <h2 className="mr-2 font-bold">Inbox</h2>
         {tabBtn('mentions', 'Mentions')}
         {tabBtn('unreads', 'Unreads', unreadRows.length)}
+        {tabBtn('saved', 'Saved')}
         <button type="button" title="Close" className="ml-auto text-ae-muted hover:text-ae-text" onClick={onClose}>
           <CloseIcon size={16} />
         </button>
       </header>
 
       <div className="ae-scroll min-h-0 flex-1 overflow-y-auto p-3">
-        {tab === 'mentions' ? (
+        {tab === 'saved' ? (
+          saved.isLoading ? (
+            <p className="p-6 text-center text-sm text-ae-muted">Loading…</p>
+          ) : (saved.data ?? []).filter((r) => r.messages).length === 0 ? (
+            <div className="p-8 text-center text-sm text-ae-muted">
+              <BookmarkIcon size={28} className="mx-auto mb-2 opacity-60" />
+              Nothing saved yet. Right-click a message (or press and hold it) and choose <b>Save message</b>.
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {(saved.data ?? [])
+                .filter((r) => r.messages)
+                .map((r) => (
+                  <MentionRow
+                    key={r.message_id}
+                    m={r.messages!}
+                    where={whereLabel({ channelId: r.messages!.channel_id, conversationId: r.messages!.conversation_id })}
+                    onOpen={() => {
+                      const m = r.messages!;
+                      const serverId = m.channel_id ? (channelById.get(m.channel_id)?.server_id ?? null) : null;
+                      open({ serverId, scopeId: (m.channel_id ?? m.conversation_id)!, messageId: m.id });
+                    }}
+                  />
+                ))}
+            </ul>
+          )
+        ) : tab === 'mentions' ? (
           mentionsQ.isLoading ? (
             <p className="p-6 text-center text-sm text-ae-muted">Loading…</p>
           ) : mentionsQ.isError ? (

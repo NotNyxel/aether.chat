@@ -426,6 +426,10 @@ export function PrivacyTab({ userId }: { userId: string }) {
         <DiscoverableToggle userId={userId} />
       </Section>
 
+      <Section title="Read receipts">
+        <ReadReceiptsToggle userId={userId} />
+      </Section>
+
       <Section title="Friend requests" description="Who can send you a friend request.">
         <Choice
           value={p.friend_request_policy}
@@ -470,6 +474,19 @@ function DiscoverableToggle({ userId }: { userId: string }) {
       hint="When on, anyone can find you by username or display name in “Search for someone”. Friends can always find you."
       checked={me?.discoverable ?? true}
       onChange={(v) => update.mutate({ discoverable: v }, { onSuccess: () => toast.success(v ? 'You can be found in search.' : 'You’re hidden from search.'), onError: (e) => toast.error(e.message) })}
+    />
+  );
+}
+
+function ReadReceiptsToggle({ userId }: { userId: string }) {
+  const { data: me } = useProfile(userId);
+  const update = useUpdateProfile(userId);
+  return (
+    <Toggle
+      label="Show when I've read messages"
+      hint="In DMs and groups, people see “Seen” under their messages once you've read them. It's two-way: turn it off and you won't see theirs either."
+      checked={me?.read_receipts ?? true}
+      onChange={(v) => update.mutate({ read_receipts: v }, { onSuccess: () => toast.success(v ? 'Read receipts on.' : 'Read receipts off.'), onError: (e) => toast.error(e.message) })}
     />
   );
 }

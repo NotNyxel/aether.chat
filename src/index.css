@@ -875,3 +875,25 @@ html {
   backdrop-filter: blur(var(--ae-blur, 0px)) saturate(1.15);
   -webkit-backdrop-filter: blur(var(--ae-blur, 0px)) saturate(1.15);
 }
+
+/* ── 1.8.0: accessibility (Settings → Appearance → Accessibility) ─────────────────────────── */
+.ae-msg .ae-md {
+  font-size: var(--ae-chat-size, 15px) !important;
+  line-height: 1.47 !important;
+}
+:root[data-ae-contrast='true'] {
+  --ae-text-muted: color-mix(in srgb, var(--ae-text) 85%, transparent) !important;
+  --ae-border: color-mix(in srgb, var(--ae-text) 32%, transparent) !important;
+}
+:root[data-ae-contrast='true'] :focus-visible {
+  outline: 3px solid var(--ae-accent) !important;
+  outline-offset: 2px;
+}
+:root[data-ae-underline='true'] .ae-md a,
+:root[data-ae-underline='true'] a {
+  text-decoration: underline !important;
+  text-underline-offset: 2px;
+}
+:root[data-ae-times='true'] .ae-msg time.invisible {
+  visibility: visible;
+}

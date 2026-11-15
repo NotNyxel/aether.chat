@@ -3,6 +3,21 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.8.0] - 2026-11-15
+
+**Saved messages, read receipts and accessibility**
+
+- **Saved messages:** right-click a message (or press and hold it) → **Save message**. Find them all in
+  **Inbox → Saved** (the Notifications tab on phones); click one to jump to it.
+- **Read receipts:** in DMs and groups, **Seen** (or **Seen by N** with faces) appears under your latest message
+  once people have read it. Turn it off in **Settings → Privacy & Safety → Read receipts**; it's two-way, so you then
+  won't see theirs either.
+- **Accessibility** (Settings → Appearance): chat text size, zoom for the whole app, high contrast, always-underlined
+  links and always-visible message times.
+- **Aether's code is now public to read** (not open source; see LICENSE). Report bugs and ideas with the new forms on
+  GitHub, or chat in Discussions.
+- Database: `supabase/migrations/018_saved_receipts.sql`.
+
 ## [1.7.8] - 2026-11-13
 
 **Bug fixes from RankyTev's reports (thank you!)**

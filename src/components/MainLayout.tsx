@@ -47,6 +47,7 @@ import { CallBubble } from './CallBubble';
 import { ReactionPickerLayer } from './ReactionPicker';
 import { ThemeEffectLayer } from './ThemeEffectLayer';
 import { MobileHome, MobileInbox, MobileServersEmpty, MobileTabBar, MobileYou } from './MobileNav';
+import { useSavedMessages } from '../hooks/useSaved';
 
 /** Moderation tools for a member, shown in their profile card while you're viewing the server. */
 function ServerMemberTools({ server, me, userId }: { server: Server; me: string; userId: string }) {
@@ -103,6 +104,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
   const setMobilePane = useUiStore((s) => s.setMobilePane);
 
   const servers = useServers(userId);
+  useSavedMessages(); // loaded once so message menus know what's saved
   const { data: conversations = [] } = useConversations();
   const { data: friendships = [] } = useFriendships();
 

@@ -1071,5 +1071,30 @@ await expectOk('favourite GIFs are private', async () => {
 });
 await expectError('favourites must be https links', () => as(A, `insert into public.gif_favorites (url, preview) values ('javascript:alert(1)', 'https://x.example/a.webp')`));
 
+console.log('\nSaved messages and read receipts (1.8.0)');
+await expectOk('you can save messages you can see, privately', async () => {
+  const mid = (await as(A, `insert into public.messages (conversation_id, content) values ($1, 'save me') returning id`, [squad])).rows[0].id;
+  await as(A, `insert into public.saved_messages (message_id) values ($1)`, [mid]);
+  const mine = (await as(A, `select count(*)::int n from public.saved_messages`)).rows[0].n;
+  const theirs = (await as(B, `select count(*)::int n from public.saved_messages`)).rows[0].n;
+  if (mine !== 1 || theirs !== 0) throw new Error(`${mine} ${theirs}`);
+});
+await expectError('you cannot save a message you cannot see', async () => {
+  const mid = (await as(A, `select id from public.messages where conversation_id = $1 limit 1`, [squad])).rows[0].id;
+  await as(C, `insert into public.saved_messages (message_id) values ($1)`, [mid]);
+});
+await expectOk('read receipts are shared only when both people allow them', async () => {
+  await as(B, `select public.mark_conversation_read($1)`, [squad]);
+  const seen = (await as(A, `select count(*)::int n from public.conversation_reads($1)`, [squad])).rows[0].n;
+  await as(B, `update public.users set read_receipts = false where id = '${B}'`);
+  const hidden = (await as(A, `select count(*)::int n from public.conversation_reads($1)`, [squad])).rows[0].n;
+  const both = (await as(B, `select count(*)::int n from public.conversation_reads($1)`, [squad])).rows[0].n;
+  if (seen !== 1 || hidden !== 0 || both !== 0) throw new Error(`${seen} ${hidden} ${both}`);
+});
+await expectOk('outsiders see no read receipts', async () => {
+  const n = (await as(C, `select count(*)::int n from public.conversation_reads($1)`, [squad])).rows[0].n;
+  if (n !== 0) throw new Error(String(n));
+});
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

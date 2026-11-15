@@ -204,6 +204,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const theme = useSettingsStore((s) => s.theme);
   const profileAccent = useSettingsStore((s) => s.profileAccent);
   const tokens = useMemo(() => resolveTokens(theme, profileAccent), [theme, profileAccent]);
+  const a11y = useSettingsStore((s) => s.a11y);
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--ae-chat-size', `${a11y.chatSize}px`);
+    root.dataset.aeContrast = String(a11y.highContrast);
+    root.dataset.aeUnderline = String(a11y.underlineLinks);
+    root.dataset.aeTimes = String(a11y.alwaysShowTimes);
+    // App zoom: the desktop app zooms its window; browsers get CSS zoom on the page.
+    const z = Math.min(150, Math.max(75, a11y.zoom)) / 100;
+    if ('__TAURI_INTERNALS__' in window && !/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      root.style.removeProperty('zoom');
+      void import('@tauri-apps/api/webview').then(({ getCurrentWebview }) => getCurrentWebview().setZoom(z)).catch(() => (root.style.zoom = String(z)));
+    } else root.style.zoom = z === 1 ? '' : String(z);
+  }, [a11y]);
 
   useLayoutEffect(() => {
     const root = document.documentElement;

@@ -3,6 +3,23 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.8.3] - 2026-11-15
+
+**End-to-end encrypted chats, and everything from 1.8.1 and 1.8.2 on every platform**
+
+- **End-to-end encrypted DMs and groups** (optional, per chat):
+  - set it up once in **Settings → Privacy & Safety → Encrypted messages** with an encryption passphrase (it can't be
+    reset, so keep it safe);
+  - then tap the **lock** in a chat's header. New messages can only be read by the people in the chat, on devices
+    where they've unlocked encrypted messages. Not even Aether's servers can read them;
+  - on a new device, enter your passphrase once to read your encrypted chats there;
+  - notifications show "🔒 Encrypted message"; message search and link previews don't see encrypted text; pictures and
+    files aren't encrypted.
+- Released on **Windows, macOS, Linux, Android, iPhone/iPad** and the web, including watch together, server
+  onboarding, levels, leaderboards and achievements from 1.8.1–1.8.2.
+- Releases are now built entirely in the cloud with one click.
+- Database: `supabase/migrations/021_e2e.sql`.
+
 ## [1.8.2] - 2026-11-15
 
 **Levels, leaderboards and achievements**

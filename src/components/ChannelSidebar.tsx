@@ -16,8 +16,10 @@ import { useUiStore } from '../stores/uiStore';
 import type { Channel, ChannelSubtype, ChannelType, Server } from '../types/db';
 import { useCall } from './CallContext';
 import { Dialog, PromptForm } from './Dialog';
-import { BellIcon, BellOffIcon, CheckIcon, ChevronDownIcon, ForumIcon, HashIcon, ImageIcon, LinkIcon, LogOutIcon, MegaphoneIcon, PlusIcon, SettingsIcon, StageIcon, TrashIcon, VolumeIcon, GripIcon } from './icons';
+import { BellIcon, BellOffIcon, CheckIcon, ChevronDownIcon, ForumIcon, HashIcon, ImageIcon, LinkIcon, LogOutIcon, MegaphoneIcon, PlusIcon, SettingsIcon, StageIcon, TrashIcon, VolumeIcon, GripIcon, TrophyIcon } from './icons';
 import { UserPanel } from './UserPanel';
+import { openOnboarding } from './Onboarding';
+import { LeaderboardDialog } from './Levels';
 
 type NewChannelKind = 'text' | 'announcement' | 'forum' | 'media' | 'voice' | 'stream' | 'category';
 const NEW_CHANNEL_KINDS: { kind: NewChannelKind; label: string; hint: string; type: ChannelType; subtype: ChannelSubtype | null }[] = [
@@ -91,6 +93,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
   const [dropHint, setDropHint] = useState<string | null>(null);
   /** Touch screens can't drag-and-drop natively: "Reorder channels" shows handles you drag with a finger. */
   const [reordering, setReordering] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
   const pointerDrag = (ch: Channel) => (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -220,6 +223,30 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
             >
               Server settings <span><SettingsIcon size={15} className="ae-ico" /></span>
             </button>
+            {server.levels_enabled !== false && (
+              <button
+                type="button"
+                className={menuItem}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setBoardOpen(true);
+                }}
+              >
+                Leaderboard <TrophyIcon size={14} />
+              </button>
+            )}
+            {server.onboarding_enabled && (
+              <button
+                type="button"
+                className={menuItem}
+                onClick={() => {
+                  setMenuOpen(false);
+                  openOnboarding(server.id);
+                }}
+              >
+                Pick your roles <CheckIcon size={14} />
+              </button>
+            )}
             <button
               type="button"
               className={menuItem}
@@ -281,6 +308,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
         )}
       </div>
 
+      {boardOpen && <LeaderboardDialog serverId={server.id} serverName={server.name} onClose={() => setBoardOpen(false)} />}
       <EventsBar server={server} />
       <div className="ae-scroll flex-1 space-y-3 overflow-y-auto px-2 py-3">
         {reordering && (

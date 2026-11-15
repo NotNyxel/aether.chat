@@ -6,6 +6,7 @@ import { useUiStore } from '../stores/uiStore';
 import type { Channel, Message, MessageScope } from '../types/db';
 import { CloseIcon, PinIcon } from './icons';
 import { DisplayName, formatTime } from './MessageItem';
+import { previewText } from './E2eChat';
 
 function ResultCard({ m, serverId, channelName, onUnpin }: {
   m: Message;
@@ -24,7 +25,7 @@ function ResultCard({ m, serverId, channelName, onUnpin }: {
         {channelName && <span className="ml-auto truncate text-ae-muted">#{channelName}</span>}
       </div>
       {m.content ? (
-        <Markdown source={m.content.length > 400 ? `${m.content.slice(0, 400)}…` : m.content} className="text-sm" />
+        <Markdown source={previewText(m.content).length > 400 ? `${previewText(m.content).slice(0, 400)}…` : previewText(m.content)} className="text-sm" />
       ) : (
         <p className="text-sm text-ae-muted italic">{m.poll ? `Poll: ${m.poll.question}` : `${m.attachments.length} attachment(s)`}</p>
       )}

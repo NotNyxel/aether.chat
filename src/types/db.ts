@@ -100,6 +100,10 @@ export interface Server {
   welcome_channel_id?: string | null;
   welcome_message?: string | null;
   rules?: string | null;
+  onboarding_enabled?: boolean;
+  levels_enabled?: boolean;
+  levels_announce?: boolean;
+  onboarding_prompt?: string | null;
   bot_enabled?: boolean;
   bot_welcome?: boolean;
   discoverable?: boolean;
@@ -116,6 +120,8 @@ export interface ServerMember {
   avatar_url: string | null;
   banner_url: string | null;
   bio: string | null;
+  /** When they finished the welcome screen (null = not yet). */
+  onboarded_at?: string | null;
 }
 
 export interface ServerRole {
@@ -130,6 +136,8 @@ export interface ServerRole {
   hoist: boolean;
   mentionable: boolean;
   created_at: string;
+  /** Members can give it to themselves on the welcome screen. */
+  self_assignable?: boolean;
 }
 
 export interface MemberRole {

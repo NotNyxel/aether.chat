@@ -71,7 +71,8 @@ Deno.serve(async (req) => {
   if (!subs?.length) return json({ sent: 0 });
 
   webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT')!, Deno.env.get('VAPID_PUBLIC_KEY')!, Deno.env.get('VAPID_PRIVATE_KEY')!);
-  const text = (m.content || '').replace(/<@&?[0-9a-f-]+>|<#[0-9a-f-]+>/g, '@…').slice(0, 180) || ((m.attachments ?? []).length ? 'Sent an attachment' : 'New message');
+  // End-to-end encrypted messages: the server can't read them, so say so instead.
+  const text = (m.content || '').startsWith('aether-e2e:') ? '🔒 Encrypted message' : (m.content || '').replace(/<@&?[0-9a-f-]+>|<#[0-9a-f-]+>/g, '@…').slice(0, 180) || ((m.attachments ?? []).length ? 'Sent an attachment' : 'New message');
   const payload = JSON.stringify({ title, body: text, tag: scopeId, data: { serverId, scopeId, messageId: m.id } });
 
   let sent = 0;

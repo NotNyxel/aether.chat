@@ -1096,5 +1096,77 @@ await expectOk('outsiders see no read receipts', async () => {
   if (n !== 0) throw new Error(String(n));
 });
 
+console.log('\nWatch together and onboarding (1.8.1)');
+await expectOk('chat members can start and control a watch party', async () => {
+  await as(A, `insert into public.watch_parties (scope_id, video_id, title) values ($1, 'dQw4w9WgXcQ', 'Test')`, [squad]);
+  await as(B, `update public.watch_parties set playing = false, position = 42 where scope_id = $1`, [squad]);
+  const r = (await as(A, `select playing, position, updated_by from public.watch_parties where scope_id = $1`, [squad])).rows[0];
+  if (r.playing !== false || r.position !== 42 || r.updated_by !== B) throw new Error(JSON.stringify(r));
+});
+await expectError('outsiders cannot see or start a watch party', () => as(C, `insert into public.watch_parties (scope_id, video_id) values ($1, 'dQw4w9WgXcQ')`, [squad]));
+await expectOk('outsiders cannot read it either', async () => {
+  const n = (await as(C, `select count(*)::int n from public.watch_parties where scope_id = $1`, [squad])).rows[0].n;
+  if (n !== 0) throw new Error(String(n));
+});
+await expectError('only real YouTube ids are accepted', () => as(A, `update public.watch_parties set video_id = 'javascript:x' where scope_id = $1`, [squad]));
+const onboardee = (await db.query(`select user_id from public.server_members where server_id = $1 and user_id <> '${A}' limit 1`, [srv])).rows[0]?.user_id;
+await expectOk('members pick self-assignable roles during onboarding', async () => {
+  const pick = (await as(A, `insert into public.server_roles (server_id, name, position) values ($1, 'Gamer', 1) returning id`, [srv])).rows[0].id;
+  await as(A, `update public.server_roles set self_assignable = true where id = $1`, [pick]);
+  await as(onboardee, `select public.complete_onboarding($1, array[$2]::uuid[])`, [srv, pick]);
+  const has = (await db.query(`select count(*)::int n from public.member_roles where user_id = '${onboardee}' and role_id = $1`, [pick])).rows[0].n;
+  const done = (await db.query(`select onboarded_at from public.server_members where server_id = $1 and user_id = '${onboardee}'`, [srv])).rows[0].onboarded_at;
+  if (has !== 1 || !done) throw new Error(`${has} ${done}`);
+  await as(onboardee, `select public.complete_onboarding($1, '{}'::uuid[])`, [srv]);
+  const gone = (await db.query(`select count(*)::int n from public.member_roles where user_id = '${onboardee}' and role_id = $1`, [pick])).rows[0].n;
+  if (gone !== 0) throw new Error('role not removed');
+});
+await expectError('onboarding cannot hand out roles the server did not offer', async () => {
+  const mod = (await as(A, `insert into public.server_roles (server_id, name, position, permissions) values ($1, 'Boss', 2, 8) returning id`, [srv])).rows[0].id;
+  await as(onboardee, `select public.complete_onboarding($1, array[$2]::uuid[])`, [srv, mod]);
+}, "can't be picked");
+
+console.log('\nLevels and stats (1.8.2)');
+await expectOk('level thresholds follow 5L²+50L+100', async () => {
+  const r = (await db.query(`select public.level_for_xp(0) a, public.level_for_xp(99) b, public.level_for_xp(100) c, public.level_for_xp(254) d, public.level_for_xp(255) e`)).rows[0];
+  if (r.a !== 0 || r.b !== 0 || r.c !== 1 || r.d !== 1 || r.e !== 2) throw new Error(JSON.stringify(r));
+});
+await expectOk('chatting earns XP at most once a minute', async () => {
+  const ch = (await as(A, `select id from public.channels where server_id = $1 and type = 'text' limit 1`, [srv])).rows[0].id;
+  await as(A, `insert into public.messages (channel_id, content) values ($1, 'xp one')`, [ch]);
+  await as(A, `insert into public.messages (channel_id, content) values ($1, 'xp two')`, [ch]);
+  const r = (await as(A, `select xp, messages from public.member_xp where server_id = $1 and user_id = '${A}'`, [srv])).rows[0];
+  if (!(r.xp >= 15 && r.xp <= 25) || r.messages < 2) throw new Error(JSON.stringify(r));
+});
+await expectOk('the leaderboard is for members only', async () => {
+  const mine = (await as(A, `select count(*)::int n from public.server_leaderboard($1, 10)`, [srv])).rows[0].n;
+  if (mine < 1) throw new Error('empty');
+});
+await expectError('nobody can set their own XP', () => as(A, `update public.member_xp set xp = 999999 where user_id = '${A}'`));
+await expectOk('message and reaction counts are kept', async () => {
+  const r = (await as(B, `select messages from public.user_stats where user_id = '${A}'`)).rows[0];
+  if (!(r?.messages > 0)) throw new Error(JSON.stringify(r));
+});
+
+console.log('\nEncrypted chats (1.8.3)');
+await expectOk('public keys are public, backups private', async () => {
+  await as(A, `insert into public.e2e_public_keys (public_key) values ('{"kty":"EC"}')`);
+  await as(A, `insert into public.e2e_key_backups (ciphertext, salt, iv) values ('x', 's', 'i')`);
+  const pub = (await as(B, `select count(*)::int n from public.e2e_public_keys where user_id = '${A}'`)).rows[0].n;
+  const backup = (await as(B, `select count(*)::int n from public.e2e_key_backups`)).rows[0].n;
+  if (pub !== 1 || backup !== 0) throw new Error(`${pub} ${backup}`);
+});
+await expectOk('members share chat keys with members, and switch encryption on', async () => {
+  await as(A, `insert into public.conversation_keys (conversation_id, user_id, wrapped_key, iv) values ($1, '${A}', 'k', 'i')`, [squad]);
+  const other = (await db.query(`select user_id from public.conversation_members where conversation_id = $1 and user_id <> '${A}' limit 1`, [squad])).rows[0].user_id;
+  await as(A, `insert into public.conversation_keys (conversation_id, user_id, wrapped_key, iv) values ($1, $2, 'k', 'i')`, [squad, other]);
+  await as(A, `select public.set_conversation_e2e($1, true)`, [squad]);
+  const on = (await db.query(`select e2e from public.conversations where id = $1`, [squad])).rows[0].e2e;
+  const seeOthers = (await as(A, `select count(*)::int n from public.conversation_keys where conversation_id = $1`, [squad])).rows[0].n;
+  if (!on || seeOthers !== 1) throw new Error(`${on} ${seeOthers}`);
+});
+await expectError('chat keys cannot be handed to outsiders', () => as(A, `insert into public.conversation_keys (conversation_id, user_id, wrapped_key, iv) values ($1, '${C}', 'k', 'i')`, [squad]));
+await expectError('outsiders cannot switch a chat\'s encryption', () => as(C, `select public.set_conversation_e2e($1, false)`, [squad]), "not in this chat");
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

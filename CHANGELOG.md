@@ -3,6 +3,32 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.8.2] - 2026-11-15
+
+**Levels, leaderboards and achievements**
+
+- **Server levels:** chatting earns 15–25 XP (at most once a minute, so spam doesn't count) and you level up. Your
+  level and progress bar show on your profile inside the server.
+- **Leaderboard:** server menu → **Leaderboard**, with the top 50 and medals for the top three.
+- **Level-up messages:** the built-in bot congratulates people when they level up (if the bot is on).
+- Server owners can turn levels and the announcements off in Server Settings → Community → **Levels**.
+- **Achievements** on every profile (new tab): First Words, Chatterbox, Storyteller, Legend, Reactor, Hype Machine,
+  Early Adopter and Veteran, with progress toward the ones you haven't earned yet. Messages and reactions you've
+  already sent count.
+- Database: `supabase/migrations/020_levels.sql`.
+
+## [1.8.1] - 2026-11-15
+
+**Watch together and server onboarding**
+
+- **Watch together:** the TV button in any chat header (DMs, groups and server channels). Paste a YouTube link and
+  everyone in the chat gets a bar to **Join**. Play, pause, seeking and changing the video stay in sync for everyone.
+  Make the player smaller, leave it, or stop it for everyone.
+- **Server onboarding:** Server Settings → Community → **Onboarding**. New members see a welcome screen with your
+  welcome message, the rules to accept, and roles they can pick themselves (mark which ones in the same place).
+  Members can change their picks later from the server menu → **Pick your roles**.
+- Database: `supabase/migrations/019_watch_onboarding.sql`.
+
 ## [1.8.0] - 2026-11-15
 
 **Saved messages, read receipts and accessibility**

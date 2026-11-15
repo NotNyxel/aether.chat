@@ -17,6 +17,8 @@ import { BotIcon, HashIcon, ShieldIcon } from './icons';
 import { Field, inputCls, Section, Toggle } from './SettingsPanel';
 import { DISCOVERY_CATEGORIES } from './ServerDiscovery';
 import { WebhooksSection } from './Webhooks';
+import { CheckIcon } from './icons';
+import { useServerRoles } from '../hooks/useServerAdmin';
 
 const LEVELS: { id: NonNullable<Server['verification_level']>; label: string; hint: string }[] = [
   { id: 'none', label: 'None', hint: 'Anyone with an invite can join and talk.' },
@@ -51,6 +53,10 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
     rules: server.rules ?? '',
     discoverable: !!server.discoverable,
     discovery_category: server.discovery_category ?? 'social',
+    onboarding_enabled: !!server.onboarding_enabled,
+    levels_enabled: server.levels_enabled !== false,
+    levels_announce: server.levels_announce !== false,
+    onboarding_prompt: server.onboarding_prompt ?? '',
   });
   const [d, setD] = useState(initial);
   useEffect(() => setD(initial()), [server]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -117,7 +123,21 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
         )}
       </Section>
 
-      <Section title="Rules" description="Shown with /rules. Markdown works.">
+      <Section title="Levels" description="Members earn XP for chatting (15–25 XP, at most once a minute) and level up. Shown on their profile in this server and on the leaderboard (server menu).">
+        <Toggle label="Levels and XP" checked={d.levels_enabled} onChange={(v) => editable && setD((x) => ({ ...x, levels_enabled: v }))} />
+        <Toggle label="Announce level-ups in chat" hint="The built-in bot congratulates people in the channel where they levelled up (needs the bot turned on in the Bot tab)." checked={d.levels_announce} onChange={(v) => editable && setD((x) => ({ ...x, levels_announce: v }))} />
+      </Section>
+
+      <Section title="Onboarding" description="A welcome screen new members see before chatting: your welcome message, the rules to accept, and roles they can pick themselves (games, pronouns, which pings they want).">
+        <Toggle label="Show the welcome screen to new members" checked={d.onboarding_enabled} onChange={(v) => editable && setD((x) => ({ ...x, onboarding_enabled: v }))} />
+        <label className="mt-3 block text-sm">
+          <span className="mb-1 block text-xs font-bold tracking-wide text-ae-muted uppercase">Question above the roles</span>
+          <input className={`${inputCls} text-sm`} disabled={!editable} maxLength={200} placeholder="What are you here for?" value={d.onboarding_prompt} onChange={(e) => setD((x) => ({ ...x, onboarding_prompt: e.target.value }))} />
+        </label>
+        <OnboardingRoles server={server} editable={editable} />
+      </Section>
+
+      <Section title="Rules" description="Shown with /rules and on the welcome screen. Markdown works.">
         <textarea
           className={`${inputCls} min-h-36 text-sm`}
           disabled={!editable}
@@ -143,6 +163,10 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
               rules: d.rules.trim() || null,
               discoverable: d.discoverable,
               discovery_category: d.discovery_category,
+              onboarding_enabled: d.onboarding_enabled,
+              levels_enabled: d.levels_enabled,
+              levels_announce: d.levels_announce,
+              onboarding_prompt: d.onboarding_prompt.trim() || null,
             },
           })
         }
@@ -295,6 +319,40 @@ export function EmojiTab({ server, canManage }: { server: Server; canManage: boo
               </span>
             )}
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Which roles members can pick for themselves on the welcome screen (saved straight away). */
+function OnboardingRoles({ server, editable }: { server: Server; editable: boolean }) {
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  const { data: roles = [] } = useServerRoles(server.id);
+  const pickable = roles.filter((r) => !r.is_default).sort((a, b) => b.position - a.position);
+  if (!pickable.length) return <p className="mt-3 text-xs text-ae-muted">Create some roles in the Roles tab first (for example: Gamer, Artist, he/him, Event pings).</p>;
+  return (
+    <div className="mt-3">
+      <p className="mb-1.5 text-xs font-bold tracking-wide text-ae-muted uppercase">Roles members can pick</p>
+      <p className="mb-2 text-xs text-ae-muted">Only tick roles without special permissions: anyone can give themselves these.</p>
+      <div className="flex flex-wrap gap-1.5">
+        {pickable.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            disabled={!editable}
+            onClick={async () => {
+              const { error } = await sb.from('server_roles').update({ self_assignable: !r.self_assignable }).eq('id', r.id);
+              if (error) toast.error(error.message);
+              void qc.invalidateQueries({ queryKey: ['roles', server.id] });
+            }}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${r.self_assignable ? 'border-ae-accent bg-ae-accent/15 font-semibold' : 'border-ae-border text-ae-muted hover:text-ae-text'} disabled:opacity-50`}
+          >
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: r.color ?? 'var(--ae-text-muted)' }} />
+            {r.name}
+            {r.self_assignable && <CheckIcon size={13} />}
+          </button>
         ))}
       </div>
     </div>

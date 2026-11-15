@@ -28,6 +28,7 @@ import { VoiceMessagePlayer, type VoiceAttachment } from './VoiceMessage';
 import { GifView } from './GifPicker';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToggleSaved } from '../hooks/useSaved';
+import { previewText, useMessageText } from './E2eChat';
 
 export function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -195,6 +196,8 @@ function MessageItemImpl(props: MessageItemProps) {
   // Phones and tablets: the picker opens as its own sheet, not inside the hover toolbar.
   const openPicker = () => (isPhoneLayout() ? openReactionPicker(react) : setPicker(true));
   const qcR = useQueryClient();
+  // Encrypted chats: the readable text (or a placeholder when this device can't decrypt it).
+  const text = useMessageText(message.content);
   const toggleSaved = useToggleSaved();
   const isSaved = !!qcR.getQueryData<{ message_id: string }[]>(['saved-messages'])?.some((r) => r.message_id === message.id);
   const rowRef = useRef<HTMLLIElement>(null);
@@ -237,7 +240,7 @@ function MessageItemImpl(props: MessageItemProps) {
             label: 'Edit message',
             icon: <EditIcon size={15} />,
             onClick: () => {
-              setDraft(message.content);
+              setDraft(text);
               props.onStartEdit(message.id);
             },
           },
@@ -247,7 +250,7 @@ function MessageItemImpl(props: MessageItemProps) {
           message.content && {
             label: 'Copy text',
             icon: <CopyIcon size={15} />,
-            onClick: () => void navigator.clipboard.writeText(message.content).then(() => toast('Copied text', <CopyIcon size={14} />)),
+            onClick: () => void navigator.clipboard.writeText(text).then(() => toast('Copied text', <CopyIcon size={14} />)),
           },
           {
             label: 'Copy message link',
@@ -336,7 +339,7 @@ function MessageItemImpl(props: MessageItemProps) {
                 <strong>
                   <DisplayName userId={props.replyTarget.author_id} />
                 </strong>{' '}
-                {props.replyTarget.content.slice(0, 120) || (props.replyTarget.poll ? 'Poll' : 'Attachment')}
+                {previewText(props.replyTarget.content).slice(0, 120) || (props.replyTarget.poll ? 'Poll' : 'Attachment')}
               </>
             ) : (
               <em>Click to load the original message</em>
@@ -397,7 +400,7 @@ function MessageItemImpl(props: MessageItemProps) {
               <p className="text-xs text-ae-muted">Enter to save · Esc to cancel</p>
             </div>
           ) : (
-            message.content && <Markdown source={message.content} jumbo={emojiSize(message.content)} className="text-[15px] leading-[1.375rem] text-ae-text/95" />
+            message.content && <Markdown source={text} jumbo={emojiSize(text)} className="text-[15px] leading-[1.375rem] text-ae-text/95" />
           )}
 
           {message.attachments.length > 0 && (
@@ -486,7 +489,7 @@ function MessageItemImpl(props: MessageItemProps) {
             <ToolbarButton
               title="Edit"
               onClick={() => {
-                setDraft(message.content);
+                setDraft(text);
                 props.onStartEdit(message.id);
               }}
             >

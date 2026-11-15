@@ -5,7 +5,7 @@
 import { DownloadIcon, LockIcon, UnlockIcon } from './icons';
 import { ask } from './ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useProfile, useUpdateProfile } from '../hooks/useChatData';
 import { DEFAULT_PRIVACY, usePrivacySettings, useSavePrivacy } from '../hooks/useAccount';
 import { useBlocks, useFriendActions } from '../hooks/useSocialData';
@@ -16,6 +16,7 @@ import { Dialog } from './Dialog';
 import { Avatar } from './ProfileCard';
 import { inputCls, Section, Toggle } from './SettingsPanel';
 import { toast } from './Toaster';
+import { e2eStatus, forgetOnThisDevice, setUpIdentity, unlockIdentity, type E2eStatus } from '../lib/e2e';
 
 const btn = 'ae-press rounded-ae px-3 py-2 text-sm font-semibold disabled:opacity-40';
 
@@ -426,6 +427,10 @@ export function PrivacyTab({ userId }: { userId: string }) {
         <DiscoverableToggle userId={userId} />
       </Section>
 
+      <Section title="Encrypted messages" description="End-to-end encryption for DMs and groups: turn it on per chat with the lock in the chat header. Only the people in the chat can read new messages; not even Aether's servers can.">
+        <E2eSettings userId={userId} />
+      </Section>
+
       <Section title="Read receipts">
         <ReadReceiptsToggle userId={userId} />
       </Section>
@@ -488,5 +493,71 @@ function ReadReceiptsToggle({ userId }: { userId: string }) {
       checked={me?.read_receipts ?? true}
       onChange={(v) => update.mutate({ read_receipts: v }, { onSuccess: () => toast.success(v ? 'Read receipts on.' : 'Read receipts off.'), onError: (e) => toast.error(e.message) })}
     />
+  );
+}
+
+function E2eSettings({ userId }: { userId: string }) {
+  const sb = useSupabase();
+  const [status, setStatus] = useState<E2eStatus | null>(null);
+  const [pass, setPass] = useState('');
+  const [again, setAgain] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => void e2eStatus(sb, userId).then(setStatus), [sb, userId]);
+  if (!status) return <div className="ae-skeleton h-16" />;
+  const run = async (fn: () => Promise<void>, ok: string) => {
+    setBusy(true);
+    try {
+      await fn();
+      setPass('');
+      setAgain('');
+      setStatus(await e2eStatus(sb, userId));
+      toast.success(ok);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (status === 'ready')
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-ae bg-ae-success/10 p-3 text-sm">
+        <span>🔒 Encrypted messages are set up and unlocked on this device.</span>
+        <button type="button" className="rounded-ae px-3 py-1.5 text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={() => (forgetOnThisDevice(userId), setStatus('locked'), toast('Locked on this device. Your passphrase unlocks it again.'))}>
+          Lock on this device
+        </button>
+      </div>
+    );
+  if (status === 'locked')
+    return (
+      <form className="space-y-2" onSubmit={(e) => (e.preventDefault(), void run(() => unlockIdentity(sb, userId, pass), 'Unlocked on this device.'))}>
+        <p className="text-sm text-ae-muted">You've set up encrypted messages on another device. Enter your encryption passphrase to read encrypted chats here.</p>
+        <div className="flex gap-2">
+          <input type="password" className={`${inputCls} flex-1`} placeholder="Encryption passphrase" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} />
+          <button type="submit" disabled={busy || !pass} className="rounded-ae bg-ae-accent px-4 text-sm font-semibold text-ae-on-accent disabled:opacity-50">
+            Unlock
+          </button>
+        </div>
+      </form>
+    );
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (pass.length < 10) return toast.error('Use at least 10 characters.');
+        if (pass !== again) return toast.error('The two passphrases don’t match.');
+        void run(() => setUpIdentity(sb, userId, pass), 'Encrypted messages are set up.');
+      }}
+    >
+      <p className="text-sm text-ae-muted">
+        Pick an <b>encryption passphrase</b>. You'll need it to read encrypted chats on a new device. It's different from your password and
+        <b> can't be reset</b>: if you forget it, encrypted messages can't be recovered on new devices.
+      </p>
+      <input type="password" className={inputCls} placeholder="Encryption passphrase (10+ characters)" autoComplete="new-password" value={pass} onChange={(e) => setPass(e.target.value)} />
+      <input type="password" className={inputCls} placeholder="Type it again" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} />
+      <button type="submit" disabled={busy} className="rounded-ae bg-ae-accent px-4 py-2 text-sm font-semibold text-ae-on-accent disabled:opacity-50">
+        {busy ? 'Setting up…' : 'Set up encrypted messages'}
+      </button>
+    </form>
   );
 }

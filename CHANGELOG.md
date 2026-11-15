@@ -3,6 +3,16 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.8.4] - 2026-11-15
+
+**Updates now come from the main repository**
+
+- The app now checks for updates and downloads installers from
+  [github.com/NotNyxel/aether.chat/releases](https://github.com/NotNyxel/aether.chat/releases) instead of the separate
+  `aether.chat-releases` repository. Nothing changes for you: it still updates itself.
+- The website, the Windows download button, the Android update check and invite pages link to the main repository too.
+- New accounts that never confirm their email address are removed after 7 days.
+
 ## [1.8.3] - 2026-11-15
 
 **End-to-end encrypted chats, and everything from 1.8.1 and 1.8.2 on every platform**

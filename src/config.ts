@@ -17,13 +17,13 @@ export const OLD_WEB_HOSTS = ['aether-chat-beta.vercel.app'];
 /** Web Push public key (VAPID). Public by design; the private half lives only in Supabase secrets. */
 export const VAPID_PUBLIC_KEY = 'BKQsG1sUNyVlsN-re2pHDe6vRUZE8sQUNuhagWzzlU2u4-Ds7MNZ1r40hKC1WF_0pDtfcfY4ZzCEfz6EFW0SL_c';
 /** Always the newest Windows installer. */
-export const DOWNLOAD_URL = 'https://github.com/NotNyxel/aether.chat-releases/releases/latest/download/Aether-Setup.exe';
+export const DOWNLOAD_URL = 'https://github.com/NotNyxel/aether.chat/releases/latest/download/Aether-Setup.exe';
 
 export const BUILT_IN_BACKEND: BackendConfig = {
   url: 'https://pyjvnbjsjtbogrmoimwf.supabase.co',
   anonKey: 'sb_publishable_aW2Si2NQXIXREmYjBuFxhw_9112kqk4',
 };
-export const RELEASES_REPO = 'NotNyxel/aether.chat-releases';
+export const RELEASES_REPO = 'NotNyxel/aether.chat';
 
 /**
  * Cloudflare Turnstile site key (public by design). Empty = no bot check on sign-up and sign-in.

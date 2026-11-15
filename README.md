@@ -27,14 +27,14 @@
 
 ## Install
 
-1. Download **[Aether-Setup.exe](https://github.com/NotNyxel/aether.chat-releases/releases/latest/download/Aether-Setup.exe)**.
+1. Download **[Aether-Setup.exe](https://github.com/NotNyxel/aether.chat/releases/latest/download/Aether-Setup.exe)**.
 2. Run it. It installs in one click, for your Windows user only (no admin prompt), and opens Aether.
 3. Sign up with a username, email and password.
 
 That's it. There's nothing to configure. The app keeps itself up to date: every time it starts, it checks for a
 new version and installs it before opening.
 
-**macOS and Linux:** download from the [Releases page](https://github.com/NotNyxel/aether.chat-releases/releases/latest):
+**macOS and Linux:** download from the [Releases page](https://github.com/NotNyxel/aether.chat/releases/latest):
 - macOS (Apple Silicon and Intel): `Aether_<version>_macos-universal.dmg`. The app isn't notarised by Apple yet, so
   the first time, right-click it and choose **Open** (or run `xattr -cr "/Applications/Aether.app"`).
 - Linux: `…_linux-x86_64.AppImage` (updates itself; `chmod +x` it and run) or `…_linux-amd64.deb`.
@@ -269,7 +269,7 @@ Aether uses two GitHub repos:
 | Repo | Visibility | Holds |
 |---|---|---|
 | `aether.chat` | private | Source code, tags and releases with every installer |
-| `aether.chat-releases` | public | Signed installers and `latest.json`, the update feed the app polls |
+| `aether.chat-releases` | public | Old update feed. Still receives each release so pre-1.8.4 apps can update; will be archived. New apps update from `aether.chat` releases |
 
 The update feed has to be public: an installed app can't authenticate to a private repo without shipping a secret.
 

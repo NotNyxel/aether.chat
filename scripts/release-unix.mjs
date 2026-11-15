@@ -76,10 +76,10 @@ for (const repo of [SRC, FEED]) run('gh', ['release', 'upload', tag, ...assets.m
 
 // 3. Merge into latest.json.
 const latestPath = join(dir, 'latest.json');
-run('gh', ['release', 'download', tag, '--repo', FEED, '--pattern', 'latest.json', '--dir', `"${dir}"`, '--clobber']);
+run('gh', ['release', 'download', tag, '--repo', SRC, '--pattern', 'latest.json', '--dir', `"${dir}"`, '--clobber']);
 const latest = JSON.parse(readFileSync(latestPath, 'utf8'));
 if (latest.version !== version) throw new Error(`latest.json is for ${latest.version}, not ${version}. Run scripts/release.mjs first.`);
-const url = (f) => `https://github.com/${FEED}/releases/download/${tag}/${encodeURIComponent(f.split(/[\\/]/).pop())}`;
+const url = (f) => `https://github.com/${SRC}/releases/download/${tag}/${encodeURIComponent(f.split(/[\\/]/).pop())}`;
 const mac = { signature: readFileSync(appSig, 'utf8').trim(), url: url(appTar) };
 latest.platforms['darwin-aarch64'] = mac;
 latest.platforms['darwin-x86_64'] = mac;

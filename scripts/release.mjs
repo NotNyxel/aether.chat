@@ -9,7 +9,7 @@
  *   - <owner>/aether.chat           private source repo: git tag + release with the installer
  *   - <owner>/aether.chat-releases  public update feed:   release with installer, .sig and latest.json
  *
- * The updater downloads https://github.com/<owner>/aether.chat-releases/releases/latest/download/latest.json,
+ * The updater downloads https://github.com/<owner>/aether.chat/releases/latest/download/latest.json,
  * so the public feed must always hold the newest signed build as its "latest" release.
  *
  * Each release also builds aether.chat Setup (installer/), the one-click installer people download
@@ -135,7 +135,7 @@ async function main() {
   const legacySetupExe = join(bundleDir, 'aether.chat-Setup.exe');
   copyFileSync(setupExe, legacySetupExe);
 
-  const url = `https://github.com/${owner}/${FEED_REPO}/releases/download/${tag}/${encodeURIComponent(basename(installer))}`;
+  const url = `https://github.com/${owner}/${SOURCE_REPO}/releases/download/${tag}/${encodeURIComponent(basename(installer))}`;
   const latestJson = join(bundleDir, 'latest.json');
   writeFileSync(
     latestJson,
@@ -154,7 +154,7 @@ async function main() {
   // Tag the source and publish both releases
   if (!out('git', ['tag', '--list', tag])) run('git', ['tag', '-a', tag, '-m', `"Aether ${tag}"`]);
   run('git', ['push', 'origin', 'HEAD', '--follow-tags']);
-  const download = `**Download:** [Aether-Setup.exe](https://github.com/${owner}/${FEED_REPO}/releases/latest/download/Aether-Setup.exe) (one click, no admin needed). Already installed? It updates itself.\n\n`;
+  const download = `**Download:** [Aether-Setup.exe](https://github.com/${owner}/${SOURCE_REPO}/releases/latest/download/Aether-Setup.exe) (one click, no admin needed). Already installed? It updates itself.\n\n`;
   writeFileSync(notesFile, download + notes);
   const assets = [setupExe, legacySetupExe, installer, sigFile, latestJson];
   publish(`${owner}/${SOURCE_REPO}`, tag, `Aether ${tag}`, notesFile, assets, { latest: true });

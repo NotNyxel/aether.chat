@@ -65,12 +65,12 @@ take(/\.ipa$/, `Aether_${version}_ios-unsigned.ipa`);
 const changelog = readFileSync(join(ROOT, 'CHANGELOG.md'), 'utf8');
 const m = new RegExp(`^## \\[?v?${version.replace(/\./g, '\\.')}\\]?[^\\n]*\\n([\\s\\S]*?)(?=^## |$(?![\\s\\S]))`, 'm').exec(changelog);
 if (!m) throw new Error(`CHANGELOG.md has no section for ${version}`);
-const notes = `**Download:** [Aether-Setup.exe](https://github.com/${FEED}/releases/latest/download/Aether-Setup.exe) (one click, no admin needed). Already installed? It updates itself.\n\n${m[1].trim()}`;
+const notes = `**Download:** [Aether-Setup.exe](https://github.com/${SRC}/releases/latest/download/Aether-Setup.exe) (one click, no admin needed). Already installed? It updates itself.\n\n${m[1].trim()}`;
 const notesFile = join(out, 'notes.md');
 writeFileSync(notesFile, notes);
 
 // The update feed.
-const url = (p) => `https://github.com/${FEED}/releases/download/${tag}/${encodeURIComponent(p.split(/[\\/]/).pop())}`;
+const url = (p) => `https://github.com/${SRC}/releases/download/${tag}/${encodeURIComponent(p.split(/[\\/]/).pop())}`;
 const platforms = { 'windows-x86_64': { signature: readFileSync(winSig, 'utf8').trim(), url: url(win) } };
 if (macTar && macSig) platforms['darwin-aarch64'] = platforms['darwin-x86_64'] = { signature: readFileSync(macSig, 'utf8').trim(), url: url(macTar) };
 if (appImage && appImageSig) platforms['linux-x86_64'] = { signature: readFileSync(appImageSig, 'utf8').trim(), url: url(appImage) };

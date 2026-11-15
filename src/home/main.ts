@@ -4,7 +4,7 @@
  */
 import './home.css';
 
-const RELEASES = 'NotNyxel/aether.chat-releases';
+const RELEASES = 'NotNyxel/aether.chat';
 
 // Links from account emails and the installed web app belong to the app, not this page.
 const { search, hash } = window.location;

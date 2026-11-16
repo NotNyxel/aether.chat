@@ -130,7 +130,7 @@ async function fetchPreview(target: URL): Promise<Preview | null> {
       redirect: 'manual',
       signal: AbortSignal.timeout(5_000),
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; aether.chat-link-preview/1.0; +https://github.com/NotNyxel/aether.chat-releases)',
+        'User-Agent': 'Mozilla/5.0 (compatible; aether.chat-link-preview/1.0; +https://github.com/NotNyxel/aether.chat)',
         Accept: 'text/html,application/xhtml+xml',
         'Accept-Language': 'en',
       },

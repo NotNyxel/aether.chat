@@ -3,6 +3,30 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.9.0] - 2026-11-16
+
+**Encryption that sets itself up**
+
+- **Automatic end-to-end encryption.** There's no passphrase to pick any more:
+  - encryption sets itself up the first time you open Aether;
+  - DMs encrypt themselves once both people are on 1.9 or newer;
+  - to turn it off for a chat, click the green lock. Aether won't turn it back on by itself, and you can switch it on
+    again with the same lock;
+  - **Settings → Privacy & Safety → Encrypt DMs automatically** turns this off on a device;
+  - groups are still opt-in, with the lock in the chat header.
+- **Device linking.** On a new phone or computer, choose **Approve from another device**:
+  - a device you're already signed in on asks if it's you, and both devices show the same 6-digit code;
+  - your key goes straight from one device to the other, encrypted, so Aether's servers never see it.
+- **Recovery code.** A 24-character code for when you've lost every device:
+  - find it in **Settings → Privacy & Safety → Encrypted messages**, where you can copy it or make a new one;
+  - passphrases from 1.8.3 still work.
+- **Reset encryption** if you lose every device and the code. Your encrypted chats come back once someone else in
+  each chat opens it.
+- Encrypted messages can now be as long as normal ones: 4,000 characters, up from 2,600.
+- **Fixed:** synced drafts were never saved to the server, so they didn't follow you between devices. They do now.
+- **Fixed:** leaving a voice channel and mute/deafen/camera changes are now reported reliably, so the people list in
+  voice channels stays accurate.
+
 ## [1.8.4] - 2026-11-15
 
 **Updates now come from the main repository**

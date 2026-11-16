@@ -16,7 +16,9 @@ import { Dialog } from './Dialog';
 import { Avatar } from './ProfileCard';
 import { inputCls, Section, Toggle } from './SettingsPanel';
 import { toast } from './Toaster';
-import { e2eStatus, forgetOnThisDevice, setUpIdentity, unlockIdentity, type E2eStatus } from '../lib/e2e';
+import { e2eStatus, forgetOnThisDevice, formatRecoveryCode, newRecoveryCode, recoveryCode, resetIdentity, setUpIdentity, type E2eStatus } from '../lib/e2e';
+import { e2eChanged, UnlockThisDevice } from './E2eChat';
+import { useSettingsStore } from '../stores/settingsStore';
 
 const btn = 'ae-press rounded-ae px-3 py-2 text-sm font-semibold disabled:opacity-40';
 
@@ -427,7 +429,7 @@ export function PrivacyTab({ userId }: { userId: string }) {
         <DiscoverableToggle userId={userId} />
       </Section>
 
-      <Section title="Encrypted messages" description="End-to-end encryption for DMs and groups: turn it on per chat with the lock in the chat header. Only the people in the chat can read new messages; not even Aether's servers can.">
+      <Section title="Encrypted messages" description="End-to-end encryption for DMs and groups. Only the people in a chat can read its new messages; not even Aether's servers can. DMs encrypt themselves; for groups, use the lock in the chat header.">
         <E2eSettings userId={userId} />
       </Section>
 
@@ -499,65 +501,123 @@ function ReadReceiptsToggle({ userId }: { userId: string }) {
 function E2eSettings({ userId }: { userId: string }) {
   const sb = useSupabase();
   const [status, setStatus] = useState<E2eStatus | null>(null);
-  const [pass, setPass] = useState('');
-  const [again, setAgain] = useState('');
+  const [shown, setShown] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => void e2eStatus(sb, userId).then(setStatus), [sb, userId]);
+  const auto = useSettingsStore((s) => s.e2eAuto);
+  const setAuto = useSettingsStore((s) => s.setE2eAuto);
+  const reload = () => void e2eStatus(sb, userId).then(setStatus);
+  useEffect(reload, [sb, userId]);
   if (!status) return <div className="ae-skeleton h-16" />;
-  const run = async (fn: () => Promise<void>, ok: string) => {
+  const run = async (fn: () => Promise<void>) => {
     setBusy(true);
     try {
       await fn();
-      setPass('');
-      setAgain('');
-      setStatus(await e2eStatus(sb, userId));
-      toast.success(ok);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Something went wrong.');
     } finally {
       setBusy(false);
+      reload();
     }
   };
-  if (status === 'ready')
+  const reset = () =>
+    run(async () => {
+      const ok = await ask(
+        'Start encryption over with a new key? Use this only if you’ve lost every signed-in device and your recovery code. Your encrypted chats come back once someone else in each chat opens it; until then they can’t be read here. Your other devices will need to be approved again.',
+        { title: 'Reset encryption', confirmLabel: 'Reset', danger: true },
+      );
+      if (!ok) return;
+      setShown(await resetIdentity(sb, userId));
+      e2eChanged();
+      toast.success('Encryption was reset. Save your new recovery code.');
+    });
+
+  const autoToggle = (
+    <Toggle
+      label="Encrypt DMs automatically"
+      hint="DMs turn on end-to-end encryption by themselves once both of you are on Aether 1.9 or newer. You can still turn it off in a chat with the lock."
+      checked={auto}
+      onChange={(v) => setAuto(v)}
+    />
+  );
+
+  if (status === 'ready') {
+    const code = shown ?? recoveryCode(userId);
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-ae bg-ae-success/10 p-3 text-sm">
-        <span>🔒 Encrypted messages are set up and unlocked on this device.</span>
-        <button type="button" className="rounded-ae px-3 py-1.5 text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={() => (forgetOnThisDevice(userId), setStatus('locked'), toast('Locked on this device. Your passphrase unlocks it again.'))}>
-          Lock on this device
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-ae bg-ae-success/10 p-3 text-sm">
+          <span>🔒 Encrypted messages are on for this device.</span>
+          <button
+            type="button"
+            className="rounded-ae px-3 py-1.5 text-ae-muted hover:bg-ae-hover hover:text-ae-text"
+            onClick={() => (forgetOnThisDevice(userId), setShown(null), reload(), toast('Removed from this device. Approve it from another device or use your recovery code to get it back.'))}
+          >
+            Remove from this device
+          </button>
+        </div>
+        {autoToggle}
+        <div className="space-y-2 rounded-ae border border-ae-border p-3 text-sm">
+          <p className="font-semibold">Recovery code</p>
+          <p className="text-ae-muted">
+            New devices are approved from a device you’re already signed in on. If you ever lose all of them, the recovery code is the only way back into your encrypted chats. Keep it somewhere safe, like a password manager.
+          </p>
+          {code ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="rounded-ae bg-ae-surface px-3 py-2 font-mono text-[15px] tracking-wider select-all">{formatRecoveryCode(code)}</code>
+              <button type="button" className="rounded-ae border border-ae-border px-3 py-1.5 font-semibold hover:bg-ae-hover" onClick={() => void navigator.clipboard.writeText(formatRecoveryCode(code)).then(() => toast.success('Recovery code copied.'))}>
+                Copy
+              </button>
+            </div>
+          ) : (
+            <p className="text-ae-muted">Your recovery code was made on another device (or you used a passphrase). Make a new one here if you’ve lost it.</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              className="rounded-ae border border-ae-border px-3 py-1.5 font-semibold hover:bg-ae-hover disabled:opacity-50"
+              onClick={() =>
+                void run(async () => {
+                  if (code && !(await ask('Make a new recovery code? The old one stops working.', { title: 'New recovery code', confirmLabel: 'Make new code' }))) return;
+                  setShown(await newRecoveryCode(sb, userId));
+                  toast.success('New recovery code made. Save it somewhere safe.');
+                })
+              }
+            >
+              {code ? 'Make a new code' : 'Make a recovery code'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (status === 'locked')
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-ae-muted">Encrypted messages are set up on another of your devices. Let this device in to read encrypted chats here.</p>
+        <UnlockThisDevice me={userId} onDone={reload} />
+        {autoToggle}
+        <button type="button" disabled={busy} className="text-xs text-ae-danger hover:underline" onClick={() => void reset()}>
+          Lost every device and the recovery code? Reset encryption
         </button>
       </div>
     );
-  if (status === 'locked')
-    return (
-      <form className="space-y-2" onSubmit={(e) => (e.preventDefault(), void run(() => unlockIdentity(sb, userId, pass), 'Unlocked on this device.'))}>
-        <p className="text-sm text-ae-muted">You've set up encrypted messages on another device. Enter your encryption passphrase to read encrypted chats here.</p>
-        <div className="flex gap-2">
-          <input type="password" className={`${inputCls} flex-1`} placeholder="Encryption passphrase" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} />
-          <button type="submit" disabled={busy || !pass} className="rounded-ae bg-ae-accent px-4 text-sm font-semibold text-ae-on-accent disabled:opacity-50">
-            Unlock
-          </button>
-        </div>
-      </form>
-    );
   return (
-    <form
-      className="space-y-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (pass.length < 10) return toast.error('Use at least 10 characters.');
-        if (pass !== again) return toast.error('The two passphrases don’t match.');
-        void run(() => setUpIdentity(sb, userId, pass), 'Encrypted messages are set up.');
-      }}
-    >
-      <p className="text-sm text-ae-muted">
-        Pick an <b>encryption passphrase</b>. You'll need it to read encrypted chats on a new device. It's different from your password and
-        <b> can't be reset</b>: if you forget it, encrypted messages can't be recovered on new devices.
-      </p>
-      <input type="password" className={inputCls} placeholder="Encryption passphrase (10+ characters)" autoComplete="new-password" value={pass} onChange={(e) => setPass(e.target.value)} />
-      <input type="password" className={inputCls} placeholder="Type it again" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} />
-      <button type="submit" disabled={busy} className="rounded-ae bg-ae-accent px-4 py-2 text-sm font-semibold text-ae-on-accent disabled:opacity-50">
-        {busy ? 'Setting up…' : 'Set up encrypted messages'}
+    <div className="space-y-3">
+      <p className="text-sm text-ae-muted">Encryption sets itself up the first time you open Aether 1.9 or newer.</p>
+      <button
+        type="button"
+        disabled={busy}
+        className="rounded-ae bg-ae-accent px-4 py-2 text-sm font-semibold text-ae-on-accent disabled:opacity-50"
+        onClick={() =>
+          void run(async () => {
+            await setUpIdentity(sb, userId);
+            setShown(recoveryCode(userId));
+            e2eChanged();
+          })
+        }
+      >
+        Set up now
       </button>
-    </form>
+    </div>
   );
 }

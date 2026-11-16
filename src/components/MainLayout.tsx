@@ -43,6 +43,7 @@ import { CreateThreadDialog } from './Threads';
 import { ArrowLeftIcon as BackIcon } from './icons';
 import { ThemeStudio } from './ThemeStudio';
 import { AndroidUpdate } from './AndroidUpdate';
+import { E2eDeviceLayer } from './E2eChat';
 import { CallBubble } from './CallBubble';
 import { ReactionPickerLayer } from './ReactionPicker';
 import { ThemeEffectLayer } from './ThemeEffectLayer';
@@ -237,6 +238,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <ProfilePeekLayer me={userId} server={server} />
       <ThemeStudio />
       <AndroidUpdate />
+      <E2eDeviceLayer me={userId} />
       <CallBubble />
       <ReactionPickerLayer />
       <ThemeEffectLayer />

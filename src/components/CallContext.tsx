@@ -20,7 +20,7 @@ import { ScreenShareDialog } from './ScreenShareDialog';
 import { toast } from './Toaster';
 import { nativeCaptureAvailable } from '../lib/nativeCapture';
 import { loopSound, playSound } from '../lib/sounds';
-import { useSupabase } from '../lib/supabase';
+import { fire, useSupabase } from '../lib/supabase';
 import { useSettingsStore } from '../stores/settingsStore';
 import type { Channel, VoiceState } from '../types/db';
 
@@ -122,7 +122,7 @@ export function CallProvider({ userId, children }: { userId: string; children: R
     if (room?.kind === 'conversation' && participantsRef.current === 0) calls.end.mutate(room.id);
     if (room?.kind === 'channel') {
       stateJoinedRef.current = false;
-      void sb.rpc('voice_leave');
+      fire(sb.rpc('voice_leave'));
       qc.setQueryData<VoiceState[]>(['voice-states', room.serverId], (rows = []) => rows.filter((r) => r.user_id !== userId));
     }
     if (voice.status === 'connected') playSound(room?.kind === 'conversation' ? 'callEnd' : 'voiceLeave');
@@ -136,12 +136,14 @@ export function CallProvider({ userId, children }: { userId: string; children: R
   useEffect(() => {
     if (!inChannel) return;
     const beat = () =>
-      void sb.rpc('voice_update', {
-        p_self_mute: voice.isMuted,
-        p_self_deaf: voice.isDeafened,
-        p_streaming: voice.isSharingScreen,
-        p_camera: voice.isCameraOn,
-      });
+      fire(
+        sb.rpc('voice_update', {
+          p_self_mute: voice.isMuted,
+          p_self_deaf: voice.isDeafened,
+          p_streaming: voice.isSharingScreen,
+          p_camera: voice.isCameraOn,
+        }),
+      );
     beat();
     const t = setInterval(beat, 30_000);
     return () => clearInterval(t);

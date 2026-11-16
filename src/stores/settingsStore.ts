@@ -118,6 +118,9 @@ interface SettingsState {
   activity: ActivityPrefs;
   /** Accent color from the signed-in user's profile (mirrored here so ThemeEngine can use it). */
   profileAccent: string | null;
+  /** Encrypt DMs automatically once both people can (on by default). */
+  e2eAuto: boolean;
+  setE2eAuto: (on: boolean) => void;
   setTheme: (patch: Partial<ThemeSettings>) => void;
   setAudio: (patch: Partial<AudioProcessingSettings>) => void;
   setScreen: (patch: Partial<ScreenShareOptions>) => void;
@@ -185,6 +188,8 @@ export const useSettingsStore = create<SettingsState>()(
       system: DEFAULT_SYSTEM,
       activity: DEFAULT_ACTIVITY,
       profileAccent: null,
+      e2eAuto: true,
+      setE2eAuto: (e2eAuto) => set({ e2eAuto }),
       setTheme: (patch) => set((s) => ({ theme: { ...s.theme, ...patch } })),
       setA11y: (patch) => set((s) => ({ a11y: { ...s.a11y, ...patch } })),
       setAudio: (patch) => set((s) => ({ audio: { ...s.audio, ...patch } })),

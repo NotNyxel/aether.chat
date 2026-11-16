@@ -37,3 +37,9 @@ export function useSupabase(): SupabaseClient {
   if (!client) throw new Error('useSupabase must be used inside <SupabaseProvider>');
   return client;
 }
+
+/**
+ * Runs a query you don't need the answer to. Supabase queries only run once awaited or `.then`'d,
+ * so `void sb.from(...).delete()` on its own never reaches the server; wrap it in `fire(...)`.
+ */
+export const fire = (query: PromiseLike<unknown>): void => void Promise.resolve(query).catch(() => {});

@@ -6,7 +6,7 @@
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import { useSupabase } from '../lib/supabase';
+import { fire, useSupabase } from '../lib/supabase';
 import type { MessageScope } from '../types/db';
 import { ClockIcon, CloseIcon, SendIcon, TrashIcon } from './icons';
 import { Dialog } from './Dialog';
@@ -60,8 +60,8 @@ export function useSyncedDraft(scope: MessageScope, draft: string, setDraft: Dis
     if (!loaded.current || draft === last.current) return;
     const t = setTimeout(() => {
       last.current = draft;
-      if (draft.trim()) void sb.from('message_drafts').upsert({ scope_id: scope.id, content: draft.slice(0, 4000), updated_at: new Date().toISOString() });
-      else void sb.from('message_drafts').delete().eq('scope_id', scope.id);
+      if (draft.trim()) fire(sb.from('message_drafts').upsert({ scope_id: scope.id, content: draft.slice(0, 4000), updated_at: new Date().toISOString() }));
+      else fire(sb.from('message_drafts').delete().eq('scope_id', scope.id));
     }, 1200);
     return () => clearTimeout(t);
   }, [draft, scope.id, sb]);
@@ -73,8 +73,8 @@ export function useSyncedDraft(scope: MessageScope, draft: string, setDraft: Dis
     () => () => {
       const text = latest.current;
       if (text === last.current) return;
-      if (text.trim()) void sb.from('message_drafts').upsert({ scope_id: scope.id, content: text.slice(0, 4000), updated_at: new Date().toISOString() });
-      else void sb.from('message_drafts').delete().eq('scope_id', scope.id);
+      if (text.trim()) fire(sb.from('message_drafts').upsert({ scope_id: scope.id, content: text.slice(0, 4000), updated_at: new Date().toISOString() }));
+      else fire(sb.from('message_drafts').delete().eq('scope_id', scope.id));
     },
     [scope.id, sb],
   );

@@ -33,7 +33,7 @@ import { MobileBack } from './MobileNav';
 import { SeenLine, type ReadState } from './ReadReceipts';
 import { WatchButton, WatchPanel } from './WatchTogether';
 import { useE2e } from './E2eChat';
-import { E2E_MAX_CHARS, encryptText } from '../lib/e2e';
+import { E2E_MAX_CHARS, E2E_MAX_CIPHERTEXT, encryptText } from '../lib/e2e';
 import { toast } from './Toaster';
 
 const GROUP_WINDOW_MS = 5 * 60_000;
@@ -253,7 +253,10 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
         ? async (text: string) => {
             if (!e2e.key) throw new Error('This chat is encrypted. Unlock encrypted messages on this device to send here.');
             if (text.length > E2E_MAX_CHARS) throw new Error(`Encrypted messages can be up to ${E2E_MAX_CHARS.toLocaleString()} characters.`);
-            return text ? encryptText(e2e.key, text) : text;
+            if (!text) return text;
+            const out = await encryptText(e2e.key, text);
+            if (out.length > E2E_MAX_CIPHERTEXT) throw new Error('This message is too long to encrypt. Try splitting it in two.');
+            return out;
           }
         : undefined,
     [e2e.on, e2e.key],

@@ -1168,6 +1168,50 @@ await expectOk('members share chat keys with members, and switch encryption on',
 await expectError('chat keys cannot be handed to outsiders', () => as(A, `insert into public.conversation_keys (conversation_id, user_id, wrapped_key, iv) values ($1, '${C}', 'k', 'i')`, [squad]));
 await expectError('outsiders cannot switch a chat\'s encryption', () => as(C, `select public.set_conversation_e2e($1, false)`, [squad]), "not in this chat");
 
+console.log('\nAutomatic encryption and device linking (1.9.0)');
+await expectOk('turning encryption off marks the chat so it is not turned back on by itself', async () => {
+  await as(A, `select public.set_conversation_e2e($1, false)`, [squad]);
+  const r = (await db.query(`select e2e, e2e_declined from public.conversations where id = $1`, [squad])).rows[0];
+  if (r.e2e || !r.e2e_declined) throw new Error(JSON.stringify(r));
+  await as(A, `select public.set_conversation_e2e($1, true)`, [squad]);
+  const r2 = (await db.query(`select e2e, e2e_declined from public.conversations where id = $1`, [squad])).rows[0];
+  if (!r2.e2e || r2.e2e_declined) throw new Error(JSON.stringify(r2));
+});
+await expectOk("you can delete your own chat keys (reset), not anyone else's", async () => {
+  const other = (await db.query(`select user_id from public.conversation_keys where conversation_id = $1 and user_id <> '${A}' limit 1`, [squad])).rows[0].user_id;
+  await as(other, `delete from public.conversation_keys where user_id = '${A}'`);
+  const stillA = (await db.query(`select count(*)::int n from public.conversation_keys where user_id = '${A}'`)).rows[0].n;
+  await as(A, `delete from public.conversation_keys where user_id = '${A}'`);
+  const goneA = (await db.query(`select count(*)::int n from public.conversation_keys where user_id = '${A}'`)).rows[0].n;
+  if (stillA < 1 || goneA !== 0) throw new Error(`${stillA} ${goneA}`);
+});
+await expectOk("chat keys can carry the wrapper's public key", () =>
+  as(A, `insert into public.conversation_keys (conversation_id, user_id, wrapped_key, iv, wrapper_pub) values ($1, '${A}', 'k', 'i', '{"kty":"EC","x":"a","y":"b"}')`, [squad]));
+await expectOk('link requests are only visible to their owner', async () => {
+  await as(A, `insert into public.e2e_link_requests (device_name, request_pub) values ('Chrome on Windows', '{"kty":"EC"}')`);
+  const mine = (await as(A, `select count(*)::int n from public.e2e_link_requests`)).rows[0].n;
+  const theirs = (await as(B, `select count(*)::int n from public.e2e_link_requests`)).rows[0].n;
+  const changed = (await as(B, `update public.e2e_link_requests set status = 'approved' returning id`)).rows.length;
+  if (mine !== 1 || theirs !== 0 || changed !== 0) throw new Error(`${mine} ${theirs} ${changed}`);
+});
+await expectError('nobody can post a link request for someone else', () => as(B, `insert into public.e2e_link_requests (user_id, device_name, request_pub) values ('${A}', 'x', '{}')`));
+await expectOk('your own device can approve a request', async () => {
+  const n = (await as(A, `update public.e2e_link_requests set status = 'approved', approver_pub = '{"kty":"EC"}', ciphertext = 'c', iv = 'i' returning id`)).rows.length;
+  if (n !== 1) throw new Error(String(n));
+});
+await expectOk('old link requests are cleaned up', async () => {
+  await db.exec(`update public.e2e_link_requests set created_at = now() - interval '2 hours'`);
+  await db.query(`select public.purge_link_requests()`);
+  const n = (await db.query(`select count(*)::int n from public.e2e_link_requests`)).rows[0].n;
+  if (n !== 0) throw new Error(String(n));
+});
+await expectOk('encrypted messages may be longer than 4,000 characters (up to 6,000)', () =>
+  as(A, `insert into public.messages (conversation_id, content) values ($1, $2)`, [squad, 'aether-e2e:v1:' + 'x'.repeat(5500)]));
+await expectError('plain messages are still capped at 4,000 characters', () =>
+  as(A, `insert into public.messages (conversation_id, content) values ($1, $2)`, [squad, 'y'.repeat(4500)]));
+await expectError('encrypted text over 6,000 characters is refused', () =>
+  as(A, `insert into public.messages (conversation_id, content) values ($1, $2)`, [squad, 'aether-e2e:v1:' + 'x'.repeat(6100)]));
+
 console.log('\nUnconfirmed account cleanup');
 await expectOk('sign-ups never confirmed after 7 days are removed; everyone else stays', async () => {
   const ids = ['c1eaa001-0000-4000-8000-000000000001', 'c1eaa001-0000-4000-8000-000000000002', 'c1eaa001-0000-4000-8000-000000000003', 'c1eaa001-0000-4000-8000-000000000004'];

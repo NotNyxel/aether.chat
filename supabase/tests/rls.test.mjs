@@ -1408,6 +1408,72 @@ await expectOk("you can end your other sessions, but not someone else's", async 
 });
 await expectError("ending this device's own session goes through Sign out", () => as(A, `select public.end_session('aaaaaaaa-0000-4000-8000-000000000001')`, [], { session_id: 'aaaaaaaa-0000-4000-8000-000000000001' }), 'Sign out');
 
+console.log('\n2.0 features');
+await expectOk('folders and chat prefs (pin, archive, sound) are private to you', async () => {
+  const f = (await as(A, `insert into public.chat_folders (name, emoji) values ('Family', '🏠') returning id`)).rows[0].id;
+  await as(A, `insert into public.chat_prefs (scope_id, pinned_at, folder_id, sound) values ($1, now(), $2, 'chime')`, [squad, f]);
+  const mine = (await as(A, `select count(*)::int n from public.chat_prefs`)).rows[0].n;
+  const theirs = (await as(B, `select count(*)::int n from public.chat_prefs`)).rows[0].n + (await as(B, `select count(*)::int n from public.chat_folders`)).rows[0].n;
+  if (mine !== 1 || theirs !== 0) throw new Error(`${mine} ${theirs}`);
+});
+await expectError("nobody can put things in someone else's folders", () => as(B, `insert into public.chat_prefs (user_id, scope_id) values ('${A}', gen_random_uuid())`));
+await expectOk('reminders are private to you', async () => {
+  const m = (await as(A, `insert into public.messages (conversation_id, content) values ($1, 'remind me') returning id`, [squad])).rows[0].id;
+  await as(A, `insert into public.reminders (message_id, scope_id, remind_at) values ($1, $2, now() + interval '1 hour')`, [m, squad]);
+  const theirs = (await as(B, `select count(*)::int n from public.reminders`)).rows[0].n;
+  if (theirs !== 0) throw new Error(String(theirs));
+});
+await expectOk('disappearing messages expire, are hidden, then deleted', async () => {
+  await as(A, `select public.set_disappearing($1, 60)`, [squad]);
+  const m = (await as(A, `insert into public.messages (conversation_id, content) values ($1, 'poof') returning id, expires_at`, [squad])).rows[0];
+  if (!m.expires_at) throw new Error('no expiry');
+  await db.query(`update public.messages set expires_at = now() - interval '1 second' where id = $1`, [m.id]);
+  const seen = (await as(A, `select count(*)::int n from public.messages where id = $1`, [m.id])).rows[0].n;
+  const purged = (await db.query(`select public.purge_expired_messages() n`)).rows[0].n;
+  await as(A, `select public.set_disappearing($1, null)`, [squad]);
+  if (seen !== 0 || purged < 1) throw new Error(`${seen} ${purged}`);
+});
+await expectError('outsiders cannot turn on disappearing messages', () => as(C, `select public.set_disappearing($1, 60)`, [squad]), 'not in this chat');
+await expectOk('edits are recorded; admins and server moderators can read them, others cannot', async () => {
+  const m = (await as(E, `insert into public.messages (channel_id, content) values ($1, 'first version') returning id`, [gen2])).rows[0].id;
+  await as(E, `update public.messages set content = 'second version' where id = $1`, [m]);
+  const forAdmin = (await as(A, `select old_content from public.message_edits where message_id = $1`, [m])).rows;
+  const forAuthor = (await as(E, `select count(*)::int n from public.message_edits where message_id = $1`, [m])).rows[0].n;
+  if (forAdmin.length !== 1 || forAdmin[0].old_content !== 'first version' || forAuthor !== 0) throw new Error(`${JSON.stringify(forAdmin)} ${forAuthor}`);
+});
+await expectOk('people who choose "nobody" cannot be added to group chats', async () => {
+  const friend = (await db.query(`select case when requester_id = $1 then addressee_id else requester_id end f from public.friendships where status = 'accepted' and $1 in (requester_id, addressee_id) limit 1`, [A])).rows[0].f;
+  await db.query(`insert into public.privacy_settings (user_id, group_add_policy) values ($1, 'nobody') on conflict (user_id) do update set group_add_policy = 'nobody'`, [friend]);
+  let err = 'was added';
+  try {
+    await as(A, `select public.create_group_dm(array['${friend}'::uuid], 'nope')`);
+  } catch (e) {
+    err = e.message;
+  }
+  await db.query(`update public.privacy_settings set group_add_policy = 'friends' where user_id = $1`, [friend]);
+  if (!/allow/.test(err)) throw new Error(err);
+});
+await expectOk('quiet hours are detected across midnight', async () => {
+  await db.query(`update public.users set quiet_start = (now() at time zone 'UTC')::time - interval '1 hour', quiet_end = (now() at time zone 'UTC')::time + interval '1 hour', quiet_tz = 'UTC' where id = $1`, [A]);
+  const on = (await db.query(`select public.in_quiet_hours($1) q`, [A])).rows[0].q;
+  await db.query(`update public.users set quiet_start = null, quiet_end = null where id = $1`, [A]);
+  const off = (await db.query(`select public.in_quiet_hours($1) q`, [A])).rows[0].q;
+  if (!on || off) throw new Error(`${on} ${off}`);
+});
+await expectOk("bug reports: you see your own, admins see all, others don't", async () => {
+  await as(E, `insert into public.bug_reports (description, app_version, platform) values ('The send button does nothing', '2.0.0', 'web')`);
+  const own = (await as(E, `select count(*)::int n from public.bug_reports`)).rows[0].n;
+  const admin = (await as(A, `select count(*)::int n from public.bug_reports`)).rows[0].n;
+  const other = (await as(B, `select count(*)::int n from public.bug_reports`)).rows[0].n;
+  if (own !== 1 || admin < 1 || other !== 0) throw new Error(`${own} ${admin} ${other}`);
+});
+await expectOk('errors are grouped and counted; only admins can read them', async () => {
+  for (const u of [E, E, B]) await as(u, `select public.log_client_error('abc123', 'TypeError: x is undefined', 'at foo', '2.0.0', 'web', '/app')`);
+  const r = (await as(A, `select count, cardinality(users) n from public.client_errors where fingerprint = 'abc123'`)).rows[0];
+  const hidden = (await as(E, `select count(*)::int n from public.client_errors`)).rows[0].n;
+  if (r.count !== 3 || r.n !== 2 || hidden !== 0) throw new Error(`${JSON.stringify(r)} ${hidden}`);
+});
+
 console.log('\nUnconfirmed account cleanup');
 await expectOk('sign-ups never confirmed after 7 days are removed; everyone else stays', async () => {
   const ids = ['c1eaa001-0000-4000-8000-000000000001', 'c1eaa001-0000-4000-8000-000000000002', 'c1eaa001-0000-4000-8000-000000000003', 'c1eaa001-0000-4000-8000-000000000004'];

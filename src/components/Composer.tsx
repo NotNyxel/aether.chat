@@ -3,6 +3,7 @@
  * automatic :shortcode: conversion, emoji picker, polls, file uploads (button, paste,
  * drag-and-drop) with spoiler and alt text, replies, typing indicator, Enter to send.
  */
+import { useE2e } from './E2eChat';
 import { toast } from './Toaster';
 import { promptText } from './ConfirmDialog';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
@@ -74,6 +75,9 @@ export function Composer(props: ComposerProps) {
   const { data: myServers = [] } = useServers(meId);
   const { data: customEmojis = [] } = useServerEmojis(myServers.map((x) => x.id));
   const sb = useSupabase();
+  // Encrypted chats: files are encrypted on this device before upload.
+  const e2e = useE2e();
+  const e2eKey = e2e.on ? e2e.key : null;
   const upload = useUploadAttachment(scope);
   const emoji = useEmojiData();
   const profiles = useProfiles(props.memberIds);
@@ -143,10 +147,11 @@ export function Composer(props: ComposerProps) {
   }, []);
 
   const addFiles = (files: FileList | File[]) => {
+    if (e2e.on && !e2e.key) return toast.error('This chat is encrypted. Unlock encrypted messages on this device to send files here.');
     for (const file of Array.from(files).slice(0, 10)) {
       setUploading((n) => n + 1);
       // Each file uploads on its own (a shared mutation only reports back for the last call).
-      void uploadAttachmentTo(sb, scope.id, file)
+      void uploadAttachmentTo(sb, scope.id, file, e2eKey)
         .then((a) => setPending((p) => [...p, a].slice(0, 10)))
         .catch((e: Error) => toast.error(e.message))
         .finally(() => setUploading((n) => n - 1));
@@ -318,9 +323,10 @@ export function Composer(props: ComposerProps) {
     );
   };
   const sendVoice = async (rec: { file: File; duration: number; waveform: number[] }) => {
+    if (e2e.on && !e2e.key) return toast.error('This chat is encrypted. Unlock encrypted messages on this device to send here.');
     setUploading((n) => n + 1);
     try {
-      const att = await uploadAttachmentTo(sb, scope.id, rec.file);
+      const att = await uploadAttachmentTo(sb, scope.id, rec.file, e2eKey);
       sendAttachment({ ...att, name: 'Voice message', voice: true, duration: Math.round(rec.duration * 10) / 10, waveform: rec.waveform } as Attachment);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not send the voice message.');

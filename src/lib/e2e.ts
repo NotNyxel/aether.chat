@@ -277,6 +277,29 @@ export async function decryptText(key: CryptoKey, content: string): Promise<stri
   }
 }
 
+// ── Files (2.0) ───────────────────────────────────────────────────────────────────────────
+// Attachments in an encrypted chat are encrypted with the chat key before upload: the server only
+// ever stores scrambled bytes. The real name, type and size go in `meta`, encrypted the same way.
+
+export interface EncryptedFile {
+  blob: Blob;
+  iv: string;
+}
+
+export async function encryptBytes(key: CryptoKey, data: ArrayBuffer): Promise<EncryptedFile> {
+  const iv = rand(12);
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+  return { blob: new Blob([ct], { type: 'application/octet-stream' }), iv: b64(iv) };
+}
+
+export async function decryptBytes(key: CryptoKey, iv: string, data: ArrayBuffer): Promise<ArrayBuffer | null> {
+  try {
+    return await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(iv) }, key, data);
+  } catch {
+    return null;
+  }
+}
+
 // ── Device linking ────────────────────────────────────────────────────────────────────────
 // The new device posts a one-time public key. One of your devices that has the identity key
 // approves: it encrypts the identity key with a key only the new device can derive. Both devices

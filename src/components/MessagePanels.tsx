@@ -1,5 +1,6 @@
 /** Right-hand panels for a chat: pinned messages and search results (with jump-to). */
-import { useState } from 'react';
+import { decryptMeta, useEncryptedAttachment } from '../hooks/useEncryptedAttachment';
+import { useEffect, useState } from 'react';
 import { HAS_KINDS, parseSearch, useMessageSearch, usePinnedMessages, useScopeMedia, type MediaItem, type SearchQuery } from '../hooks/useMessageExtras';
 import { decryptText } from '../lib/e2e';
 import { promptText } from './ConfirmDialog';
@@ -94,8 +95,40 @@ const isVisual = (a: MediaItem['a']) => !a.voice && (a.content_type.startsWith('
 const sizeText = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 
 /** Media & files (2.0): a grid of every photo and video in the chat, and a list of files and voice messages. */
+/** A gallery tile: encrypted photos are decrypted on this device first. */
+function Thumb({ a }: { a: MediaItem['a'] }) {
+  const r = useEncryptedAttachment(a);
+  if (r.state !== 'plain' && r.state !== 'ready') return <span className="ae-skeleton block h-full w-full" />;
+  return <img src={r.a.url} alt={r.a.alt ?? ''} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform hover:scale-105" draggable={false} />;
+}
+
+/** Encrypted items: their real name and type, so they land in the right tab. */
+function useMediaMeta(items: MediaItem[]): MediaItem[] {
+  const { key } = useE2e();
+  const [metas, setMetas] = useState<Map<string, Partial<MediaItem['a']>>>(new Map());
+  useEffect(() => {
+    if (!key) return;
+    const todo = items.filter((i) => i.a.e2e && !metas.has(i.a.url));
+    if (!todo.length) return;
+    let gone = false;
+    void Promise.all(todo.map(async (i) => [i.a.url, await decryptMeta(key, i.a)] as const)).then((rows) => {
+      if (gone) return;
+      setMetas((m) => {
+        const next = new Map(m);
+        for (const [url, meta] of rows) next.set(url, meta ?? {});
+        return next;
+      });
+    });
+    return () => {
+      gone = true;
+    };
+  }, [items, key, metas]);
+  return items.map((i) => (i.a.e2e && metas.get(i.a.url) ? { ...i, a: { ...i.a, ...metas.get(i.a.url) } } : i));
+}
+
 export function MediaPanel({ scope, serverId, onClose }: { scope: MessageScope; serverId: string | null; onClose: () => void }) {
-  const { data = [], isLoading } = useScopeMedia(scope, true);
+  const { data: raw = [], isLoading } = useScopeMedia(scope, true);
+  const data = useMediaMeta(raw);
   const [tab, setTab] = useState<'media' | 'files'>('media');
   const openLightbox = useUiStore((s) => s.openLightbox);
   const goTo = useUiStore((s) => s.goTo);
@@ -141,12 +174,18 @@ export function MediaPanel({ scope, serverId, onClose }: { scope: MessageScope; 
                 title={i.a.alt || i.a.name}
                 className="block h-full w-full"
                 onClick={() =>
-                  i.a.content_type.startsWith('video/')
+                  i.a.content_type.startsWith('video/') || i.a.e2e
                     ? jump(i)
                     : openLightbox({ url: i.a.url, alt: i.a.alt, name: i.a.name, messageId: i.messageId, scopeId: scope.id, contentType: i.a.content_type, width: i.a.width, height: i.a.height })
                 }
               >
-                {i.a.content_type.startsWith('video/') ? (
+                {i.a.e2e && !i.a.content_type.startsWith('video/') ? (
+                  <Thumb a={i.a} />
+                ) : i.a.e2e ? (
+                  <span className="grid h-full w-full place-items-center text-ae-muted">
+                    <VideoFileIcon size={22} />
+                  </span>
+                ) : i.a.content_type.startsWith('video/') ? (
                   <>
                     <video src={`${i.a.url}#t=0.1`} preload="metadata" muted playsInline className="pointer-events-none h-full w-full object-cover" />
                     <VideoFileIcon size={16} className="absolute right-1 bottom-1 text-white drop-shadow" />

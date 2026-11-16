@@ -1,4 +1,5 @@
 /** One chat message: header, reply/forward context, Markdown, attachments, poll, embeds, reactions, hover toolbar. */
+import { useEncryptedAttachment } from '../hooks/useEncryptedAttachment';
 import { inviteCodesIn } from '../lib/invites';
 import { InviteEmbed } from './Invites';
 import { AudioPlayer, VideoPlayer } from './MediaPlayer';
@@ -53,7 +54,27 @@ export function DisplayName({ userId }: { userId: string | null }) {
   return <>{data?.display_name || data?.username || 'Unknown'}</>;
 }
 
+/** Encrypted files are decrypted on this device first; everything else shows as it is. */
 function AttachmentView({ a, messageId, scopeId }: { a: Attachment; messageId?: string; scopeId?: string | null }) {
+  const r = useEncryptedAttachment(a);
+  if (r.state === 'plain' || r.state === 'ready') return <PlainAttachmentView a={r.a} messageId={messageId} scopeId={scopeId} />;
+  const voice = !!(a as VoiceAttachment).voice;
+  return (
+    <div className="flex max-w-sm items-center gap-3 rounded-ae border border-ae-border bg-ae-sunken px-3 py-2 text-sm" aria-busy={r.state === 'loading'}>
+      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-md bg-ae-surface ${r.state === 'failed' ? 'text-ae-danger' : 'text-ae-accent'}`}>
+        <LockIcon size={18} />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate">{r.state === 'loading' ? (voice ? 'Decrypting voice message…' : 'Decrypting…') : r.state === 'locked' ? 'Encrypted file' : 'Couldn’t decrypt this file'}</span>
+        <span className="text-xs text-ae-muted">
+          {r.state === 'locked' ? 'Unlock encrypted messages on this device to open it.' : r.state === 'failed' ? 'It may have been sent with an older key.' : formatSize(a.size)}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function PlainAttachmentView({ a, messageId, scopeId }: { a: Attachment; messageId?: string; scopeId?: string | null }) {
   const openLightbox = useUiStore((s) => s.openLightbox);
   const [revealed, setRevealed] = useState(!a.spoiler);
 
@@ -71,7 +92,10 @@ function AttachmentView({ a, messageId, scopeId }: { a: Attachment; messageId?: 
   ) : (
     <a
       href={a.url}
+      download={a.url.startsWith('blob:') ? a.name : undefined}
       onClick={(e) => {
+        // Decrypted files are local: save them directly instead of opening a browser.
+        if (a.url.startsWith('blob:')) return;
         e.preventDefault();
         void openExternal(a.url);
       }}

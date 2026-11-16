@@ -241,6 +241,8 @@ export interface Attachment {
   voice?: boolean;
   duration?: number;
   waveform?: number[];
+  /** Encrypted chats (2.0): the file is encrypted with the chat key; `meta` holds the real name/type/size, encrypted too. */
+  e2e?: { iv: string; meta: string };
   /** Server sticker. */
   sticker?: boolean;
   sticker_id?: string;

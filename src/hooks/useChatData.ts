@@ -3,6 +3,7 @@
  * messages for both server channels and DM conversations. RLS decides what each query returns,
  * so these hooks never filter by membership themselves.
  */
+import { encryptBytes, encryptText } from '../lib/e2e';
 import { toast } from '../components/Toaster';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useEffect } from 'react';
@@ -400,19 +401,15 @@ export function useDeleteMessage(scope: MessageScope) {
  * Uploads a file to attachments/<scope id>/<uuid>/<name>. The bucket is private, so the stored URL
  * is a long-lived signed URL (anyone holding the link can open the file, as with most chat CDNs).
  */
-/** Uploads a file into a channel/conversation/thread's attachment folder and returns its metadata. */
-export async function uploadAttachmentTo(sb: ReturnType<typeof useSupabase>, scopeId: string, file: File): Promise<Attachment> {
-  if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name} is larger than 25 MB.`);
-  const safeName = file.name.replace(/[^A-Za-z0-9._-]+/g, '_').slice(-120) || 'file';
-  const path = `${scopeId}/${crypto.randomUUID()}/${safeName}`;
-  const { error } = await sb.storage.from('attachments').upload(path, file, {
-    contentType: file.type || 'application/octet-stream',
-    upsert: false,
-  });
-  if (error) throw new Error(error.message);
-  const signed = await sb.storage.from('attachments').createSignedUrl(path, TEN_YEARS_S);
-  if (signed.error || !signed.data) throw new Error(signed.error?.message ?? 'Could not sign the upload URL.');
-
+/**
+ * Uploads a file into a channel/conversation/thread's attachment folder and returns its metadata.
+ * With `key` (an encrypted chat), the file is encrypted first and stored under a meaningless name;
+ * its real name, type and image size travel encrypted in `e2e.meta`.
+ */
+export async function uploadAttachmentTo(sb: ReturnType<typeof useSupabase>, scopeId: string, file: File, key?: CryptoKey | null): Promise<Attachment> {
+  // Encryption adds 16 bytes, and the bucket stops at exactly 25 MB.
+  if (file.size > 25 * 1024 * 1024 - (key ? 16 : 0)) throw new Error(`${file.name} is larger than 25 MB.`);
+  const contentType = /^[a-z]+\/[a-zA-Z0-9.+-]+$/.test(file.type) ? file.type : 'application/octet-stream';
   let dims: { width?: number; height?: number } = {};
   if (file.type.startsWith('image/')) {
     try {
@@ -423,13 +420,26 @@ export async function uploadAttachmentTo(sb: ReturnType<typeof useSupabase>, sco
       // Unsupported image format for decoding. Dimensions are optional.
     }
   }
-  return {
-    url: signed.data.signedUrl,
-    name: file.name.slice(0, 255),
-    size: file.size,
-    content_type: /^[a-z]+\/[a-zA-Z0-9.+-]+$/.test(file.type) ? file.type : 'application/octet-stream',
-    ...dims,
-  };
+  if (key) {
+    const sealed = await encryptBytes(key, await file.arrayBuffer());
+    const path = `${scopeId}/${crypto.randomUUID()}/file.bin`;
+    const up = await sb.storage.from('attachments').upload(path, sealed.blob, { contentType: 'application/octet-stream', upsert: false });
+    if (up.error) throw new Error(up.error.message);
+    const signedE = await sb.storage.from('attachments').createSignedUrl(path, TEN_YEARS_S);
+    if (signedE.error || !signedE.data) throw new Error(signedE.error?.message ?? 'Could not sign the upload URL.');
+    const meta = await encryptText(key, JSON.stringify({ name: file.name.slice(0, 255), content_type: contentType, ...dims }));
+    return { url: signedE.data.signedUrl, name: 'Encrypted file', size: file.size, content_type: 'application/octet-stream', e2e: { iv: sealed.iv, meta } };
+  }
+  const safeName = file.name.replace(/[^A-Za-z0-9._-]+/g, '_').slice(-120) || 'file';
+  const path = `${scopeId}/${crypto.randomUUID()}/${safeName}`;
+  const { error } = await sb.storage.from('attachments').upload(path, file, {
+    contentType: file.type || 'application/octet-stream',
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  const signed = await sb.storage.from('attachments').createSignedUrl(path, TEN_YEARS_S);
+  if (signed.error || !signed.data) throw new Error(signed.error?.message ?? 'Could not sign the upload URL.');
+  return { url: signed.data.signedUrl, name: file.name.slice(0, 255), size: file.size, content_type: contentType, ...dims };
 }
 
 export function useUploadAttachment(scope: MessageScope) {

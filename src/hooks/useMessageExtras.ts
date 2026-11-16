@@ -2,6 +2,7 @@
  * Batch 1 data hooks: pins, polls, message search, forwarding, link previews, jump-to-message
  * loading, and per-channel / per-DM unread state.
  */
+import { isEncrypted } from '../lib/e2e';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect } from 'react';
 import { useSupabase } from '../lib/supabase';
@@ -119,6 +120,8 @@ export function useForwardMessage() {
   const sb = useSupabase();
   return useMutation({
     mutationFn: async ({ message, target, comment }: { message: Message; target: MessageScope; comment: string }) => {
+      // Encrypted messages and files only open with their own chat's key.
+      if (isEncrypted(message.content) || message.attachments?.some((x) => x.e2e)) throw new Error('Encrypted messages can’t be forwarded. Save the file and send it again instead.');
       const col = scopeColumn(target);
       unwrap(
         await sb

@@ -12,6 +12,8 @@ const HOLD_MS = 450;
 const MOVE_TOLERANCE = 10;
 
 let synthesizedAt = 0;
+/** The click a browser sends when a long press is released: ignore it until then. */
+let swallowClickUntil = 0;
 
 function fireContextMenu(target: EventTarget, x: number, y: number) {
   synthesizedAt = Date.now();
@@ -109,15 +111,20 @@ export function installTouchControls(): void {
         if (ui.mobilePane === 'main') ui.setMobilePane('nav');
       }
       // A long press shouldn't also count as a tap.
-      if (held) e.preventDefault();
+      if (held) {
+        e.preventDefault();
+        swallowClickUntil = Date.now() + 350;
+      }
       reset();
     },
     { passive: false },
   );
   document.addEventListener('touchcancel', reset, { passive: true });
 
-  // Android/Chrome also fire their own contextmenu after a long press: keep only ours.
-  document.addEventListener(
+  // Android/Chrome also fire their own contextmenu after a long press: keep only ours. This listens
+  // on window (capture), registered at startup, so it runs before anything else can see the event;
+  // otherwise the menu we just opened treats it as a click elsewhere and closes itself.
+  window.addEventListener(
     'contextmenu',
     (e) => {
       if ((e as MouseEvent & { aetherTouch?: boolean }).aetherTouch) return;
@@ -128,11 +135,12 @@ export function installTouchControls(): void {
     },
     true,
   );
-  // Swallow the click that follows a long press.
-  document.addEventListener(
+  // Swallow the click that follows a long press (only that one: a quick tap in the menu still counts).
+  window.addEventListener(
     'click',
     (e) => {
-      if (Date.now() - synthesizedAt < 600) {
+      if (Date.now() < swallowClickUntil) {
+        swallowClickUntil = 0;
         e.preventDefault();
         e.stopImmediatePropagation();
       }

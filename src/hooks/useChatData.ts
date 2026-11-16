@@ -3,6 +3,7 @@
  * messages for both server channels and DM conversations. RLS decides what each query returns,
  * so these hooks never filter by membership themselves.
  */
+import { toast } from '../components/Toaster';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useSupabase } from '../lib/supabase';
@@ -505,6 +506,9 @@ export function useToggleReaction(scope: MessageScope, userId: string) {
         return [...d, { message_id: messageId, user_id: userId, emoji, scope_id: scope.id, created_at: new Date().toISOString() }];
       });
     },
-    onError: () => qc.invalidateQueries({ queryKey: ['reactions', scope.id] }),
+    onError: (e) => {
+      toast.error(`Couldn’t react: ${e.message}`);
+      void qc.invalidateQueries({ queryKey: ['reactions', scope.id] });
+    },
   });
 }

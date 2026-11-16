@@ -3,6 +3,17 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.9.5] - 2026-11-16
+
+**Reactions work on phones**
+
+- **Fixed:** on Android (the web app in Chrome and the Android app), pressing and holding a message opened the reaction
+  menu, which then closed itself straight away. The browser sends its own long-press event a moment after ours, and the
+  menu took it for a tap somewhere else. It now stays open.
+- **Fixed:** a quick tap on a reaction right after the menu opened could be ignored. Only the release of the long press
+  itself is ignored now.
+- If a reaction can't be saved, you now see why, instead of it quietly disappearing.
+
 ## [1.9.4] - 2026-11-16
 
 **Encrypted calls, and everything from 1.9.0–1.9.3 on every platform**

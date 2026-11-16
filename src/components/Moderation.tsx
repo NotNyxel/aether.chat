@@ -233,8 +233,14 @@ function WarningNotice({ warnings, level }: { warnings: WarningRow[]; level: Dan
   const [busy, setBusy] = useState(false);
   const ack = async () => {
     setBusy(true);
-    await sb.rpc('acknowledge_warnings');
+    const { error } = await sb.rpc('acknowledge_warnings');
     setBusy(false);
+    if (error) {
+      toast.error(`Couldn’t confirm: ${error.message}. Check your connection and try again.`);
+      return;
+    }
+    // Close the notice straight away; don't wait on the refetch (if it failed, the notice used to stay up).
+    qc.setQueryData<MyModeration | null>(['my-moderation'], (d) => (d ? { ...d, unacknowledged: [] } : d));
     void qc.invalidateQueries({ queryKey: ['my-moderation'] });
     void qc.invalidateQueries({ queryKey: ['my-warnings'] });
   };

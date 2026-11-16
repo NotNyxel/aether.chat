@@ -3,6 +3,12 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.11.1] - 2026-11-16
+
+- **Fixed:** the account warning notice could get stuck. Pressing **I understand** did nothing if the app then couldn't
+  reload your account status, so the notice stayed on screen. It now closes as soon as the warning is acknowledged, and
+  if acknowledging fails you see why instead of nothing happening.
+
 ## [1.11.0] - 2026-11-16
 
 **Tablet fixes, a quick status picker, and no more accidental text selection**

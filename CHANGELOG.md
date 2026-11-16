@@ -3,6 +3,24 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.9.1] - 2026-11-16
+
+**Backup codes, passkeys, and two-factor that can't be skipped**
+
+- **Backup codes for two-factor.**
+  - You get 8 single-use codes when you turn on two-factor; you can copy or download them.
+  - Lost your phone? At the two-factor step, choose **Use a backup code**. It turns two-factor off so you can get in,
+    then you set it up again.
+  - Make a new set any time in **Settings → My Account**.
+  - The server only keeps a fingerprint of each code, and limits guesses to 5 every 15 minutes.
+- **Passkeys.** Sign in with Face ID, Touch ID, Windows Hello, your phone or a security key instead of typing your
+  password.
+  - Add one in **Settings → My Account → Passkeys** on the web app (joinaether.vercel.app).
+  - Browsers tie passkeys to one website, so they work on the web app only, not in the desktop or phone apps.
+- **Two-factor is now enforced by the server.** Before, only the app asked for your authenticator code, so someone who
+  had your password could get around it by talking to the server directly. Now an account with two-factor can't read
+  or change anything until the code has been entered.
+
 ## [1.9.0] - 2026-11-16
 
 **Encryption that sets itself up**

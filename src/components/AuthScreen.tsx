@@ -9,6 +9,8 @@ import { DownloadIcon } from './icons';
 import { authRedirectUrl } from '../lib/authLinks';
 import { useSupabase } from '../lib/supabase';
 import { captchaEnabled, Turnstile } from './Turnstile';
+import { passkeyError, passkeysHere } from '../lib/passkeys';
+import { toast } from './Toaster';
 
 const input = 'ae-input w-full';
 
@@ -147,6 +149,22 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
 
         <Turnstile onToken={setCaptcha} resetKey={`${mode}-${captchaRound}`} />
         <Submit busy={busy}>{mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}</Submit>
+        {mode === 'signin' && passkeysHere() && (
+          <button
+            type="button"
+            disabled={busy}
+            className="w-full rounded-ae border border-ae-border px-4 py-2.5 text-sm font-semibold hover:bg-ae-hover disabled:opacity-50"
+            onClick={async () => {
+              setError(null);
+              if (captchaEnabled && !captcha) return setError('Please complete the human check first.');
+              const { error: err } = await sb.auth.signInWithPasskey({ options: { captchaToken: captcha ?? undefined } });
+              setCaptchaRound((n) => n + 1);
+              if (err) setError(passkeyError(err));
+            }}
+          >
+            🔑 Sign in with a passkey
+          </button>
+        )}
       </form>
 
       <p className="text-center text-sm text-ae-muted">
@@ -170,6 +188,7 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
 /** Second step of sign-in when the account has an authenticator app. */
 export function MfaChallenge({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
   const sb = useSupabase();
+  const [backup, setBackup] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -179,6 +198,22 @@ export function MfaChallenge({ onDone, onCancel }: { onDone: () => void; onCance
     setBusy(true);
     setError(null);
     try {
+      if (backup) {
+        const { error: fnErr } = await sb.functions.invoke('mfa-recover', { body: { code } });
+        if (fnErr) {
+          let message = 'That backup code didn’t work.';
+          try {
+            message = ((await (fnErr as { context: Response }).context.json()) as { error?: string }).error ?? message;
+          } catch {
+            /* keep the default */
+          }
+          throw new Error(message);
+        }
+        await sb.auth.refreshSession();
+        toast('Backup code used: two-factor is off for now. Set it up again in Settings → My Account.');
+        onDone();
+        return;
+      }
       const { data: factors, error: fErr } = await sb.auth.mfa.listFactors();
       if (fErr) throw fErr;
       const factor = factors.totp.find((f) => f.status === 'verified');
@@ -194,21 +229,50 @@ export function MfaChallenge({ onDone, onCancel }: { onDone: () => void; onCance
   };
 
   return (
-    <Shell title="Two-factor authentication" subtitle="Enter the 6-digit code from your authenticator app.">
+    <Shell
+      title="Two-factor authentication"
+      subtitle={backup ? 'Enter one of your backup codes. It turns two-factor off so you can get in; set it up again afterwards.' : 'Enter the 6-digit code from your authenticator app.'}
+    >
       <form onSubmit={submit} className="space-y-3">
-        <input
-          className={`${input} text-center font-mono text-2xl tracking-[0.5em]`}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          autoFocus
-          maxLength={7}
-          placeholder="000000"
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/[^\d ]/g, ''))}
-        />
+        {backup ? (
+          <input
+            key="backup"
+            className={`${input} text-center font-mono text-xl tracking-[0.2em] uppercase`}
+            autoComplete="off"
+            spellCheck={false}
+            autoFocus
+            maxLength={14}
+            placeholder="XXXXX-XXXXX"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+        ) : (
+          <input
+            key="totp"
+            className={`${input} text-center font-mono text-2xl tracking-[0.5em]`}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            autoFocus
+            maxLength={7}
+            placeholder="000000"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/[^\d ]/g, ''))}
+          />
+        )}
         {error && <p className="ae-enter rounded-ae bg-ae-danger/10 px-3 py-2 text-sm text-ae-danger">{error}</p>}
-        <Submit busy={busy}>Verify</Submit>
+        <Submit busy={busy}>{backup ? 'Use backup code' : 'Verify'}</Submit>
       </form>
+      <button
+        type="button"
+        className="w-full text-center text-sm text-ae-accent hover:underline"
+        onClick={() => {
+          setBackup(!backup);
+          setCode('');
+          setError(null);
+        }}
+      >
+        {backup ? 'Use my authenticator app instead' : 'Can’t use your authenticator? Use a backup code'}
+      </button>
       <button type="button" className="w-full text-center text-sm text-ae-muted hover:text-ae-text" onClick={onCancel}>
         Use a different account
       </button>

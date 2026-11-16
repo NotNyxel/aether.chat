@@ -8,6 +8,8 @@
  *   node scripts/auth-config.mjs --smtp     sends account emails through your SMTP provider (.secrets/smtp.json:
  *                                           { "host", "port", "user", "pass", "sender", "name" }), raises the email limit
  *                                           and turns sign-up confirmation back on
+ *   node scripts/auth-config.mjs --passkeys passkeys / security keys as a two-factor option. Browsers tie a passkey to
+ *                                           one website, so this is the web app's address (WEB_APP_URL)
  * Needs a Supabase personal access token in .secrets/supabase.token (git-ignored).
  *
  * Account emails (password reset, email change, sign-up confirmation) contain a link. The app asks
@@ -29,7 +31,8 @@ const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application
 const WEB_APP_URL = /WEB_APP_URL = '([^']+)'/.exec(readFileSync(join(ROOT, 'src', 'config.ts'), 'utf8'))?.[1];
 const REDIRECTS = ['aetherchat://auth', 'http://localhost:1420', 'http://localhost:1420/**', ...(WEB_APP_URL ? [WEB_APP_URL, `${WEB_APP_URL}/**`] : [])];
 const KEYS = ['site_url', 'uri_allow_list', 'mailer_autoconfirm', 'mailer_secure_email_change_enabled', 'smtp_host', 'smtp_admin_email', 'rate_limit_email_sent', 'security_captcha_enabled', 'security_captcha_provider',
-  'mfa_totp_enroll_enabled', 'mfa_totp_verify_enabled', 'security_update_password_require_reauthentication'];
+  'mfa_totp_enroll_enabled', 'mfa_totp_verify_enabled', 'mfa_web_authn_enroll_enabled', 'mfa_web_authn_verify_enabled', 'webauthn_rp_id', 'webauthn_rp_origins',
+  'security_update_password_require_reauthentication'];
 
 const get = async () => {
   const res = await fetch(url, { headers });
@@ -79,6 +82,20 @@ if (process.argv.includes('--smtp')) {
       mailer_autoconfirm: false,
     },
     'SMTP',
+  );
+}
+if (process.argv.includes('--passkeys')) {
+  if (!WEB_APP_URL) throw new Error('WEB_APP_URL is missing from src/config.ts');
+  const origin = new URL(WEB_APP_URL).origin;
+  await patch(
+    {
+      mfa_web_authn_enroll_enabled: true,
+      mfa_web_authn_verify_enabled: true,
+      webauthn_rp_display_name: 'Aether',
+      webauthn_rp_id: new URL(origin).hostname,
+      webauthn_rp_origins: origin,
+    },
+    'Passkeys',
   );
 }
 console.log(JSON.stringify(Object.fromEntries(KEYS.map((k) => [k, cfg[k] ?? null])), null, 2));

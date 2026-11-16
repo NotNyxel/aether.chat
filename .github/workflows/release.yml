@@ -110,6 +110,9 @@ jobs:
 
   web:
     needs: [prepare, publish]
+    # Without this, a Windows-only release skips the web too (the skipped macOS/Linux jobs upstream
+    # make the default success() check fail).
+    if: ${{ !cancelled() && needs.publish.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

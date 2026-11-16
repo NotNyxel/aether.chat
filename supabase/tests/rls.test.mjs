@@ -20,6 +20,9 @@ create table auth.sessions (id uuid primary key default gen_random_uuid(), user_
 create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb, raw_app_meta_data jsonb default '{}'::jsonb, email text, last_sign_in_at timestamptz, email_confirmed_at timestamptz, created_at timestamptz default now());
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;
+create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+grant execute on function auth.jwt() to authenticated, anon;
+create table auth.mfa_factors (id uuid primary key default gen_random_uuid(), user_id uuid, status text);
 create schema extensions; grant usage on schema extensions to authenticated, anon;
 create schema realtime;
 create table realtime.messages (id bigserial primary key, topic text, extension text, payload jsonb);
@@ -44,8 +47,8 @@ const B = '22222222-2222-2222-2222-222222222222';
 const C = '33333333-3333-3333-3333-333333333333';
 
 let failures = 0;
-async function as(uid, sql, params) {
-  await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid}', false); set role authenticated;`);
+async function as(uid, sql, params, claims = {}) {
+  await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid}', false); select set_config('request.jwt.claims', '${JSON.stringify(claims)}', false); set role authenticated;`);
   try {
     return await db.query(sql, params);
   } finally {
@@ -1211,6 +1214,54 @@ await expectError('plain messages are still capped at 4,000 characters', () =>
   as(A, `insert into public.messages (conversation_id, content) values ($1, $2)`, [squad, 'y'.repeat(4500)]));
 await expectError('encrypted text over 6,000 characters is refused', () =>
   as(A, `insert into public.messages (conversation_id, content) values ($1, $2)`, [squad, 'aether-e2e:v1:' + 'x'.repeat(6100)]));
+
+console.log('\nTwo-factor backup codes and enforcement (1.9.1)');
+const AAL2 = { aal: 'aal2' };
+await expectError('backup codes need a fully signed-in two-factor session', () => as(A, `select public.generate_backup_codes()`), 'two-factor');
+let codes = [];
+await expectOk('eight codes are made, shown once, and only fingerprints are kept', async () => {
+  codes = (await as(A, `select public.generate_backup_codes() c`, [], AAL2)).rows[0].c;
+  const stored = (await db.query(`select code_hash from public.mfa_backup_codes where user_id = '${A}'`)).rows;
+  if (codes.length !== 8 || new Set(codes).size !== 8 || !codes.every((c) => /^[A-Z2-9]{5}-[A-Z2-9]{5}$/.test(c))) throw new Error(codes.join(' '));
+  if (stored.length !== 8 || stored.some((r) => codes.includes(r.code_hash))) throw new Error('stored plain codes');
+  const left = (await as(A, `select public.backup_codes_remaining() n`)).rows[0].n;
+  if (left !== 8) throw new Error(String(left));
+});
+await expectError('people cannot read backup codes directly', () => as(A, `select * from public.mfa_backup_codes`));
+await expectError('people cannot use a backup code themselves (server only)', () => as(A, `select public.use_backup_code('${A}', 'x')`));
+await expectOk('a code works once, typed loosely; then the rest are void', async () => {
+  const wrong = (await db.query(`select public.use_backup_code($1, 'AAAAA-AAAAA') ok`, [A])).rows[0].ok;
+  const right = (await db.query(`select public.use_backup_code($1, $2) ok`, [A, codes[3].toLowerCase().replace('-', ' ')])).rows[0].ok;
+  const again = (await db.query(`select public.use_backup_code($1, $2) ok`, [A, codes[3]])).rows[0].ok;
+  const left = (await db.query(`select count(*)::int n from public.mfa_backup_codes where user_id = '${A}'`)).rows[0].n;
+  if (wrong || !right || again || left !== 0) throw new Error(`${wrong} ${right} ${again} ${left}`);
+});
+await expectError('guessing stops after 5 tries in 15 minutes', async () => {
+  for (let i = 0; i < 6; i++) await db.query(`select public.use_backup_code($1, 'BBBBB-BBBBB')`, [B]);
+}, 'Too many tries');
+await expectOk('with two-factor on, a password-only session can read nothing', async () => {
+  await db.exec(`insert into auth.mfa_factors (user_id, status) values ('${A}', 'verified')`);
+  const aal1 = (await as(A, `select count(*)::int n from public.users`)).rows[0].n;
+  const aal2 = (await as(A, `select count(*)::int n from public.users`, [], AAL2)).rows[0].n;
+  const other = (await as(B, `select count(*)::int n from public.users`)).rows[0].n;
+  await db.exec(`delete from auth.mfa_factors where user_id = '${A}'`);
+  if (aal1 !== 0 || aal2 < 1 || other < 1) throw new Error(`${aal1} ${aal2} ${other}`);
+});
+await expectError('with two-factor on, a password-only session can change nothing', async () => {
+  await db.exec(`insert into auth.mfa_factors (user_id, status) values ('${A}', 'verified')`);
+  try {
+    const n = (await as(A, `update public.users set bio = 'pwned' where id = '${A}' returning id`)).rows.length;
+    if (n === 0) throw new Error('blocked');
+  } finally {
+    await db.exec(`delete from auth.mfa_factors where user_id = '${A}'`);
+  }
+}, 'blocked');
+await expectOk('every table with row-level security enforces two-factor', async () => {
+  const missing = (await db.query(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
+       and not exists (select 1 from pg_policies p where p.schemaname = 'public' and p.tablename = c.relname and p.policyname = 'mfa_required')`)).rows.map((r) => r.relname);
+  if (missing.length) throw new Error(missing.join(', '));
+});
 
 console.log('\nUnconfirmed account cleanup');
 await expectOk('sign-ups never confirmed after 7 days are removed; everyone else stays', async () => {

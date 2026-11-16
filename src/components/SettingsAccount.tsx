@@ -19,6 +19,7 @@ import { toast } from './Toaster';
 import { e2eStatus, forgetOnThisDevice, formatRecoveryCode, newRecoveryCode, recoveryCode, resetIdentity, setUpIdentity, type E2eStatus } from '../lib/e2e';
 import { e2eChanged, UnlockThisDevice } from './E2eChat';
 import { useSettingsStore } from '../stores/settingsStore';
+import { passkeyError, passkeysHere, WEB_APP_HOST } from '../lib/passkeys';
 
 const btn = 'ae-press rounded-ae px-3 py-2 text-sm font-semibold disabled:opacity-40';
 
@@ -153,8 +154,10 @@ function TwoFactor() {
     if (err) return setError(err.message);
     setEnroll(null);
     setCode('');
-    toast.success('Two-factor authentication is on.', <LockIcon size={14} />);
-    void qc.invalidateQueries({ queryKey: ['mfa-factors'] });
+    toast.success('Two-factor authentication is on. Save your backup codes.', <LockIcon size={14} />);
+    await qc.invalidateQueries({ queryKey: ['mfa-factors'] });
+    // The session is now fully signed in (aal2), so backup codes can be made straight away.
+    setTimeout(() => window.dispatchEvent(new Event('aether:make-backup-codes')), 300);
   };
 
   const disable = async () => {
@@ -168,11 +171,14 @@ function TwoFactor() {
   return (
     <Section title="Two-factor authentication" description="Protect your account with a 6-digit code from an authenticator app (Google Authenticator, Authy, 1Password, Bitwarden…) at sign-in.">
       {verified ? (
-        <div className="flex items-center gap-3">
-          <span className="rounded-full bg-ae-success/15 px-3 py-1 text-sm font-semibold text-ae-success"><LockIcon size={15} className="ae-ico" /> Enabled</span>
-          <button type="button" className={`${btn} bg-ae-surface hover:bg-ae-hover`} onClick={() => void disable()}>
-            Remove authenticator
-          </button>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-ae-success/15 px-3 py-1 text-sm font-semibold text-ae-success"><LockIcon size={15} className="ae-ico" /> Enabled</span>
+            <button type="button" className={`${btn} bg-ae-surface hover:bg-ae-hover`} onClick={() => void disable()}>
+              Remove authenticator
+            </button>
+          </div>
+          <BackupCodes />
         </div>
       ) : enroll ? (
         <div className="ae-enter flex flex-wrap items-start gap-5">
@@ -207,6 +213,143 @@ function TwoFactor() {
         </button>
       )}
       {error && <p className="text-xs text-ae-danger">{error}</p>}
+    </Section>
+  );
+}
+
+/** Backup codes: shown right after two-factor is turned on, and remade here any time. */
+function BackupCodes() {
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  const remaining = useQuery({
+    queryKey: ['backup-codes-remaining'],
+    queryFn: async () => {
+      const { data, error } = await sb.rpc('backup_codes_remaining');
+      if (error) throw new Error(error.message);
+      return data as number;
+    },
+  });
+  const [codes, setCodes] = useState<string[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const make = async () => {
+    if ((remaining.data ?? 0) > 0 && !(await ask('Make new backup codes? The old ones stop working.', { title: 'New backup codes', confirmLabel: 'Make new codes' }))) return;
+    setBusy(true);
+    const { data, error } = await sb.rpc('generate_backup_codes');
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    setCodes(data as string[]);
+    void qc.invalidateQueries({ queryKey: ['backup-codes-remaining'] });
+  };
+  useEffect(() => {
+    const auto = () => void make();
+    window.addEventListener('aether:make-backup-codes', auto);
+    return () => window.removeEventListener('aether:make-backup-codes', auto);
+  });
+  const text = codes ? `Aether backup codes\nEach works once. Keep them somewhere safe.\n\n${codes.join('\n')}\n` : '';
+  return (
+    <div className="space-y-2 rounded-ae border border-ae-border p-3 text-sm">
+      <p className="font-semibold">Backup codes</p>
+      <p className="text-ae-muted">If you lose your phone, a backup code gets you in. Each one works once. {remaining.data != null && !codes && <b className="text-ae-text">{remaining.data} left.</b>}</p>
+      {codes && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-1.5 rounded-ae bg-ae-surface p-3 font-mono text-[15px] tracking-wider select-all">
+            {codes.map((c) => (
+              <span key={c}>{c}</span>
+            ))}
+          </div>
+          <p className="text-xs text-ae-warning">These are shown once. Save them now.</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={`${btn} bg-ae-surface hover:bg-ae-hover`} onClick={() => void navigator.clipboard.writeText(text).then(() => toast.success('Backup codes copied.'))}>
+              Copy
+            </button>
+            <button
+              type="button"
+              className={`${btn} bg-ae-surface hover:bg-ae-hover`}
+              onClick={() => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+                a.download = 'aether-backup-codes.txt';
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+              }}
+            >
+              <DownloadIcon size={14} className="ae-ico" /> Download
+            </button>
+            <button type="button" className={`${btn} text-ae-muted`} onClick={() => setCodes(null)}>
+              I’ve saved them
+            </button>
+          </div>
+        </div>
+      )}
+      {!codes && (
+        <button type="button" disabled={busy} className={`${btn} bg-ae-surface hover:bg-ae-hover`} onClick={() => void make()}>
+          {(remaining.data ?? 0) > 0 ? 'Make new backup codes' : 'Make backup codes'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Passkeys for signing in on the web app. */
+function Passkeys() {
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  const here = passkeysHere();
+  const list = useQuery({
+    queryKey: ['passkeys'],
+    enabled: here,
+    queryFn: async () => {
+      const { data, error } = await sb.auth.passkey.list();
+      if (error) throw new Error(error.message);
+      return (data ?? []) as unknown as { id: string; friendly_name?: string | null; created_at?: string; last_used_at?: string | null }[];
+    },
+  });
+  const [busy, setBusy] = useState(false);
+  return (
+    <Section title="Passkeys" description="Sign in with Face ID, Touch ID, Windows Hello, your phone or a security key instead of typing your password. If you use an authenticator app, you'll still be asked for its code.">
+      {!here ? (
+        <p className="text-sm text-ae-muted">
+          Passkeys work on the web app at <b>{WEB_APP_HOST}</b>. Browsers tie a passkey to one website, so the desktop and phone apps can’t use them. Open the web app to add one.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {(list.data ?? []).map((p) => (
+            <div key={p.id} className="flex items-center justify-between gap-3 rounded-ae bg-ae-surface px-3 py-2 text-sm">
+              <span className="min-w-0 truncate">
+                🔑 {p.friendly_name || 'Passkey'}
+                {p.created_at && <span className="ml-2 text-xs text-ae-muted">added {new Date(p.created_at).toLocaleDateString()}</span>}
+              </span>
+              <button
+                type="button"
+                className="text-xs text-ae-danger hover:underline"
+                onClick={async () => {
+                  if (!(await ask(`Remove “${p.friendly_name || 'Passkey'}”? You won’t be able to sign in with it any more.`, { title: 'Remove passkey', confirmLabel: 'Remove', danger: true }))) return;
+                  const { error } = await sb.auth.passkey.delete({ passkeyId: p.id });
+                  if (error) return toast.error(error.message);
+                  void qc.invalidateQueries({ queryKey: ['passkeys'] });
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            disabled={busy}
+            className={`${btn} bg-ae-accent text-ae-on-accent`}
+            onClick={async () => {
+              setBusy(true);
+              const { error } = await sb.auth.registerPasskey();
+              setBusy(false);
+              if (error) return toast.error(passkeyError(error));
+              toast.success('Passkey added. Next time, choose “Sign in with a passkey”.');
+              void qc.invalidateQueries({ queryKey: ['passkeys'] });
+            }}
+          >
+            Add a passkey
+          </button>
+        </div>
+      )}
     </Section>
   );
 }
@@ -329,6 +472,7 @@ export function AccountTab({ userId, onSignOut }: { userId: string; onSignOut: (
       </Section>
 
       <TwoFactor />
+      <Passkeys />
 
       <Section title="Your data" description="Download a copy of your profile, settings, servers, friends, notes, and every message you've sent (JSON).">
         <button

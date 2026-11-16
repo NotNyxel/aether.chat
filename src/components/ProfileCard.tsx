@@ -72,6 +72,20 @@ function fallbackGradient(seed: string): string {
   return `linear-gradient(135deg, hsl(${hue} 70% 55%), hsl(${(hue + 40) % 360} 65% 42%))`;
 }
 
+/**
+ * The plate behind a big avatar on profiles: the same shape as the avatar (circle, squircle, a
+ * rounded square or a cut-out shape like a hexagon or star), so it never shows as a circle behind
+ * a square.
+ */
+export function avatarPlateStyle(shapeId: string | null | undefined, background = 'var(--ae-bg-elevated)'): CSSProperties {
+  if (!shapeId || shapeId === 'circle') return { borderRadius: 9999, background };
+  if (shapeId === 'squircle') return { borderRadius: '30%', background };
+  if (shapeId === 'hexagon') return { clipPath: 'polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%)', background };
+  const def = shapeDef(shapeId);
+  if (def?.clip) return { clipPath: def.clip, background };
+  return { borderRadius: def?.radius ?? 9999, background };
+}
+
 export function Avatar({ profile, size = 40, speaking = false, showFrame = true }: AvatarProps) {
   const [broken, setBroken] = useState(false);
   const name = profile?.display_name || profile?.username || '?';
@@ -90,7 +104,7 @@ export function Avatar({ profile, size = 40, speaking = false, showFrame = true 
   useEffect(() => setBroken(false), [profile?.avatar_url]);
 
   return (
-    <div className="ae-avatar" data-frame={frame} data-fs={gen.fam} data-deco={deco ? '' : undefined} data-shape={profile?.avatar_shape ?? 'circle'} data-shape-custom={shape ? '' : undefined} data-speaking={speaking} style={style}>
+    <div className="ae-avatar" data-frame={frame} data-fs={gen.fam} data-deco={deco ? '' : undefined} data-shape={profile?.avatar_shape ?? 'circle'} data-shape-custom={shape ? '' : undefined} data-shape-clip={shape?.clip || profile?.avatar_shape === 'hexagon' ? '' : undefined} data-speaking={speaking} style={style}>
       <div
         className="ae-avatar-inner"
         style={{
@@ -321,7 +335,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
 
       <div className="relative px-4 pb-4">
         <div className="-mt-10 mb-2 flex items-end justify-between">
-          <div className={`p-1 ${profile.avatar_shape === 'squircle' ? 'rounded-[30%]' : 'rounded-full'}`} style={{ background: profile.avatar_shape === 'hexagon' ? 'transparent' : 'var(--ae-bg-elevated)' }}>
+          <div className="p-1" style={avatarPlateStyle(profile.avatar_shape)}>
             <Avatar profile={profile} size={80} />
           </div>
           <BadgeRow badgeIds={profile.badge_ids ?? []} />

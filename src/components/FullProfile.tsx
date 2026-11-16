@@ -13,7 +13,7 @@ import { isHexColor } from '../theme/presets';
 import type { UserProfile } from '../types/db';
 import { ActivitySections, WidgetBoard } from './ActivityCards';
 import { CalendarIcon, CloseIcon, LinkIcon } from './icons';
-import { Avatar, BadgeRow, ProfileEffectLayer, StyledName } from './ProfileCard';
+import { Avatar, avatarPlateStyle, BadgeRow, ProfileEffectLayer, StyledName } from './ProfileCard';
 import { ScopedCss } from './ThemeEngine';
 import { useEscape } from '../lib/escape';
 import { cardFrameAttrs, cardVars } from '../lib/cardDecor';
@@ -97,7 +97,7 @@ export function FullProfile({
         {/* Avatar row: avatar + status bubble on the left, actions on the right */}
         <div className="-mt-[52px] flex items-end gap-3">
           <div className="relative shrink-0">
-            <div className={`p-1.5 ${profile.avatar_shape === 'squircle' ? 'rounded-[30%]' : 'rounded-full'}`} style={{ background: profile.avatar_shape === 'hexagon' ? 'transparent' : 'var(--ae-bg-elevated)' }}>
+            <div className="p-1.5" style={avatarPlateStyle(profile.avatar_shape)}>
               <Avatar profile={profile} size={96} />
             </div>
             <PresenceDot status={presence} size={20} className="absolute right-1.5 bottom-1.5 z-10 ring-[4px] ring-ae-elevated" />

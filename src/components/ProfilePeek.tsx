@@ -20,7 +20,7 @@ import { useUiStore } from '../stores/uiStore';
 import type { Server, UserProfile } from '../types/db';
 import { ActivitySections } from './ActivityCards';
 import { CalendarIcon, EditIcon, MoreIcon, OpenFullIcon, SendIcon } from './icons';
-import { Avatar, BadgeRow, cropStyle, ProfileEffectLayer, StyledName } from './ProfileCard';
+import { Avatar, BadgeRow, cropStyle, ProfileEffectLayer, StyledName, avatarPlateStyle } from './ProfileCard';
 import { MutualSummary, NoteFields, ProfileActionButtons, useRelationship } from './ProfileParts';
 import { toast } from './Toaster';
 import { isPhoneLayout } from '../lib/phone';
@@ -156,7 +156,7 @@ export function MiniProfile({
       <div className={`relative flex flex-1 flex-col px-4 ${panel ? 'pb-4' : 'pb-3'}`}>
         <div className="-mt-11 flex items-end gap-2">
           <button type="button" onClick={full} aria-label="View full profile" className="relative shrink-0 rounded-full">
-            <span className="block rounded-full p-1.5" style={{ background: 'var(--ae-bg-elevated)' }}>
+            <span className="block p-1.5" style={avatarPlateStyle(profile.avatar_shape)}>
               <Avatar profile={profile} size={80} />
             </span>
             <PresenceDot status={presence} size={18} className="absolute right-1.5 bottom-1.5 z-10 ring-[4px] ring-ae-elevated" />

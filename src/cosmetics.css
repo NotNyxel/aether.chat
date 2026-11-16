@@ -424,3 +424,60 @@
 :root[data-ae-animations='subtle'] .ae-name[data-fill] {
   animation: none !important;
 }
+
+/* ═══ Decorations on avatars that aren't circles ═══
+   Rings that spin by rotating the whole element, or that are drawn as round gradients, only work
+   on circles: on a squircle, hexagon or star they tilt or stay round. Here the colours move instead
+   of the element, and ring styles drawn with shadows become fills, so every ring follows the shape. */
+@property --ae-ang {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes ae-ang {
+  to {
+    --ae-ang: 360deg;
+  }
+}
+.ae-avatar:not([data-shape='circle'])[data-fs='duo']::before {
+  background: conic-gradient(from var(--ae-ang), var(--fa), var(--fb), var(--fa));
+  animation: ae-ang 4s linear infinite;
+}
+.ae-avatar:not([data-shape='circle'])[data-fs='dash']::before {
+  background: repeating-conic-gradient(from var(--ae-ang), var(--fa) 0 10deg, transparent 10deg 20deg);
+  animation: ae-ang 12s linear infinite;
+}
+.ae-avatar:not([data-shape='circle'])[data-fs='orbit']::before {
+  background: conic-gradient(from var(--ae-ang), color-mix(in srgb, var(--fa) 85%, transparent), var(--fb) 8%, color-mix(in srgb, var(--fa) 20%, transparent));
+  animation: ae-ang 3s linear infinite;
+}
+.ae-avatar:not([data-shape='circle'])[data-fs='spark']::before {
+  background: conic-gradient(from var(--ae-ang), var(--fa), transparent 25%, var(--fb) 50%, transparent 75%, var(--fa));
+  animation: ae-ang 1.6s linear infinite;
+}
+.ae-avatar:not([data-shape='circle'])[data-fs='prism']::before {
+  background: conic-gradient(from var(--ae-ang), var(--fa), var(--fb), #fff, var(--fb), var(--fa));
+  animation: ae-ang 5s linear infinite reverse;
+}
+.ae-avatar:not([data-shape='circle'])[data-frame='aurora']::before {
+  background: conic-gradient(from var(--ae-ang), #7c5cff, #00e5ff, #39ff14, #ff2fd6, #7c5cff);
+  animation: ae-ang 4s linear infinite;
+}
+.ae-avatar:not([data-shape='circle'])[data-fs='halo']::before {
+  inset: -5px;
+  background: linear-gradient(135deg, var(--fa), color-mix(in srgb, var(--fb) 70%, transparent));
+  filter: blur(1.5px);
+}
+.ae-avatar:not([data-shape='circle'])[data-fs='double']::before {
+  inset: -6px;
+  background: linear-gradient(135deg, var(--fa), var(--fb));
+}
+/* Shapes cut out with a clip path (hexagon, stars, polygons…) clip shadows away: use a fill. */
+.ae-avatar[data-shape-clip][data-fs='flicker']::before {
+  box-shadow: none;
+  background: var(--fa);
+}
+.ae-avatar[data-shape-clip][data-frame='neon']::before {
+  box-shadow: none;
+  background: var(--frame-color);
+}

@@ -3,6 +3,21 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.11.0] - 2026-11-16
+
+**Tablet fixes, a quick status picker, and no more accidental text selection**
+
+- **Interface text can't be selected any more.** Tapping, holding or dragging across buttons, menus, lists and labels no
+  longer highlights them or pops up the system's Copy / Look Up bar.
+  - Things you type stay selectable, and so does message text when you use a mouse.
+  - On phones and tablets, press and hold a message and choose **Copy text**.
+- **Status picker on phones and tablets.** On the **You** tab, tapping your status opens a small menu to pick Online,
+  Idle, Do Not Disturb or Invisible, instead of opening Settings. Custom status text is one tap further.
+- **Fixed:** on tablets, the **You** tab cut off its cards (Edit profile, status, theme and notifications). It scrolls
+  normally now.
+- **Fixed:** on tablets, the Servers tab showed the Aether home button above your servers. It's gone, as on phones,
+  since Messages has its own tab.
+
 ## [1.10.1] - 2026-11-16
 
 **The tablet layout, reworked**

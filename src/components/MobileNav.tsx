@@ -4,7 +4,10 @@
  * Opening a chat hides the tab bar; the chat header has a back button.
  */
 import { useMemo, useState, type ReactNode } from 'react';
-import { useProfile } from '../hooks/useChatData';
+import { useProfile, useUpdateProfile } from '../hooks/useChatData';
+import type { PresenceStatus } from '../types/db';
+import { openContextMenu } from './ContextMenu';
+import { toast } from './Toaster';
 import { activeCustomStatus } from '../hooks/useDesktop';
 import { useUnreadSummary } from '../hooks/useMessageExtras';
 import { useNotifyResolver } from '../hooks/useNotifications';
@@ -204,6 +207,13 @@ function Row({ icon, label, hint, onClick }: { icon: ReactNode; label: string; h
   );
 }
 
+const STATUS_CHOICES: { id: PresenceStatus; hint?: string }[] = [
+  { id: 'online' },
+  { id: 'idle' },
+  { id: 'dnd', hint: 'No notifications' },
+  { id: 'invisible', hint: 'Look offline' },
+];
+
 export function MobileYou({ userId }: { userId: string }) {
   const { data: me } = useProfile(userId);
   const openStudio = useUiStore((s) => s.openStudio);
@@ -211,18 +221,31 @@ export function MobileYou({ userId }: { userId: string }) {
   const openThemeStudio = useUiStore((s) => s.openThemeStudio);
   const status = me?.presence_status ?? 'online';
   const custom = me ? activeCustomStatus(me) : null;
+  const update = useUpdateProfile(userId);
+  // A small sheet to pick your status (custom status text still lives in Settings → Profile).
+  const pickStatus = () =>
+    openContextMenu(new MouseEvent('contextmenu'), [
+      ...STATUS_CHOICES.map((o) => ({
+        label: STATUS_LABELS[o.id],
+        hint: status === o.id ? 'Current' : o.hint,
+        icon: <PresenceDot status={o.id === 'invisible' ? 'offline' : o.id} size={12} />,
+        onClick: () => update.mutate({ presence_status: o.id }, { onError: (e: Error) => toast.error(e.message) }),
+      })),
+      'divider' as const,
+      { label: custom ? 'Edit custom status' : 'Set a custom status', icon: <EditIcon size={15} />, onClick: () => openSettings('profile') },
+    ]);
   return (
     <div className="ae-scroll flex min-h-0 flex-1 flex-col overflow-y-auto pb-6">
       <div className="shrink-0 overflow-hidden rounded-b-3xl border-b border-ae-border [&>article]:!h-auto [&>article]:!overflow-visible">
         <MiniProfile userId={userId} me={userId} variant="panel" />
       </div>
-      <div className="mx-4 mt-4 overflow-hidden rounded-2xl bg-ae-sunken/70">
+      <div className="mx-4 mt-4 shrink-0 overflow-hidden rounded-2xl bg-ae-sunken/70">
         <Row icon={<EditIcon size={17} />} label="Edit profile" hint="Avatar, banner, decorations, effects" onClick={openStudio} />
         <Row
           icon={<PresenceDot status={status === 'invisible' ? 'offline' : status} size={12} />}
           label={STATUS_LABELS[status]}
-          hint={custom ? undefined : 'Set your status in Settings → Profile'}
-          onClick={() => openSettings('profile')}
+          hint={custom ? undefined : 'Tap to change'}
+          onClick={pickStatus}
         />
         {custom && (
           <p className="px-4 pb-3 text-xs text-ae-muted">
@@ -230,7 +253,7 @@ export function MobileYou({ userId }: { userId: string }) {
           </p>
         )}
       </div>
-      <div className="mx-4 mt-3 overflow-hidden rounded-2xl bg-ae-sunken/70">
+      <div className="mx-4 mt-3 shrink-0 overflow-hidden rounded-2xl bg-ae-sunken/70">
         <Row icon={<PaletteIcon size={17} />} label="Customize your theme" hint="Colours, gradient and effects" onClick={openThemeStudio} />
         <Row icon={<BellIcon size={17} />} label="Notifications" onClick={() => openSettings('notifications')} />
         <Row icon={<SettingsIcon size={17} />} label="All settings" onClick={() => openSettings()} />

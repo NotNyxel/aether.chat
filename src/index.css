@@ -1111,3 +1111,33 @@ html {
     transform: translateX(100%);
   }
 }
+
+/* ── 1.11: interface text can't be selected ────────────────────────────────────────────────
+   Buttons, menus, lists and labels never highlight when tapped, held or dragged across. Things
+   you type stay selectable everywhere; message text stays selectable with a mouse (to copy part of
+   a message). On touch screens, press and hold a message and use Copy text instead. */
+html,
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+select,
+[contenteditable='true'],
+.ae-selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+@media (pointer: fine) {
+  .ae-msg,
+  .ae-msg * {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
+/* Tablets: the server column is servers only (Messages has its own tab), as on phones. */
+:root[data-ae-tablet='true'] .ae-shell > nav .ae-desktop-only {
+  display: none !important;
+}

@@ -481,3 +481,20 @@
   box-shadow: none;
   background: var(--frame-color);
 }
+
+/* ═══ Light profile cards: dark text so they stay readable (flag set by cardIsLight) ═══
+   Set on the card's children, not the card, so the card's own background (which may use these
+   colours) doesn't change. */
+.ae-card[data-light] {
+  color: #17151f;
+}
+.ae-card[data-light] > * {
+  --ae-text: #17151f;
+  --ae-text-muted: #34313f;
+  --ae-border: rgb(20 18 30 / 0.16);
+  --ae-surface: rgb(20 18 30 / 0.07);
+  --ae-surface-hover: rgb(20 18 30 / 0.12);
+  --ae-bg-sunken: rgb(255 255 255 / 0.6);
+  --ae-bg-elevated: rgb(255 255 255 / 0.78);
+  color: #17151f;
+}

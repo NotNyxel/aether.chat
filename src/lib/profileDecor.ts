@@ -59,4 +59,4 @@ export const WIDGET_TYPES: { type: ProfileWidget['type']; label: string; hint: s
  * here would paint other people's profiles in your colours).
  */
 export const DEFAULT_PROFILE_PRIMARY = '#2a2440';
-export const DEFAULT_PROFILE_ACCENT = '#7c5cff';
+export const DEFAULT_PROFILE_ACCENT = '#7658fb';

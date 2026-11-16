@@ -20,7 +20,7 @@ import { useEscape } from '../lib/escape';
 import { DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY } from '../lib/profileDecor';
 import { avatarDecoStyle } from '../lib/decoArt';
 import { effectDef, frameProps, loadNameFont, nameEffectAttrs, nameFontFamily, shapeDef, type Crop, type EffectDef, type Motion } from '../lib/cosmetics';
-import { cardFrameAttrs, cardVars } from '../lib/cardDecor';
+import { cardFrameAttrs, cardIsLight, cardVars } from '../lib/cardDecor';
 import { themeAttrs } from '../lib/cosmetics';
 import { EmojiText } from '../lib/twemoji';
 
@@ -312,6 +312,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
       className={`ae-profile-card ae-card relative w-[340px] overflow-hidden rounded-ae border border-ae-border text-ae-text shadow-2xl ${className}`}
       data-card={profile.card_style ?? 'solid'}
       data-ct={themeAttrs(profile.card_style).pattern}
+      data-light={cardIsLight(profile) ? '' : undefined}
       {...cardFrameAttrs(profile)}
       style={
         {

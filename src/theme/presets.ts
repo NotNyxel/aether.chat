@@ -126,7 +126,7 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
       border: '#232327',
       text: '#f2f2f4',
       textMuted: '#8b8b94',
-      accent: '#7c5cff',
+      accent: '#7658fb',
       accentContrast: '#ffffff',
       danger: '#ff4d5e',
       success: '#2ecc71',

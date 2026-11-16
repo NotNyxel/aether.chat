@@ -16,7 +16,7 @@ import { CalendarIcon, CloseIcon, LinkIcon } from './icons';
 import { Avatar, avatarPlateStyle, BadgeRow, ProfileEffectLayer, StyledName } from './ProfileCard';
 import { ScopedCss } from './ThemeEngine';
 import { useEscape } from '../lib/escape';
-import { cardFrameAttrs, cardVars } from '../lib/cardDecor';
+import { cardFrameAttrs, cardIsLight, cardVars } from '../lib/cardDecor';
 import { themeAttrs } from '../lib/cosmetics';
 import { cropStyle } from './ProfileCard';
 import { EmojiText } from '../lib/twemoji';
@@ -72,6 +72,7 @@ export function FullProfile({
       className={`ae-profile-card ae-card @container relative w-full overflow-hidden rounded-[calc(var(--ae-radius)+6px)] border border-ae-border text-ae-text shadow-2xl ${className}`}
       data-card={profile.card_style ?? 'solid'}
       data-ct={themeAttrs(profile.card_style, profile.decor).pattern}
+      data-light={cardIsLight(profile) ? '' : undefined}
       {...cardFrameAttrs(profile)}
       style={
         {

@@ -20,7 +20,7 @@ import { Avatar, BadgeRow, ProfileEffectLayer, StyledName } from './ProfileCard'
 import { toast } from './Toaster';
 import { useEscape } from '../lib/escape';
 import { DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY } from '../lib/profileDecor';
-import { cardFrameAttrs, cardVars } from '../lib/cardDecor';
+import { cardFrameAttrs, cardIsLight, cardVars } from '../lib/cardDecor';
 import { themeAttrs } from '../lib/cosmetics';
 import { cropStyle } from './ProfileCard';
 import { EmojiText } from '../lib/twemoji';
@@ -104,6 +104,7 @@ export function UserPopout({ userId, shownStatus, onClose, onEditStatus }: { use
         className="ae-card relative overflow-visible rounded-[calc(var(--ae-radius)+4px)] border border-ae-border shadow-2xl"
         data-card={me.card_style ?? 'solid'}
         data-ct={themeAttrs(me.card_style).pattern}
+        data-light={cardIsLight(me) ? '' : undefined}
         {...cardFrameAttrs(me)}
         style={
           {

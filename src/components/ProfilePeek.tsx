@@ -8,7 +8,7 @@ import { activeCustomStatus } from '../hooks/useDesktop';
 import { PresenceDot, usePresenceOf } from '../hooks/usePresence';
 import { useConversationActions } from '../hooks/useSocialData';
 import { useUserMenu } from '../hooks/useUserMenu';
-import { cardFrameAttrs, cardVars } from '../lib/cardDecor';
+import { cardFrameAttrs, cardIsLight, cardVars } from '../lib/cardDecor';
 import { themeAttrs } from '../lib/cosmetics';
 import { useEscape } from '../lib/escape';
 import { Markdown } from '../lib/markdown';
@@ -134,6 +134,7 @@ export function MiniProfile({
       }
       data-card={profile.card_style ?? 'solid'}
       data-ct={themeAttrs(profile.card_style, profile.decor).pattern}
+      data-light={cardIsLight(profile) ? '' : undefined}
       {...(panel ? {} : cardFrameAttrs(profile))}
     >
       <div className={`relative shrink-0 overflow-hidden ${panel ? '' : 'rounded-t-[14px]'}`}>

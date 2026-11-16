@@ -445,6 +445,8 @@ export function useOutboxFlusher(userId: string) {
             .insert({ id: m.id, [scopeColumn(m.scope)]: m.scope.id, content: m.content, reply_to_id: m.replyToId, attachments: m.attachments })
             .select('*');
           if (res.error && isNetworkError(res.error)) break; // still offline: try again later
+          // Slow mode: keep it (and everything after it, to keep the order) and try again shortly.
+          if (res.error && /slow mode/i.test(res.error.message)) break;
           dequeue(userId, m.id);
           if (res.error && !/duplicate key/i.test(res.error.message)) {
             // The server said no (left the chat, blocked, slow mode, AutoMod…): don't retry forever.
@@ -454,7 +456,12 @@ export function useOutboxFlusher(userId: string) {
           }
           const row = (res.data as Message[] | null)?.[0];
           if (row) qc.setQueryData<MessagePages>(key, (d) => upsertMessage(d, row));
-          else void qc.invalidateQueries({ queryKey: key }); // already there (an earlier try got through)
+          else if (res.error) void qc.invalidateQueries({ queryKey: key }); // duplicate: an earlier try got through
+          else {
+            // Accepted but no row back: the server's AutoMod removed it.
+            qc.setQueryData<MessagePages>(key, (d) => removeMessage(d, m.id));
+            toast.error('A message you wrote offline was blocked by AutoMod.');
+          }
         }
       } finally {
         busy = false;

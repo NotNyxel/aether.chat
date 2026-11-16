@@ -3,7 +3,7 @@
  * device, and hands back a normal attachment (a local blob URL plus the real name, type and size)
  * so every player and viewer works unchanged. Decrypted files are kept for the session.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useE2e } from '../components/E2eChat';
 import { decryptBytes, decryptText } from '../lib/e2e';
 import type { Attachment } from '../types/db';
@@ -37,30 +37,33 @@ export type Resolved = { state: 'plain' | 'ready'; a: Attachment } | { state: 'l
 
 export function useEncryptedAttachment(a: Attachment): Resolved {
   const { key } = useE2e();
-  const [res, setRes] = useState<Resolved>(() =>
-    !a.e2e ? { state: 'plain', a } : done.has(a.url) ? { state: 'ready', a: done.get(a.url)! } : { state: key ? 'loading' : 'locked', a },
-  );
+  const latest = useRef(a);
+  latest.current = a;
+  const sealed = a.e2e ? `${a.url}|${a.e2e.iv}` : null;
+  const [res, setRes] = useState<Resolved | null>(() => (a.e2e && done.has(a.url) ? { state: 'ready', a: done.get(a.url)! } : null));
   useEffect(() => {
-    if (!a.e2e) return setRes({ state: 'plain', a });
-    const hit = done.get(a.url);
+    const cur = latest.current;
+    if (!sealed || !cur.e2e) return;
+    const hit = done.get(cur.url);
     if (hit) return setRes({ state: 'ready', a: hit });
-    if (!key) return setRes({ state: 'locked', a });
+    if (!key) return setRes({ state: 'locked', a: cur });
     let gone = false;
-    setRes({ state: 'loading', a });
+    setRes({ state: 'loading', a: cur });
     void (async () => {
-      const meta = await decryptMeta(key, a);
-      if (!meta) return !gone && setRes({ state: 'failed', a });
-      const r = await fetch(a.url).catch(() => null);
+      const meta = await decryptMeta(key, cur);
+      if (!meta) return !gone && setRes({ state: 'failed', a: cur });
+      const r = await fetch(cur.url).catch(() => null);
       const bytes = r?.ok ? await r.arrayBuffer() : null;
-      const plain = bytes ? await decryptBytes(key, a.e2e!.iv, bytes) : null;
-      if (!plain) return !gone && setRes({ state: 'failed', a: { ...a, ...meta } });
-      const out: Attachment = { ...a, ...meta, url: URL.createObjectURL(new Blob([plain], { type: meta.content_type })) };
-      done.set(a.url, out);
+      const plain = bytes ? await decryptBytes(key, cur.e2e!.iv, bytes) : null;
+      if (!plain) return !gone && setRes({ state: 'failed', a: { ...cur, ...meta } });
+      const out: Attachment = { ...cur, ...meta, url: URL.createObjectURL(new Blob([plain], { type: meta.content_type })) };
+      done.set(cur.url, out);
       if (!gone) setRes({ state: 'ready', a: out });
     })();
     return () => {
       gone = true;
     };
-  }, [a, key]);
-  return res;
+  }, [sealed, key]);
+  if (!a.e2e) return { state: 'plain', a };
+  return res ?? { state: key ? 'loading' : 'locked', a };
 }

@@ -72,8 +72,9 @@ function BugDialog({ onClose }: { onClose: () => void }) {
       let path: string | null = null;
       if (shot) {
         const { data: u } = await sb.auth.getUser();
+        if (!u.user) throw new Error('You seem to be signed out. Sign in again, then send the report.');
         const ext = shot.type === 'image/jpeg' ? 'jpg' : shot.type === 'image/webp' ? 'webp' : 'png';
-        path = `${u.user?.id}/${crypto.randomUUID()}.${ext}`;
+        path = `${u.user.id}/${crypto.randomUUID()}.${ext}`;
         const up = await sb.storage.from('bug-reports').upload(path, shot, { contentType: shot.type });
         if (up.error) throw new Error(`Couldn't upload the screenshot: ${up.error.message}`);
       }

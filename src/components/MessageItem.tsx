@@ -251,6 +251,10 @@ function MessageItemImpl(props: MessageItemProps) {
   const remindItem = useRemindMenuItem();
   const isSaved = !!qcR.getQueryData<{ message_id: string }[]>(['saved-messages'])?.some((r) => r.message_id === message.id);
   const rowRef = useRef<HTMLLIElement>(null);
+  const seenReactions = useRef<Map<string, number> | null>(null);
+  useEffect(() => {
+    seenReactions.current = new Map([...(props.reactions ?? [])].map(([e, u]) => [e, u.length]));
+  }, [props.reactions]);
   useEffect(() => {
     const el = rowRef.current;
     if (!el) return;
@@ -492,6 +496,10 @@ function MessageItemImpl(props: MessageItemProps) {
           <div className="mt-1 flex flex-wrap gap-1">
             {[...props.reactions].map(([emoji, users]) => {
               const active = users.includes(me);
+              // Animate only what changed since this message was first shown, not everything on open.
+              const before = seenReactions.current;
+              const added = !!before && !before.has(emoji);
+              const bumped = !!before && before.has(emoji) && before.get(emoji) !== users.length;
               // Who reacted, shown when you hover the reaction.
               const names = users.map((id) => (id === me ? 'You' : (qcR.getQueryData<{ display_name?: string; username?: string } | null>(['profile', id])?.display_name || qcR.getQueryData<{ username?: string } | null>(['profile', id])?.username || 'Someone')));
               const who = names.length > 6 ? `${names.slice(0, 6).join(', ')} and ${names.length - 6} more` : names.join(', ');
@@ -503,6 +511,8 @@ function MessageItemImpl(props: MessageItemProps) {
                   type="button"
                   onClick={() => props.onReact(message.id, emoji, active)}
                   data-active={active || undefined}
+                  data-new={added || undefined}
+                  data-bump={bumped || undefined}
                   className={`ae-reaction ae-press flex h-6 items-center gap-1.5 rounded-lg border px-1.5 text-xs font-semibold tabular-nums transition-colors ${
                     active ? 'border-ae-accent/70 bg-ae-accent/15 text-ae-accent' : 'border-transparent bg-ae-surface/70 text-ae-muted hover:border-ae-border'
                   }`}

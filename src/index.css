@@ -1142,9 +1142,9 @@ select,
   display: none !important;
 }
 
-/* Narrow desktop windows (browsers between phone and full desktop width): profile, members,
+/* Narrow browser windows (below the desktop app's 940px minimum): profile, members,
    search, pins and media panels slide over the chat instead of squeezing it to a sliver. */
-@media (min-width: 768px) and (max-width: 1099px) {
+@media (min-width: 768px) and (max-width: 939px) {
   :root:not([data-ae-phone='true']):not([data-ae-tablet='true']) .ae-chat-body {
     position: relative;
   }

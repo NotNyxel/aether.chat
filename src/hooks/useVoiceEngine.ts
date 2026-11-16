@@ -653,7 +653,11 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
     const screenOpts = screenOptionsRef.current;
     // A bad connection to this person lowers what we send them; big calls lower camera video for
     // everyone (in a mesh call each camera is sent once per person, so 5+ people add up fast).
-    const factor = adaptRef.current.get(call)?.factor ?? 1;
+    // Audio has no step of its own: it follows the worst video link to the same person.
+    const owner = kind === 'audio' ? [...recordsRef.current.values()].find((r) => r.audioCall === call) : undefined;
+    const factor = owner
+      ? Math.min(1, ...VIDEO_KINDS.map((k) => (owner.videoOut[k] ? (adaptRef.current.get(owner.videoOut[k]!)?.factor ?? 1) : 1)))
+      : (adaptRef.current.get(call)?.factor ?? 1);
     const crowd = recordsRef.current.size >= 4;
     await Promise.all(
       pc.getSenders().map(async (sender) => {

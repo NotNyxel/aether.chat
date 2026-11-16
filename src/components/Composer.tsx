@@ -316,7 +316,7 @@ export function Composer(props: ComposerProps) {
     props.onSent();
     playSound('messageSent');
     sendQueue.current = sendQueue.current.then(() =>
-      send.mutateAsync({ content: '', replyToId: props.replyTo?.id ?? null, attachments: [attachment] }).then(
+      send.mutateAsync({ content: '', replyToId: props.replyTo?.id ?? null, attachments: [attachment], tempId: crypto.randomUUID(), authorId: meId }).then(
         () => props.onCancelReply(),
         (e: Error) => toast.error(e.message),
       ),

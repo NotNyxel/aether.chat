@@ -38,14 +38,19 @@ export function useSoundMenu() {
   };
 }
 
+/** The filter actually in effect: a folder deleted elsewhere, or an archive that's now empty, shows All. */
+function resolveFilter(filter: string, folders: { id: string }[], archivedCount: number): string {
+  if (filter === 'archived') return archivedCount > 0 ? filter : 'all';
+  if (filter !== 'all' && !folders.some((f) => f.id === filter)) return 'all';
+  return filter;
+}
+
 /** The chats to show right now (current folder / archive, pinned first) and the archive size. */
 export function useOrganizedChats(convs: Conversation[]) {
   const prefs = useChatPrefs();
   const folders = useChatFolders();
-  let filter = useChatFilter((s) => s.filter);
-  // A folder deleted on another device: fall back to everything.
-  if (filter !== 'all' && filter !== 'archived' && !folders.some((f) => f.id === filter)) filter = 'all';
   const archivedCount = convs.filter((c) => prefs.get(c.id)?.archived).length;
+  const filter = resolveFilter(useChatFilter((s) => s.filter), folders, archivedCount);
   return { chats: organizeChats(convs, prefs, filter), filter, archivedCount, prefs };
 }
 
@@ -116,7 +121,7 @@ export function FolderChips({ archivedCount, compact }: { archivedCount: number;
   const { filter, setFilter } = useChatFilter();
   const { create, rename, remove } = useFolderActions();
   if (folders.length === 0 && archivedCount === 0) return null;
-  const active = filter !== 'all' && filter !== 'archived' && !folders.some((f) => f.id === filter) ? 'all' : filter;
+  const active = resolveFilter(filter, folders, archivedCount);
   const chip = (id: string, label: string, extra?: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button
       key={id}

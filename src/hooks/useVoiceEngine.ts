@@ -34,6 +34,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Peer, type MediaConnection, type PeerOptions } from 'peerjs';
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { createDenoiser, type Denoiser } from '../lib/denoise';
+import { callProof, checkCallProof, sdpFingerprint } from '../lib/e2e';
 import { nativeCaptureAvailable, startNativeCapture } from '../lib/nativeCapture';
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -159,6 +160,11 @@ export interface VoiceParticipant {
   volume: number;
   /** Locally silenced by us. Does not affect anyone else. */
   locallyMuted: boolean;
+  /**
+   * Encryption check of this connection: verified = both devices proved the connection is theirs
+   * (no one in the middle); unverified = couldn't check (older app, or no encryption key here).
+   */
+  secure: 'verified' | 'unverified';
   /** Incoming screen share, if the peer is streaming. Render it muted. */
   screenStream: MediaStream | null;
   /** Incoming camera video, if the peer has their camera on. */
@@ -301,6 +307,9 @@ interface PeerRecord {
   screenAudio: ScreenAudioGraph | null;
   volume: number;
   locallyMuted: boolean;
+  secure: 'verified' | 'unverified';
+  /** The fingerprint this peer proved (once verified). */
+  provenFingerprint: string | null;
 }
 
 interface PendingCall {
@@ -454,6 +463,12 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
   const realtimeRef = useRef<RealtimeChannel | null>(null);
   const localRef = useRef<LocalAudioGraph | null>(null);
   const recordsRef = useRef(new Map<string, PeerRecord>());
+  /** Encrypted calls: room id (part of what's signed), this session's DTLS certificate fingerprint,
+   *  proofs received from peers, and peers we've sent ours to. */
+  const roomIdRef = useRef<string | null>(null);
+  const certFpRef = useRef<string | null>(null);
+  const proofsRef = useRef(new Map<string, { fp: string; mac: string }>());
+  const proofSentRef = useRef(new Set<string>());
   const presenceRef = useRef(new Map<string, PresencePayload>());
   const pendingCallsRef = useRef(new Map<string, PendingCall>());
   const videoRef = useRef<PerKind<MediaStream | null>>(emptyKinds(null));
@@ -495,6 +510,7 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
         connection: rec?.connection ?? 'connecting',
         volume: rec?.volume ?? 1,
         locallyMuted: rec?.locallyMuted ?? false,
+        secure: rec?.secure ?? 'unverified',
         screenStream: rec?.videoStreams.screen ?? null,
         cameraStream: rec?.videoStreams.camera ?? null,
         joinedAt: p.joinedAt,
@@ -687,6 +703,8 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
       screenAudio: null,
       volume: pref?.volume ?? 1,
       locallyMuted: pref?.muted ?? false,
+      secure: 'unverified',
+      provenFingerprint: null,
     };
     recordsRef.current.set(peerId, rec);
     return rec;
@@ -719,6 +737,67 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
     [clearIncomingVideo, detachRemoteAudio],
   );
 
+  // ── Encrypted calls: proving each connection ────────────────────────────────────────────
+  // Media is peer-to-peer and DTLS-encrypted. Each side signs its DTLS fingerprint with a key only
+  // the two people can derive, so a fingerprint swapped by a server in the middle is caught.
+
+  const sendProof = useCallback(
+    async (rec: PeerRecord) => {
+      const me = userIdRef.current;
+      const self = selfPeerIdRef.current;
+      const ch = realtimeRef.current;
+      const certFp = certFpRef.current;
+      const pc = rec.audioCall?.peerConnection as RTCPeerConnection | undefined;
+      // Only when every connection this session uses our one certificate, so the proof covers all of them.
+      if (!me || !self || !ch || !certFp || !rec.userId || proofSentRef.current.has(rec.peerId)) return;
+      if (sdpFingerprint(pc?.localDescription?.sdp) !== certFp) return;
+      const mac = await callProof(supabase, me, rec.userId, `${roomIdRef.current}|${self}>${rec.peerId}`, certFp);
+      if (!mac || realtimeRef.current !== ch) return;
+      proofSentRef.current.add(rec.peerId);
+      void ch.send({ type: 'broadcast', event: 'call-proof', payload: { from: self, to: rec.peerId, fp: certFp, mac } });
+    },
+    [supabase],
+  );
+
+  const verifyPeer = useCallback(
+    async (rec: PeerRecord) => {
+      const me = userIdRef.current;
+      const self = selfPeerIdRef.current;
+      const proof = proofsRef.current.get(rec.peerId);
+      const call = rec.audioCall;
+      const seen = sdpFingerprint((call?.peerConnection as RTCPeerConnection | undefined)?.remoteDescription?.sdp);
+      if (!proof || !seen || !me || !self || !rec.userId || rec.secure === 'verified') return;
+      const valid = await checkCallProof(supabase, me, rec.userId, `${roomIdRef.current}|${rec.peerId}>${self}`, proof.fp, proof.mac);
+      if (rec.audioCall !== call || valid === null) return; // can't check on this device: stays unverified
+      if (valid && proof.fp === seen) {
+        rec.secure = 'verified';
+        rec.provenFingerprint = seen;
+      } else if (valid) {
+        // They really signed a different fingerprint than the one we're connected to: someone is in the middle.
+        rec.secure = 'unverified';
+        call?.close();
+        setError('A call connection failed its encryption check and was dropped.');
+      }
+      syncParticipants();
+    },
+    [supabase, syncParticipants],
+  );
+
+  const onProof = useCallback(
+    (payload: unknown) => {
+      const p = payload as { from?: unknown; to?: unknown; fp?: unknown; mac?: unknown };
+      if (typeof p?.from !== 'string' || p.to !== selfPeerIdRef.current || typeof p.fp !== 'string' || typeof p.mac !== 'string') return;
+      if (p.fp.length > 200 || p.mac.length > 200) return;
+      proofsRef.current.set(p.from, { fp: p.fp.toUpperCase(), mac: p.mac });
+      const rec = recordsRef.current.get(p.from);
+      if (rec) {
+        void verifyPeer(rec);
+        void sendProof(rec); // make sure they get ours too
+      }
+    },
+    [sendProof, verifyPeer],
+  );
+
   // ── Call wiring ───────────────────────────────────────────────────────────────────────────
 
   const wireAudioCall = useCallback(
@@ -733,6 +812,8 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
         rec.connection = 'connected';
         rec.dialAttempts = 0;
         void applySenderLimits(call, 'audio');
+        void sendProof(rec);
+        void verifyPeer(rec);
         syncParticipants();
       });
 
@@ -810,6 +891,11 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
         call.answer(); // receive-only
         call.on('stream', (stream) => {
           if (session !== sessionRef.current || rec.videoIn[kind] !== call) return;
+          const seen = sdpFingerprint((call.peerConnection as RTCPeerConnection | undefined)?.remoteDescription?.sdp);
+          if (rec.provenFingerprint && seen && seen !== rec.provenFingerprint) {
+            call.close(); // not the device we verified
+            return;
+          }
           rec.videoStreams[kind] = stream;
           if (kind === 'screen') attachScreenAudio(rec, stream);
           syncParticipants();
@@ -1052,6 +1138,9 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
     for (const rec of recordsRef.current.values()) teardownRecord(rec);
     recordsRef.current.clear();
     presenceRef.current.clear();
+    proofsRef.current.clear();
+    proofSentRef.current.clear();
+    certFpRef.current = null;
 
     for (const kind of VIDEO_KINDS) {
       videoRef.current[kind]?.getTracks().forEach((t) => t.stop());
@@ -1142,10 +1231,21 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
 
         // 2. PeerJS identity. A per-join nonce lets one user be in voice from several tabs or devices.
         const peerId = `ae-${uid}-${crypto.randomUUID().slice(0, 8)}`;
+        // One DTLS certificate for every connection this session, so one proof covers them all.
+        const cert = await RTCPeerConnection.generateCertificate({ name: 'ECDSA', namedCurve: 'P-256' } as EcKeyGenParams).catch(() => null);
+        certFpRef.current = cert?.getFingerprints().find((f) => f.algorithm === 'sha-256')?.value?.toUpperCase() ?? null;
+        roomIdRef.current = roomId;
+        proofsRef.current.clear();
+        proofSentRef.current.clear();
         const peer = new Peer(peerId, {
           ...peerServerRef.current,
           debug: 0,
-          config: { iceServers: iceServersFor(settingsRef.current), bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require' },
+          config: {
+            iceServers: iceServersFor(settingsRef.current),
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require',
+            ...(cert ? { certificates: [cert] } : {}),
+          },
         });
         peerRef.current = peer;
         await new Promise<void>((resolve, reject) => {
@@ -1199,6 +1299,9 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
           presenceRef.current = next;
           reconcileMesh();
         });
+        ch.on('broadcast', { event: 'call-proof' }, ({ payload }) => {
+          if (!stale()) onProof(payload);
+        });
 
         flagsRef.current.joinedAt = Date.now();
         await new Promise<void>((resolve, reject) => {
@@ -1233,7 +1336,7 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
         setStatus('error');
       }
     },
-    [applyOutputDevice, buildLocalGraph, handleIncomingCall, leave, meterTick, publishPresence, reconcileMesh, supabase],
+    [applyOutputDevice, buildLocalGraph, handleIncomingCall, leave, meterTick, onProof, publishPresence, reconcileMesh, supabase],
   );
 
   // ── Controls ──────────────────────────────────────────────────────────────────────────────

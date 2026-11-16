@@ -14,7 +14,7 @@ import { BUILTIN_SOUNDS, builtinBuffer, decodeClip } from '../lib/soundboard';
 import { useSettingsStore } from '../stores/settingsStore';
 import type { Server, VoiceState } from '../types/db';
 import { useCall } from './CallContext';
-import { CameraIcon, CameraOffIcon, FullscreenIcon, HandIcon, HeadphonesIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, PhoneOffIcon, ScreenIcon, SoundboardIcon, StageIcon, UsersIcon, VolumeIcon } from './icons';
+import { CameraIcon, CameraOffIcon, FullscreenIcon, HandIcon, HeadphonesIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, PhoneOffIcon, ScreenIcon, SoundboardIcon, StageIcon, UsersIcon, VolumeIcon, E2eIcon } from './icons';
 import { Avatar } from './ProfileCard';
 
 export function VideoView({ stream, className, mirror, controls }: { stream: MediaStream; className?: string; mirror?: boolean; controls?: boolean }) {
@@ -135,6 +135,11 @@ function Tile(props: TileProps) {
         {props.badge}
         {props.muted && <MicOffIcon size={12} className="text-ae-danger" />}
         {props.deafened && <HeadphonesOffIcon size={12} className="text-ae-danger" />}
+        {participant?.secure === 'verified' && (
+          <span data-tip="End-to-end encrypted: this connection is verified, with no one in the middle" className="text-ae-success">
+            <E2eIcon size={11} />
+          </span>
+        )}
         {participant && <SignalBars stats={props.stats ?? null} />}
       </div>
       {props.onFocus && size !== 'focus' && (

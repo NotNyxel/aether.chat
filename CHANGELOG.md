@@ -3,6 +3,23 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.9.4] - 2026-11-16
+
+**Encrypted calls, and everything from 1.9.0–1.9.3 on every platform**
+
+- **Verified end-to-end encrypted calls.** Calls already went straight between devices, encrypted, with no media server
+  in between. The one weak spot was the call setup, which passes through a relay server that could in theory slip
+  itself in the middle.
+  - Each device now proves its side of the connection with a key only the two people share, from their encryption
+    keys. A connection that fails the check is dropped.
+  - A green 🔒 on someone's tile in a call means your connection to them is verified.
+  - This covers voice, camera and screen share, in DM calls and voice channels.
+  - Calls with someone on an older version, or on a device without encryption set up, still work; they just don't
+    show the lock.
+- **macOS, Linux, Android and iPhone** get everything from 1.9.0–1.9.3: automatic encryption with device linking,
+  backup codes and passkeys, server-enforced two-factor, search filters, moderation tools, custom badges and the bigger
+  admin panel.
+
 ## [1.9.3] - 2026-11-16
 
 **Custom badges and a bigger admin panel**

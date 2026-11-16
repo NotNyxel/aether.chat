@@ -392,3 +392,54 @@ export async function approveLink(sb: SupabaseClient, me: string, req: LinkReque
 export async function denyLink(sb: SupabaseClient, id: string): Promise<void> {
   await sb.from('e2e_link_requests').update({ status: 'denied' }).eq('id', id);
 }
+
+// ── Calls ─────────────────────────────────────────────────────────────────────────────────
+// Calls are peer-to-peer WebRTC, so audio and video are already encrypted between the two devices
+// (DTLS-SRTP). What a server in the middle could do is swap the connection fingerprints while the
+// call is being set up. Each side proves its fingerprint with a key only the two people can derive
+// (from their encryption keys), so a swapped fingerprint is caught and the connection dropped.
+
+async function callKey(sb: SupabaseClient, me: string, other: string): Promise<CryptoKey | null> {
+  const raw = localStorage.getItem(localKey(me));
+  const pub = await publicKeyOf(sb, other);
+  if (!raw || !pub) return null;
+  // The stored key says it's only for deriveKey; this use needs deriveBits, so drop that note.
+  const { key_ops: _ops, ...jwk } = JSON.parse(raw) as JsonWebKey;
+  const priv = await crypto.subtle.importKey('jwk', jwk, ECDH, false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'ECDH', public: pub }, priv, 256);
+  const hkdf = await crypto.subtle.importKey('raw', bits, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(new ArrayBuffer(32)), info: enc.encode('aether-call-fingerprint-v1') },
+    hkdf,
+    { name: 'HMAC', hash: 'SHA-256', length: 256 },
+    false,
+    ['sign', 'verify'],
+  );
+}
+
+/** Proof that `fingerprint` is mine, for `other` (null if either of us has no encryption key). */
+export async function callProof(sb: SupabaseClient, me: string, other: string, context: string, fingerprint: string): Promise<string | null> {
+  const key = await callKey(sb, me, other).catch(() => null);
+  if (!key) return null;
+  return b64(await crypto.subtle.sign('HMAC', key, enc.encode(`${context}|${fingerprint.toUpperCase()}`)));
+}
+
+/** true = proven, false = the proof is wrong, null = can't check here (no key on this device). */
+export async function checkCallProof(sb: SupabaseClient, me: string, other: string, context: string, fingerprint: string, proof: string): Promise<boolean | null> {
+  const verify = async () => {
+    const key = await callKey(sb, me, other).catch(() => null);
+    if (!key) return null;
+    try {
+      return await crypto.subtle.verify('HMAC', key, unb64(proof), enc.encode(`${context}|${fingerprint.toUpperCase()}`));
+    } catch {
+      return false;
+    }
+  };
+  const first = await verify();
+  if (first !== false) return first;
+  pubCache.delete(other); // they may have reset their encryption since we cached their key
+  return verify();
+}
+
+/** The sha-256 DTLS fingerprint in an SDP ("AB:CD:…"), if there is one. */
+export const sdpFingerprint = (sdp: string | undefined | null) => /a=fingerprint:sha-256 ([0-9A-Fa-f:]+)/.exec(sdp ?? '')?.[1]?.toUpperCase() ?? null;

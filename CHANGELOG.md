@@ -3,6 +3,20 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.9.3] - 2026-11-16
+
+**Custom badges and a bigger admin panel**
+
+- **Custom badges.** Admins can make their own badges in **Settings → Admin → Badges**:
+  - pick an icon from about 70 or upload an image, then choose a name, a description (shown on hover) and a color;
+  - edit or delete a badge any time, and see who has it.
+- Giving and taking badges in **Users** now saves with one click per badge.
+- Removed five badges nobody had: Moderator, Voice Veteran, velox Native, Supporter and Artist.
+- **Admin → Servers.** Every server with its owner, member count and messages this week, searchable. Admins can take a
+  server off Discover or delete it; deleting asks for a reason and is logged.
+- **Admin → Overview → Activity.** Bar charts of people chatting, messages and new accounts per day, over 7, 30 or 90
+  days.
+
 ## [1.9.2] - 2026-11-16
 
 **Better search and moderation tools**

@@ -1318,6 +1318,61 @@ await expectOk('moderators bulk-delete the latest messages, optionally from one 
   if (n !== 3 || left !== 1 || kept !== 1) throw new Error(`${n} ${left} ${kept}`);
 });
 
+console.log('\nCustom badges and admin tools (1.9.3)');
+await expectOk('everyone can see the badge list; the 8 built-in badges are there', async () => {
+  const n = (await as(E, `select count(*)::int n from public.badges`)).rows[0].n;
+  if (n !== 8) throw new Error(String(n));
+});
+await expectError('people cannot add badges directly', () => as(A, `insert into public.badges (id, label, icon) values ('mine', 'Mine', 'star')`));
+await expectError('only admins make badges', () => as(E, `select public.admin_save_badge('cool', 'Cool', null, '#ff0000', 'star', null)`), 'Admins only');
+await expectOk('admins make a badge with an icon, or an uploaded image', async () => {
+  await as(A, `select public.admin_save_badge('cool', 'Cool Person', 'Is cool', '#ff0000', 'star', null)`);
+  await as(A, `select public.admin_save_badge('pic', 'Picture', null, '#00ff00', null, 'https://example.supabase.co/storage/v1/object/public/badges/pic.png')`);
+  await as(A, `select public.admin_save_badge('cool', 'Very Cool', 'Is cool', '#ff0000', 'sparkles', null)`);
+  const r = (await db.query(`select id, label, icon from public.badges where id in ('cool', 'pic') order by id`)).rows;
+  if (r.length !== 2 || r[0].label !== 'Very Cool' || r[0].icon !== 'sparkles') throw new Error(JSON.stringify(r));
+});
+await expectError('a badge needs an icon or image', () => as(A, `select public.admin_save_badge('empty', 'Empty', null, '#000000', null, null)`));
+await expectError('badge images must be https links', () => as(A, `select public.admin_save_badge('bad', 'Bad', null, '#000000', null, 'javascript:alert(1)')`));
+await expectOk('admins give and take one badge without touching the others', async () => {
+  await as(A, `select public.admin_toggle_badge('${E}', 'cool', true)`);
+  await as(A, `select public.admin_toggle_badge('${E}', 'cool', true)`);
+  await as(A, `select public.admin_toggle_badge('${E}', 'tester', true)`);
+  const holders = (await as(A, `select username from public.admin_badge_holders('cool')`)).rows.length;
+  await as(A, `select public.admin_toggle_badge('${E}', 'tester', false)`);
+  const b = (await db.query(`select badge_ids from public.users where id = '${E}'`)).rows[0].badge_ids;
+  if (holders !== 1 || JSON.stringify(b.filter((x) => x === 'cool')) !== '["cool"]' || b.includes('tester')) throw new Error(`${holders} ${JSON.stringify(b)}`);
+});
+await expectOk('deleting a badge takes it off everyone', async () => {
+  const n = (await as(A, `select public.admin_delete_badge('cool') n`)).rows[0].n;
+  const b = (await db.query(`select badge_ids from public.users where id = '${E}'`)).rows[0].badge_ids;
+  const gone = (await db.query(`select count(*)::int n from public.badges where id = 'cool'`)).rows[0].n;
+  if (n !== 1 || b.includes('cool') || gone !== 0) throw new Error(`${n} ${JSON.stringify(b)} ${gone}`);
+});
+await expectOk('admins list servers with member and message counts', async () => {
+  const r = (await as(A, `select name, members, owner_username from public.admin_list_servers('Test')`)).rows;
+  if (!r.length || !(r[0].members > 0)) throw new Error(JSON.stringify(r));
+});
+await expectError('only admins list every server', () => as(E, `select * from public.admin_list_servers()`), 'Admins only');
+await expectOk('admins hide a server from Discover', async () => {
+  await as(A, `select public.admin_set_server_discoverable($1, false)`, [srv2]);
+  const d = (await db.query(`select discoverable from public.servers where id = $1`, [srv2])).rows[0].discoverable;
+  if (d) throw new Error('still listed');
+});
+await expectOk('activity has one row per day with counts', async () => {
+  const r = (await as(A, `select * from public.admin_activity(14)`)).rows;
+  const today = r[r.length - 1];
+  if (r.length !== 14 || !(today.messages > 0)) throw new Error(`${r.length} ${JSON.stringify(today)}`);
+});
+await expectError('deleting a server needs a reason', () => as(A, `select public.admin_delete_server($1, '')`, [srv2]), 'reason');
+await expectOk('admins delete a server, and it is logged', async () => {
+  const doomed = (await as(E, `insert into public.servers (name) values ('Doomed') returning id`)).rows[0].id;
+  await as(A, `select public.admin_delete_server($1, 'spam server')`, [doomed]);
+  const left = (await db.query(`select count(*)::int n from public.servers where id = $1`, [doomed])).rows[0].n;
+  const logged = (await db.query(`select count(*)::int n from public.admin_audit where action = 'server_delete'`)).rows[0].n;
+  if (left !== 0 || logged !== 1) throw new Error(`${left} ${logged}`);
+});
+
 console.log('\nUnconfirmed account cleanup');
 await expectOk('sign-ups never confirmed after 7 days are removed; everyone else stays', async () => {
   const ids = ['c1eaa001-0000-4000-8000-000000000001', 'c1eaa001-0000-4000-8000-000000000002', 'c1eaa001-0000-4000-8000-000000000003', 'c1eaa001-0000-4000-8000-000000000004'];

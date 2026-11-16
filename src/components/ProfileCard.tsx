@@ -12,8 +12,8 @@ import { Markdown } from '../lib/markdown';
 import { isHexColor } from '../theme/presets';
 import type { ProfileEffect, UserProfile } from '../types/db';
 import { openExternal } from '../lib/platform';
-import type { LucideIcon } from 'lucide-react';
-import { AdminIcon, BadgeIcon, BrushIcon, BugIcon, CodeIcon, CrownIcon, FlaskIcon, GavelIcon, GemIcon, HeadsetIcon, HeartIcon, LinkIcon, PauseIcon, PlayIcon, RocketIcon, TrophyIcon, ZapIcon } from './icons';
+import { LinkIcon, PauseIcon, PlayIcon } from './icons';
+import { BadgeGlyph, useBadges } from '../lib/badges';
 import { ActivitySections } from './ActivityCards';
 import { ScopedCss } from './ThemeEngine';
 import { useEscape } from '../lib/escape';
@@ -28,40 +28,23 @@ import { EmojiText } from '../lib/twemoji';
 // Badges
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-export const BADGE_CATALOG: Record<string, { label: string; Icon: LucideIcon; color: string }> = {
-  founder: { label: 'Founder', Icon: CrownIcon, color: '#f5c542' },
-  staff: { label: 'Aether Staff', Icon: AdminIcon, color: '#7c5cff' },
-  'early-supporter': { label: 'Early Supporter', Icon: HeartIcon, color: '#ff7ab6' },
-  developer: { label: 'Developer', Icon: CodeIcon, color: '#00d4ff' },
-  moderator: { label: 'Moderator', Icon: GavelIcon, color: '#2ecc71' },
-  'bug-hunter': { label: 'Bug Hunter', Icon: BugIcon, color: '#ff9f43' },
-  'voice-veteran': { label: 'Voice Veteran', Icon: HeadsetIcon, color: '#a29bfe' },
-  velox: { label: 'velox Native', Icon: ZapIcon, color: '#5ee6a8' },
-  supporter: { label: 'Supporter', Icon: GemIcon, color: '#ff5ac8' },
-  artist: { label: 'Artist', Icon: BrushIcon, color: '#ffb86b' },
-  tester: { label: 'Beta Tester', Icon: FlaskIcon, color: '#7bd88f' },
-  pioneer: { label: 'Pioneer', Icon: RocketIcon, color: '#5ab0ff' },
-  champion: { label: 'Champion', Icon: TrophyIcon, color: '#ffd166' },
-};
-
 export function BadgeRow({ badgeIds, size = 24 }: { badgeIds: string[]; size?: number }) {
-  if (!badgeIds.length) return null;
+  const { byId } = useBadges();
+  const shown = badgeIds.map((id) => byId.get(id)).filter((b): b is NonNullable<typeof b> => !!b); // deleted badges just disappear
+  if (!shown.length) return null;
   return (
     <ul className="flex flex-wrap gap-1" aria-label="Badges">
-      {badgeIds.map((id) => {
-        const badge = BADGE_CATALOG[id] ?? { label: id, Icon: BadgeIcon, color: 'var(--ae-text-muted)' };
-        return (
-          <li
-            key={id}
-            data-tip={badge.label}
-            aria-label={badge.label}
-            className="ae-lift grid place-items-center rounded-md bg-ae-sunken/80"
-            style={{ color: badge.color, width: size, height: size, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${badge.color} 35%, transparent)` }}
-          >
-            <badge.Icon size={size * 0.6} strokeWidth={2.2} />
-          </li>
-        );
-      })}
+      {shown.map((badge) => (
+        <li
+          key={badge.id}
+          data-tip={badge.description ? `${badge.label}: ${badge.description}` : badge.label}
+          aria-label={badge.label}
+          className="ae-lift grid place-items-center rounded-md bg-ae-sunken/80"
+          style={{ color: badge.color, width: size, height: size, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${badge.color} 35%, transparent)` }}
+        >
+          <BadgeGlyph badge={badge} size={Math.round(size * 0.62)} />
+        </li>
+      ))}
     </ul>
   );
 }

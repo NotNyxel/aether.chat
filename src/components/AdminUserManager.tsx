@@ -116,6 +116,14 @@ const ACTION_LABEL: Record<string, string> = {
   admin_granted: 'Made admin',
   admin_removed: 'Admin removed',
   badges: 'Badges changed',
+  badge_give: 'Badge given',
+  badge_take: 'Badge taken away',
+  badge_create: 'Badge made',
+  badge_update: 'Badge edited',
+  badge_delete: 'Badge deleted',
+  server_delete: 'Server deleted',
+  server_discover_off: 'Server hidden from Discover',
+  server_discover_on: 'Server shown on Discover',
 };
 function durationText(hours: number) {
   const h = Math.max(1, Math.round(hours));

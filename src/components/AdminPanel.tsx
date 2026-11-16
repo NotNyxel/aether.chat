@@ -11,7 +11,8 @@ import { adminUserCall, AdminUserManager, AuditList } from './AdminUserManager';
 import { ask, promptText } from './ConfirmDialog';
 import { LevelChip } from './Moderation';
 import { AdminIcon, AuditIcon, BannedIcon, CheckIcon, CloseIcon, DashboardIcon, FlagIcon, GavelIcon, MegaphoneIcon, MessageIcon, ReportsIcon, ScaleIcon, SearchIcon, ServerIcon, SlidersIcon, UserPlusIcon, UsersIcon, LiveIcon, WarningIcon } from './icons';
-import { BADGE_CATALOG, BadgeRow } from './ProfileCard';
+import { BadgeRow } from './ProfileCard';
+import { ActivityCharts, BadgesAdmin, BadgeToggles, ServersAdmin } from './AdminExtras';
 import { Section, Toggle } from './SettingsPanel';
 import { toast } from './Toaster';
 import { openExternal } from '../lib/platform';
@@ -56,7 +57,7 @@ interface AppealRow {
   created_at: string;
   ban: { reason: string; created_at: string; expires_at: string | null; lifted_at: string | null };
 }
-type AdminSection = 'overview' | 'users' | 'appeals' | 'reports' | 'settings' | 'audit';
+type AdminSection = 'overview' | 'users' | 'servers' | 'badges' | 'appeals' | 'reports' | 'settings' | 'audit';
 interface ReportRow {
   id: string;
   reporter_id: string | null;
@@ -121,7 +122,6 @@ function Overview({ goto }: { goto: (t: AdminSection, q?: string) => void }) {
 function UserRow({ u, me, onChanged, onOpen }: { u: AdminUser; me: string; onChanged: () => void; onOpen: () => void }) {
   const sb = useSupabase();
   const [editing, setEditing] = useState(false);
-  const [badges, setBadges] = useState<string[]>(u.badge_ids ?? []);
   const date = (d: string | null) => (d ? new Date(d).toLocaleDateString() : 'never');
 
   const setAdmin = async (on: boolean) => {
@@ -130,13 +130,6 @@ function UserRow({ u, me, onChanged, onOpen }: { u: AdminUser; me: string; onCha
     const { error } = await sb.rpc('admin_set_admin', { p_user_id: u.id, p_admin: on });
     if (error) return toast.error(error.message);
     toast.success(on ? `@${u.username} is now an admin.` : `@${u.username} is no longer an admin.`);
-    onChanged();
-  };
-  const saveBadges = async () => {
-    const { error } = await sb.rpc('admin_set_badges', { p_user_id: u.id, p_badges: badges });
-    if (error) return toast.error(error.message);
-    toast.success('Badges saved.');
-    setEditing(false);
     onChanged();
   };
 
@@ -172,30 +165,8 @@ function UserRow({ u, me, onChanged, onOpen }: { u: AdminUser; me: string; onCha
       </div>
       {editing && (
         <div className="ae-enter mt-3 space-y-2 border-t border-ae-border pt-3">
-          <div className="flex flex-wrap gap-1.5">
-            {Object.entries(BADGE_CATALOG).map(([id, b]) => {
-              const on = badges.includes(id);
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setBadges((cur) => (on ? cur.filter((x) => x !== id) : [...cur, id]))}
-                  className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${on ? 'border-transparent' : 'border-ae-border text-ae-muted hover:text-ae-text'}`}
-                  style={on ? { background: `color-mix(in srgb, ${b.color} 22%, transparent)`, color: b.color } : undefined}
-                >
-                  <b.Icon size={13} /> {b.label}
-                </button>
-              );
-            })}
-          </div>
-          <div className="flex justify-end gap-2">
-            <button type="button" className="rounded-ae px-3 py-1.5 text-sm hover:bg-ae-hover" onClick={() => setEditing(false)}>
-              Cancel
-            </button>
-            <button type="button" className="ae-press rounded-ae bg-ae-accent px-4 py-1.5 text-sm font-semibold text-ae-on-accent" onClick={() => void saveBadges()}>
-              Save badges
-            </button>
-          </div>
+          <p className="text-xs text-ae-muted">Click to give or take a badge. It saves straight away. Make new badges in the Badges tab.</p>
+          <BadgeToggles userId={u.id} current={u.badge_ids ?? []} onChanged={onChanged} />
         </div>
       )}
     </li>
@@ -595,6 +566,8 @@ export function AdminTab({ userId }: { userId: string }) {
   const tabs: { id: AdminSection; label: string; icon: ReactNode; count?: number }[] = [
     { id: 'overview', label: 'Overview', icon: <DashboardIcon size={14} /> },
     { id: 'users', label: 'Users', icon: <UsersIcon size={14} /> },
+    { id: 'servers', label: 'Servers', icon: <ServerIcon size={14} /> },
+    { id: 'badges', label: 'Badges', icon: <AdminIcon size={14} /> },
     { id: 'appeals', label: 'Appeals', icon: <ScaleIcon size={14} />, count: s?.open_appeals },
     { id: 'reports', label: 'Reports', icon: <ReportsIcon size={14} />, count: s?.open_reports },
     { id: 'settings', label: 'App settings', icon: <SlidersIcon size={14} /> },
@@ -624,6 +597,21 @@ export function AdminTab({ userId }: { userId: string }) {
         {section === 'overview' && (
           <Section title="Overview" description="Live numbers. Click a tile to jump to it.">
             <Overview goto={goto} />
+          </Section>
+        )}
+        {section === 'overview' && (
+          <Section title="Activity" description="Per day. Hover a bar for that day's number.">
+            <ActivityCharts />
+          </Section>
+        )}
+        {section === 'servers' && (
+          <Section title="Servers" description="Every server, biggest first. Take one off Discover, or delete it (you'll be asked why; it's logged).">
+            <ServersAdmin />
+          </Section>
+        )}
+        {section === 'badges' && (
+          <Section title="Badges" description="Make badges with an icon or your own image. Give them to people from the Users tab (Badges button).">
+            <BadgesAdmin />
           </Section>
         )}
         {section === 'users' && (

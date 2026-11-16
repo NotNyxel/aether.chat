@@ -20,6 +20,7 @@ import { ActivityLine } from './ActivityCards';
 import { ConversationAvatar, isUnread, useConversationTitle } from './ConversationBits';
 import { useRequestConversations } from './FriendsExtras';
 import { GroupDialog } from './GroupDialog';
+import { FolderChips, useChatOrgItems, useOrganizedChats } from './ChatOrganizer';
 import {
   BellIcon,
   ChevronRightIcon,
@@ -28,6 +29,7 @@ import {
   MessageIcon,
   PaletteIcon,
   PhoneIcon,
+  PinIcon,
   PlusIcon,
   SearchIcon,
   ServerIcon,
@@ -75,7 +77,8 @@ function OnlineFriend({ userId }: { userId: string }) {
   );
 }
 
-function DmRow({ conv, me, count, muted, inCall }: { conv: Conversation; me: string; count: number; muted: boolean; inCall: boolean }) {
+function DmRow({ conv, me, count, muted, inCall, pinned }: { conv: Conversation; me: string; count: number; muted: boolean; inCall: boolean; pinned: boolean }) {
+  const orgItems = useChatOrgItems(conv);
   const openHome = useUiStore((s) => s.openHome);
   const title = useConversationTitle(conv, me);
   const unread = !muted && isUnread(conv, me);
@@ -91,12 +94,14 @@ function DmRow({ conv, me, count, muted, inCall }: { conv: Conversation; me: str
       <button
         type="button"
         onClick={() => openHome(conv.id)}
+        onContextMenu={(e) => openContextMenu(e, orgItems({ x: e.clientX, y: e.clientY }))}
         className={`flex w-full items-center gap-3 px-4 py-2.5 text-left active:bg-ae-hover ${muted ? 'opacity-60' : ''}`}
       >
         <ConversationAvatar conv={conv} me={me} size={50} />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
             <span className={`min-w-0 flex-1 truncate text-[15px] ${unread ? 'font-bold' : 'font-semibold'}`}>{title}</span>
+            {pinned && <PinIcon size={12} className="shrink-0 text-ae-muted" aria-label="Pinned" />}
             <span className="shrink-0 text-[11px] text-ae-muted">{time}</span>
           </span>
           <span className="flex items-center gap-2">
@@ -137,7 +142,7 @@ export function MobileHome({ userId }: { userId: string }) {
   const pending = friendships.filter((f) => f.status === 'pending' && f.addressee_id === userId).length;
   const friends = friendships.filter((f) => f.status === 'accepted').map((f) => (f.requester_id === userId ? f.addressee_id : f.requester_id));
   const mine = (c: Conversation) => c.conversation_members.find((m) => m.user_id === userId);
-  const visible = conversations.filter((c) => !mine(c)?.hidden && !mine(c)?.request_pending);
+  const { chats: visible, filter, archivedCount, prefs } = useOrganizedChats(conversations.filter((c) => !mine(c)?.hidden && !mine(c)?.request_pending));
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -171,10 +176,17 @@ export function MobileHome({ userId }: { userId: string }) {
           </div>
         )}
 
+        <div className="mt-3 px-4 empty:hidden">
+          <FolderChips archivedCount={archivedCount} />
+        </div>
         <ul className="mt-2">
-          {visible.length === 0 && <li className="px-6 py-10 text-center text-sm text-ae-muted">No conversations yet. Tap + to message a friend.</li>}
+          {visible.length === 0 && (
+            <li className="px-6 py-10 text-center text-sm text-ae-muted">
+              {filter === 'all' ? 'No conversations yet. Tap + to message a friend.' : filter === 'archived' ? 'Nothing archived.' : 'No chats in this folder yet. Press and hold a chat to move it here.'}
+            </li>
+          )}
           {visible.map((c) => (
-            <DmRow key={c.id} conv={c} me={userId} count={counts.get(c.id) ?? 0} muted={resolve({ kind: 'conversation', id: c.id }).muted} inCall={callIds.has(c.id)} />
+            <DmRow key={c.id} conv={c} me={userId} count={counts.get(c.id) ?? 0} muted={resolve({ kind: 'conversation', id: c.id }).muted} inCall={callIds.has(c.id)} pinned={!!prefs.get(c.id)?.pinned_at} />
           ))}
         </ul>
       </div>

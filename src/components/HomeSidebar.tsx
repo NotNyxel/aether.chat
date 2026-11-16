@@ -13,13 +13,15 @@ import { ConversationAvatar, isUnread, useConversationTitle } from './Conversati
 import { GroupDialog } from './GroupDialog';
 import { useProfile } from '../hooks/useChatData';
 import { ActivityLine } from './ActivityCards';
-import { BellIcon, BellOffIcon, CheckIcon, CloseIcon, InboxIcon, PhoneIcon, PlusIcon, SearchIcon, UsersIcon } from './icons';
+import { BellIcon, BellOffIcon, CheckIcon, CloseIcon, InboxIcon, PhoneIcon, PinIcon, PlusIcon, SearchIcon, UsersIcon } from './icons';
 import { useRequestConversations } from './FriendsExtras';
 import { UserPanel } from './UserPanel';
 import { plateProps } from '../lib/cosmetics';
+import { FolderChips, useChatOrgItems, useOrganizedChats } from './ChatOrganizer';
 
-function ConversationRow({ conv, me, active, inCall, count: rawCount, muted }: {
+function ConversationRow({ conv, me, active, inCall, count: rawCount, muted, pinned }: {
   conv: Conversation;
+  pinned: boolean;
   me: string;
   active: boolean;
   inCall: boolean;
@@ -37,6 +39,7 @@ function ConversationRow({ conv, me, active, inCall, count: rawCount, muted }: {
   const setNotify = useSetNotificationSetting();
   const other = conv.type === 'dm' ? conv.conversation_members.find((m) => m.user_id !== me)?.user_id : undefined;
   const { data: otherProfile } = useProfile(other ?? null);
+  const orgItems = useChatOrgItems(conv);
   const dmItems = [
     { label: 'Mark as read', icon: <CheckIcon size={15} />, disabled: !unread && !count, onClick: () => markRead({ kind: 'conversation' as const, id: conv.id }) },
     muted
@@ -59,7 +62,11 @@ function ConversationRow({ conv, me, active, inCall, count: rawCount, muted }: {
       <button
         type="button"
         onClick={() => openHome(conv.id)}
-        onContextMenu={(e) => (other ? userMenu(e, other, ['divider', ...dmItems]) : openContextMenu(e, dmItems))}
+        onContextMenu={(e) => {
+          const items = [...orgItems({ x: e.clientX, y: e.clientY }), 'divider' as const, ...dmItems];
+          if (other) userMenu(e, other, ['divider', ...items]);
+          else openContextMenu(e, items);
+        }}
         {...plateProps(otherProfile?.nameplate, otherProfile?.decor)}
         className={`ae-plate flex w-full items-center gap-3 rounded-ae px-2 py-1.5 text-left ${
           active ? 'bg-ae-surface text-ae-text' : unread ? 'text-ae-text hover:bg-ae-hover' : `text-ae-muted hover:bg-ae-hover hover:text-ae-text ${muted ? 'opacity-50' : ''}`
@@ -78,6 +85,7 @@ function ConversationRow({ conv, me, active, inCall, count: rawCount, muted }: {
             )
           )}
         </span>
+        {pinned && <PinIcon size={12} className="shrink-0 text-ae-muted group-hover:hidden" aria-label="Pinned" />}
         {inCall && <PhoneIcon size={14} className="text-ae-success" />}
         {!active && count > 0 ? (
           <span className="shrink-0 rounded-full bg-ae-danger px-1.5 text-[11px] font-bold text-white" aria-label={`${count} unread`}>
@@ -117,7 +125,7 @@ export function HomeSidebar({ userId }: { userId: string }) {
   const requestCount = useRequestConversations(userId).length;
   const pending = friendships.filter((f) => f.status === 'pending' && f.addressee_id === userId).length;
   const mine = (c: Conversation) => c.conversation_members.find((m) => m.user_id === userId);
-  const visible = conversations.filter((c) => !mine(c)?.hidden && !mine(c)?.request_pending);
+  const { chats: visible, filter, archivedCount, prefs } = useOrganizedChats(conversations.filter((c) => !mine(c)?.hidden && !mine(c)?.request_pending));
 
   const callIds = new Set(activeCalls.map((c) => c.conversation_id));
 
@@ -164,10 +172,17 @@ export function HomeSidebar({ userId }: { userId: string }) {
             <PlusIcon size={14} />
           </button>
         </div>
+        <div className="mb-1.5 px-1 empty:hidden">
+          <FolderChips archivedCount={archivedCount} compact />
+        </div>
         <ul className="space-y-0.5">
-          {visible.length === 0 && <li className="px-2 py-3 text-xs text-ae-muted">No conversations yet. Message a friend to start one.</li>}
+          {visible.length === 0 && (
+            <li className="px-2 py-3 text-xs text-ae-muted">
+              {filter === 'all' ? 'No conversations yet. Message a friend to start one.' : filter === 'archived' ? 'Nothing archived.' : 'No chats in this folder yet. Right-click a chat and choose Move to folder.'}
+            </li>
+          )}
           {visible.map((c) => (
-            <ConversationRow key={c.id} conv={c} me={userId} active={homeTarget === c.id} inCall={callIds.has(c.id)} count={counts.get(c.id) ?? 0} muted={resolve({ kind: 'conversation', id: c.id }).muted} />
+            <ConversationRow key={c.id} conv={c} me={userId} active={homeTarget === c.id} inCall={callIds.has(c.id)} count={counts.get(c.id) ?? 0} muted={resolve({ kind: 'conversation', id: c.id }).muted} pinned={!!prefs.get(c.id)?.pinned_at} />
           ))}
         </ul>
       </div>

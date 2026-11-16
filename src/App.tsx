@@ -1,7 +1,7 @@
 /** Root gating: email links → session → two-factor check → main shell. */
 import { MailIcon, PartyIcon } from './components/icons';
 import type { Session } from '@supabase/supabase-js';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { MutationCache, QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { AuthScreen, MfaChallenge, NewPasswordScreen } from './components/AuthScreen';
 import { ConfirmLayer } from './components/ConfirmDialog';
@@ -22,7 +22,22 @@ import { resolveBackendConfig, SupabaseProvider, useSupabase } from './lib/supab
 import { installTouchControls } from './lib/touch';
 import { clearCache, hydrateCache, persistCache } from './lib/persistCache';
 
+/** A failed change never fails silently: if an action has no error handling of its own, say so. */
+export function friendlyError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) return 'You seem to be offline. Check your connection and try again.';
+  if (/jwt|token.*expired|not authenticated|invalid claim/i.test(msg)) return 'Your session expired. Sign in again.';
+  if (/permission denied|row-level security|violates row-level/i.test(msg)) return 'You don’t have permission to do that.';
+  // Same text actions use for their own errors, so the two collapse into one message.
+  return msg || 'Something went wrong. Try again.';
+}
+
 const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onError: (err, _vars, _ctx, mutation) => {
+      if (!mutation.options.onError) toast.error(friendlyError(err));
+    },
+  }),
   defaultOptions: {
     queries: { retry: 1, refetchOnWindowFocus: false, gcTime: 5 * 60_000 },
   },
@@ -57,6 +72,27 @@ function AuthGate() {
   }, [sb]);
 
   useEffect(() => trackAccounts(sb), [sb]);
+
+  // A session the server no longer accepts (signed out elsewhere, password reset, revoked): the app
+  // used to keep showing cached chats while every request failed. Try one refresh; if that fails
+  // too, go to the sign-in screen.
+  useEffect(() => {
+    let checking = false;
+    const dead = /jwt expired|invalid jwt|jwt.*(malformed|signature)|session.?not.?found|refresh.?token.*(not found|invalid|already used)|not authenticated/i;
+    return queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== 'updated' || event.action.type !== 'error' || checking) return;
+      const msg = event.action.error instanceof Error ? event.action.error.message : String(event.action.error);
+      if (!dead.test(msg)) return;
+      checking = true;
+      void sb.auth.refreshSession().then(({ error }) => {
+        checking = false;
+        if (error) {
+          toast.error('You were signed out. Sign in again to continue.');
+          void sb.auth.signOut({ scope: 'local' });
+        } else void queryClient.invalidateQueries();
+      });
+    });
+  }, [sb]);
 
   // Password reset / email confirmation / email change links.
   useEffect(

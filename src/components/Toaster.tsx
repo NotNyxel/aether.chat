@@ -14,10 +14,18 @@ interface ToastItem {
   icon?: ReactNode;
 }
 
+let lastText = '';
+let lastAt = 0;
+
 const useToasts = create<{ items: ToastItem[]; push: (t: Omit<ToastItem, 'id'>) => void; dismiss: (id: number) => void }>()((set) => ({
   items: [],
   push: (t) => {
-    const id = Date.now() + Math.random();
+    // The same message twice in quick succession (e.g. an action's own error and the app-wide one) shows once.
+    const now = Date.now();
+    if (t.text === lastText && now - lastAt < 2000) return;
+    lastText = t.text;
+    lastAt = now;
+    const id = now + Math.random();
     set((s) => ({ items: [...s.items.slice(-3), { ...t, id }] }));
     setTimeout(() => set((s) => ({ items: s.items.filter((x) => x.id !== id) })), t.tone === 'error' ? 6000 : 3200);
   },

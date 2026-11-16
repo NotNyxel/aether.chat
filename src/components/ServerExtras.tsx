@@ -60,7 +60,7 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
     onboarding_prompt: server.onboarding_prompt ?? '',
   });
   const [d, setD] = useState(initial);
-  useEffect(() => setD(initial()), [server]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setD(initial()), [server]);  
   const dirty = JSON.stringify(d) !== JSON.stringify(initial());
 
   return (

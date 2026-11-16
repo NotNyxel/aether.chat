@@ -293,12 +293,17 @@ function MicMeter({ deviceId, gateDb }: { deviceId: string | null; gateDb: numbe
     let stream: MediaStream | null = null;
     let ctx: AudioContext | null = null;
 
-    (async () => {
+    void (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        const got = await navigator.mediaDevices.getUserMedia({
           audio: { deviceId: deviceId ? { exact: deviceId } : undefined },
         });
-        if (cancelled) return;
+        // Stopped while the mic was still being opened: release it, or it stays on.
+        if (cancelled) {
+          got.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream = got;
         ctx = new AudioContext();
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 1024;

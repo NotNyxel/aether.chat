@@ -3,7 +3,7 @@
  * to at most 480px on the long side, which keeps GIFs small and quick to send.
  */
 // gifenc has no type definitions of its own.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+ 
 // @ts-ignore
 import { applyPalette, GIFEncoder, quantize } from 'gifenc';
 

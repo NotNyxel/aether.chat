@@ -6,10 +6,12 @@
  */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Attachment } from '../types/db';
-import { MicIcon, PauseIcon, PlayIcon, SendIcon, TrashIcon } from './icons';
+import { LockIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, TrashIcon } from './icons';
 import { toast } from './Toaster';
 
 const MAX_SECONDS = 300;
+/** How far left to slide (px) to lock a recording. */
+const LOCK_DISTANCE = 80;
 const BARS = 48;
 
 export interface VoiceAttachment extends Attachment {
@@ -55,10 +57,14 @@ async function startRecording(): Promise<Recording> {
   const sampler = setInterval(() => levels.push(level()), 100);
   const started = performance.now();
   rec.start(250);
+  let cleaned = false;
+  // Always release the microphone, exactly once, whatever happens.
   const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
     clearInterval(sampler);
     stream.getTracks().forEach((t) => t.stop());
-    void ctx.close();
+    void ctx.close().catch(() => {});
   };
   return {
     level,
@@ -69,7 +75,10 @@ async function startRecording(): Promise<Recording> {
     },
     stop: () =>
       new Promise((resolve) => {
-        rec.onstop = () => {
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
           cleanup();
           const duration = (performance.now() - started) / 1000;
           if (duration < 0.7) return resolve(null);
@@ -84,14 +93,23 @@ async function startRecording(): Promise<Recording> {
           });
           resolve({ file: new File(chunks, `voice-message.${ext}`, { type }), duration, waveform });
         };
-        rec.stop();
+        rec.onstop = finish;
+        // Some browsers (iPad Safari) don't always report the stop: don't wait forever, and never
+        // leave the microphone on.
+        setTimeout(finish, 1500);
+        if (rec.state !== 'inactive') rec.stop();
+        else finish();
       }),
   };
 }
 
 /**
- * The mic button and, while recording, the recording bar. `onSend` gets the file and its details;
- * the caller uploads and sends it.
+ * The mic button and, while recording, the recording bar (WhatsApp style).
+ *   Touch: hold to record, release to send. Slide left while holding to lock: it keeps recording
+ *   hands-free, with Delete and Send buttons.
+ *   Mouse: a click starts a locked recording straight away.
+ * The microphone is always released: when you stop, cancel, leave the chat, or let go before the
+ * mic was ready. `onSend` gets the file and its details; the caller uploads and sends it.
  */
 export function VoiceRecorder({
   disabled,
@@ -103,13 +121,24 @@ export function VoiceRecorder({
   onSend: (rec: { file: File; duration: number; waveform: number[] }) => void;
 }) {
   const [rec, setRec] = useState<Recording | null>(null);
+  const [mode, setModeState] = useState<'hold' | 'locked'>('hold');
+  // Also kept in a ref: a release can arrive before React re-renders after a lock.
+  const modeRef = useRef<'hold' | 'locked'>('hold');
+  const setMode = (m: 'hold' | 'locked') => {
+    modeRef.current = m;
+    setModeState(m);
+  };
   const [seconds, setSeconds] = useState(0);
   const [bars, setBars] = useState<number[]>([]);
-  const [held, setHeld] = useState(false);
   const [slide, setSlide] = useState(0);
   const startX = useRef(0);
+  const recRef = useRef<Recording | null>(null);
+  /** What the finger did while the mic was still opening. */
+  const intent = useRef<'hold' | 'lock' | 'released' | 'cancelled' | null>(null);
 
   useEffect(() => onRecordingChange(!!rec), [rec, onRecordingChange]);
+  // Leaving the chat or closing the app while recording: release the mic.
+  useEffect(() => () => recRef.current?.cancel(), []);
   useEffect(() => {
     if (!rec) return;
     const t0 = Date.now();
@@ -120,49 +149,79 @@ export function VoiceRecorder({
       if (s >= MAX_SECONDS) void finish(rec);
     }, 100);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rec]);
 
-  const begin = async () => {
-    if (rec || disabled) return;
+  const begin = async (how: 'hold' | 'lock') => {
+    if (rec || disabled || intent.current) return;
+    intent.current = how;
+    let r: Recording;
     try {
-      const r = await startRecording();
-      setSeconds(0);
-      setBars([]);
-      setRec(r);
-      navigator.vibrate?.(15);
+      r = await startRecording();
     } catch (e) {
+      intent.current = null;
       toast.error(e instanceof Error && e.name === 'NotAllowedError' ? 'Aether needs microphone access to record voice messages.' : 'Could not start recording.');
+      return;
     }
+    const now = intent.current as 'hold' | 'lock' | 'released' | 'cancelled' | null;
+    intent.current = null;
+    if (now === 'cancelled' || now === 'released') {
+      // Let go before the mic was ready (often during the permission prompt): nothing to send.
+      r.cancel();
+      if (now === 'released') toast('Hold the mic button to record, or slide left to lock.');
+      return;
+    }
+    recRef.current = r;
+    setMode(now === 'lock' ? 'locked' : 'hold');
+    setSeconds(0);
+    setBars([]);
+    setSlide(0);
+    setRec(r);
+    navigator.vibrate?.(15);
   };
   const finish = async (r: Recording | null = rec) => {
     if (!r) return;
+    recRef.current = null;
     setRec(null);
     const out = await r.stop();
     if (out) onSend(out);
     else toast('Hold a little longer to record a voice message.');
   };
   const cancel = () => {
-    rec?.cancel();
+    if (intent.current) intent.current = 'cancelled';
+    recRef.current?.cancel();
+    recRef.current = null;
     setRec(null);
   };
+  const lock = () => {
+    if (modeRef.current === 'locked') return;
+    if (intent.current === 'hold') intent.current = 'lock';
+    setMode('locked');
+    setSlide(0);
+    navigator.vibrate?.(10);
+  };
 
-  // Touch: hold to record, release to send, slide left to cancel.
+  // Touch: hold to record, release to send, slide left to lock.
   const onPointerDown = (e: ReactPointerEvent) => {
     if (e.pointerType !== 'touch') return;
     e.preventDefault();
     (e.target as Element).setPointerCapture?.(e.pointerId);
     startX.current = e.clientX;
-    setHeld(true);
     setSlide(0);
-    void begin();
+    void begin('hold');
   };
-  const onPointerMove = (e: ReactPointerEvent) => held && setSlide(Math.min(0, e.clientX - startX.current));
+  const onPointerMove = (e: ReactPointerEvent) => {
+    if (e.pointerType !== 'touch' || modeRef.current === 'locked' || !(recRef.current || intent.current === 'hold')) return;
+    const dx = Math.min(0, e.clientX - startX.current);
+    if (dx < -LOCK_DISTANCE) lock();
+    else setSlide(dx);
+  };
   const onPointerUp = (e: ReactPointerEvent) => {
-    if (e.pointerType !== 'touch' || !held) return;
-    setHeld(false);
-    if (slide < -90) cancel();
-    else void finish();
+    if (e.pointerType !== 'touch') return;
+    if (intent.current === 'hold') intent.current = 'released';
+    else if (recRef.current && modeRef.current === 'hold') void finish(recRef.current);
+  };
+  const onPointerCancel = () => {
+    if (modeRef.current !== 'locked') cancel();
   };
 
   if (!rec)
@@ -173,42 +232,45 @@ export function VoiceRecorder({
         aria-label="Record a voice message"
         disabled={disabled}
         className="ae-press grid h-8 w-8 touch-none place-items-center rounded-full text-ae-muted select-none hover:bg-ae-hover hover:text-ae-text disabled:opacity-40"
-        onClick={(e) => (e.nativeEvent as PointerEvent).pointerType !== 'touch' && void begin()}
+        onClick={(e) => (e.nativeEvent as PointerEvent).pointerType !== 'touch' && void begin('lock')}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={() => (setHeld(false), cancel())}
+        onPointerCancel={onPointerCancel}
         onContextMenu={(e) => e.preventDefault()}
       >
         <MicIcon size={18} />
       </button>
     );
 
+  const locked = mode === 'locked';
   return (
     <div
-      className="absolute inset-0 z-20 flex items-center gap-3 rounded-[inherit] bg-ae-elevated px-3"
+      className="ae-enter absolute inset-0 z-20 flex touch-none items-center gap-3 rounded-[inherit] bg-ae-elevated px-3"
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      style={{ transform: held ? `translateX(${slide / 3}px)` : undefined }}
+      onPointerCancel={onPointerCancel}
     >
-      {!held && (
-        <button type="button" aria-label="Discard recording" className="grid h-8 w-8 place-items-center rounded-full text-ae-muted hover:bg-ae-hover hover:text-ae-danger" onClick={cancel}>
-          <TrashIcon size={17} />
+      {locked && (
+        <button type="button" aria-label="Delete recording" className="grid h-9 w-9 place-items-center rounded-full text-ae-muted hover:bg-ae-hover hover:text-ae-danger" onClick={cancel}>
+          <TrashIcon size={18} />
         </button>
       )}
       <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-ae-danger" />
       <span className="w-10 shrink-0 text-sm font-semibold tabular-nums">{fmt(seconds)}</span>
       <div className="flex h-7 min-w-0 flex-1 items-center gap-[2px] overflow-hidden">
         {bars.map((b, i) => (
-          <span key={i} className="w-[3px] shrink-0 rounded-full bg-ae-accent" style={{ height: `${Math.max(12, b * 100)}%` }} />
+          <span key={i} className="w-[3px] shrink-0 rounded-full bg-ae-accent transition-[height] duration-100" style={{ height: `${Math.max(12, b * 100)}%` }} />
         ))}
       </div>
-      {held ? (
-        <span className={`shrink-0 text-xs ${slide < -90 ? 'text-ae-danger' : 'text-ae-muted'}`}>{slide < -90 ? 'Release to cancel' : '‹ Slide to cancel'}</span>
-      ) : (
-        <button type="button" aria-label="Send voice message" className="ae-press grid h-9 w-9 place-items-center rounded-full bg-ae-accent text-ae-on-accent" onClick={() => void finish()}>
-          <SendIcon size={16} />
+      {locked ? (
+        <button type="button" aria-label="Send voice message" className="ae-press grid h-10 w-10 place-items-center rounded-full bg-ae-accent text-ae-on-accent" onClick={() => void finish()}>
+          <SendIcon size={17} />
         </button>
+      ) : (
+        <span className="flex shrink-0 items-center gap-1.5 text-xs text-ae-muted" style={{ transform: `translateX(${slide / 2}px)`, opacity: 1 - Math.min(0.6, -slide / LOCK_DISTANCE) }}>
+          <LockIcon size={13} /> ‹ Slide to lock · release to send
+        </span>
       )}
     </div>
   );

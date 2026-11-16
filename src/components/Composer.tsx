@@ -159,7 +159,7 @@ export function Composer(props: ComposerProps) {
       addFiles(droppedFiles);
       onDroppedHandled();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [droppedFiles]);
 
   // ── Autocomplete ──────────────────────────────────────────────────────────────────────────

@@ -120,7 +120,7 @@ export function GifPanel({ onPick }: { onPick: (g: Gif) => void }) {
     if (view === 'favorites' && !q) return;
     const t = setTimeout(() => void load(q.trim(), 0, true), q ? 350 : 0);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [q, view]);
 
   useEffect(() => {
@@ -129,7 +129,7 @@ export function GifPanel({ onPick }: { onPick: (g: Gif) => void }) {
     const io = new IntersectionObserver((e) => e[0]?.isIntersecting && next !== null && !loading && void load(q.trim(), next, false));
     io.observe(el);
     return () => io.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [next, loading, q, view]);
 
   const showing = view === 'favorites' && !q ? fav.favorites.map(fromFavorite) : gifs;

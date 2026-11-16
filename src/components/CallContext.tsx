@@ -147,7 +147,7 @@ export function CallProvider({ userId, children }: { userId: string; children: R
     beat();
     const t = setInterval(beat, 30_000);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `flags` captures the four booleans
+     
   }, [inChannel, flags, sb]);
 
   const { setForcedMute, setForcedDeafen, setRemoteBlocked, join: engineJoin } = voice;

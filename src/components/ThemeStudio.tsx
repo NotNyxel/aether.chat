@@ -63,7 +63,7 @@ export function ThemeStudio() {
   // Opening the panel switches the custom theme on, so you see your changes straight away.
   useEffect(() => {
     if (open && !theme.custom?.enabled) setTheme({ custom: { ...c, enabled: true } });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [open]);
 
   if (!open) return null;

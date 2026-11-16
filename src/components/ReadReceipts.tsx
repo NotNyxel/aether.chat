@@ -37,7 +37,7 @@ export function useConversationReads(conversationId: string | null) {
       ),
       () => void qc.invalidateQueries({ queryKey: ['conversation-reads', conversationId] }),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [conversationId, sb]);
   return q.data ?? [];
 }

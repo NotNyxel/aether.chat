@@ -122,7 +122,10 @@ export function ActivityLine({ userId, fallback }: { userId: string; fallback?: 
 }
 
 export function useHasActivity(userId: string): boolean {
-  return !!useActivityOf(userId) || !!useListeningOf(userId);
+  // Both hooks every render (a short-circuit would call the second one only sometimes).
+  const activity = useActivityOf(userId);
+  const listening = useListeningOf(userId);
+  return !!activity || !!listening;
 }
 
 // ── Profile board widgets ───────────────────────────────────────────────────────────────────

@@ -41,7 +41,7 @@ export function OnboardingGate({ server, userId }: { server: Server; userId: str
   const show = !!me && (forced || (!!server.onboarding_enabled && !me.onboarded_at && server.owner_id !== userId));
   useEffect(() => {
     if (show && picked === null) setPicked(new Set(pickable.filter((r) => mine.has(r.id)).map((r) => r.id)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [show, roles.length]);
   if (!show) return null;
 

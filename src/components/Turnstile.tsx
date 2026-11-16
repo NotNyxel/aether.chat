@@ -53,7 +53,7 @@ export function Turnstile({ onToken, resetKey }: { onToken: (token: string | nul
       if (id.current) window.turnstile?.remove(id.current);
       id.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [resetKey]);
   if (!captchaEnabled) return null;
   return <div ref={ref} className="flex min-h-[65px] justify-center" />;

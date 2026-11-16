@@ -69,7 +69,7 @@ export function ConfirmLayer() {
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [pending]);
   if (!pending) return null;
   const danger = pending.danger ?? (!pending.input && /delete|remove|ban|kick|block|leave|transfer|sign out|turn off/i.test(pending.message));

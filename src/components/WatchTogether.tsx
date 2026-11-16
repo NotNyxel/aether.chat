@@ -92,7 +92,7 @@ export function useWatchParty(scopeId: string) {
           ),
         () => void qc.invalidateQueries({ queryKey: ['watch-party', scopeId] }),
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [scopeId, sb],
   );
   return q.data ?? null;
@@ -190,7 +190,7 @@ export function WatchPanel({ scopeId, open, onOpenChange }: { scopeId: string; o
     return () => {
       gone = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [joined, !!party]);
 
   // Follow the shared state.
@@ -221,7 +221,7 @@ export function WatchPanel({ scopeId, open, onOpenChange }: { scopeId: string; o
       if (Math.abs(now - expected(p)) > 3) void write({ position: now, playing: pl.getPlayerState() === 1 });
     }, 1500);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [joined]);
 
   if (!party && !open) return null;

@@ -51,7 +51,7 @@ export function useSyncedDraft(scope: MessageScope, draft: string, setDraft: Dis
     return () => {
       gone = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [scope.id, sb]);
 
   useEffect(() => {

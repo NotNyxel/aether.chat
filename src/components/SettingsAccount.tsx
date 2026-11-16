@@ -2,6 +2,7 @@
  * Settings → My Account (email, password, two-factor, sessions, data export, delete account)
  * and Settings → Privacy & Safety (DMs, friend requests, message requests, blocked users).
  */
+import { pwnedMessage } from '../lib/pwned';
 import { DownloadIcon, LockIcon, MonitorIcon, PhoneDeviceIcon, UnlockIcon } from './icons';
 import { ask } from './ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -94,6 +95,11 @@ function ChangePassword({ email, onClose }: { email: string; onClose: () => void
           if (next.length < 6) return setError('Use at least 6 characters.');
           setBusy(true);
           setError(null);
+          const pwned = await pwnedMessage(next);
+          if (pwned) {
+            setBusy(false);
+            return setError(pwned);
+          }
           // Re-check the current password first, so an unattended session can't change it.
           const check = await sb.auth.signInWithPassword({ email, password: current });
           const { error: err } = check.error ? check : await sb.auth.updateUser({ password: next });

@@ -2,6 +2,7 @@
  * Signed-out screens: sign in, sign up and "forgot password", plus the two-factor step and the
  * "choose a new password" step that follow a reset link.
  */
+import { pwnedMessage } from '../lib/pwned';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { APP_NAME, DOWNLOAD_URL } from '../config';
 import { isTauri, openExternal } from '../lib/platform';
@@ -97,6 +98,8 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
         if (err) throw err;
       } else if (mode === 'signup') {
         if (!/^[A-Za-z0-9_.]{2,32}$/.test(username)) throw new Error('Usernames are 2–32 characters: letters, numbers, _ and .');
+        const pwned = await pwnedMessage(password);
+        if (pwned) throw new Error(pwned);
         const { data, error: err } = await sb.auth.signUp({
           email,
           password,
@@ -296,6 +299,12 @@ export function NewPasswordScreen({ onDone }: { onDone: () => void }) {
     }
     setBusy(true);
     setError(null);
+    const pwned = await pwnedMessage(password);
+    if (pwned) {
+      setBusy(false);
+      setError(pwned);
+      return;
+    }
     const { error: err } = await sb.auth.updateUser({ password });
     setBusy(false);
     if (err) setError(err.message);

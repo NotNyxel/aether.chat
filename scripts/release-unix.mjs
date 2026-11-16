@@ -30,7 +30,6 @@ const version = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).ver
 const tag = `v${version}`;
 const owner = out('gh', ['api', 'user', '--jq', '.login']);
 const SRC = `${owner}/aether.chat`;
-const FEED = `${owner}/aether.chat-releases`;
 const refArg = process.argv.indexOf('--ref');
 const ref = refArg > 0 ? process.argv[refArg + 1] : out('git', ['rev-parse', 'HEAD']);
 
@@ -72,7 +71,7 @@ const apk = named(find(/\.apk$/), `Aether_${version}_android.apk`);
 const ipaSrc = files.find((x) => /\.ipa$/.test(x));
 const ipa = ipaSrc ? named(ipaSrc, `Aether_${version}_ios-unsigned.ipa`) : null;
 const assets = [dmg, appTar, appSig, appImage, appImageSig, deb, apk, ...(ipa ? [ipa] : [])];
-for (const repo of [SRC, FEED]) run('gh', ['release', 'upload', tag, ...assets.map((a) => `"${a}"`), '--repo', repo, '--clobber']);
+for (const repo of [SRC]) run('gh', ['release', 'upload', tag, ...assets.map((a) => `"${a}"`), '--repo', repo, '--clobber']);
 
 // 3. Merge into latest.json.
 const latestPath = join(dir, 'latest.json');
@@ -85,6 +84,6 @@ latest.platforms['darwin-aarch64'] = mac;
 latest.platforms['darwin-x86_64'] = mac;
 latest.platforms['linux-x86_64'] = { signature: readFileSync(appImageSig, 'utf8').trim(), url: url(appImage) };
 writeFileSync(latestPath, JSON.stringify(latest, null, 2));
-for (const repo of [SRC, FEED]) run('gh', ['release', 'upload', tag, `"${latestPath}"`, '--repo', repo, '--clobber']);
+for (const repo of [SRC]) run('gh', ['release', 'upload', tag, `"${latestPath}"`, '--repo', repo, '--clobber']);
 
 console.log(`\nPublished ${tag} for macOS and Linux:\n  ${assets.map((a) => a.split(/[\\/]/).pop()).join('\n  ')}`);

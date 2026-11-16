@@ -6,11 +6,11 @@
  *                                        publish an old, pre-updater installer (no signature, not "latest")
  *
  * Publishing targets (see RELEASES.md):
- *   - <owner>/aether.chat           private source repo: git tag + release with the installer
- *   - <owner>/aether.chat-releases  public update feed:   release with installer, .sig and latest.json
+ *   - <owner>/aether.chat  git tag + release with the installer, .sig and latest.json (the update feed).
+ *     (aether.chat-releases was the old feed; it is archived and frozen at 1.8.4.)
  *
  * The updater downloads https://github.com/<owner>/aether.chat/releases/latest/download/latest.json,
- * so the public feed must always hold the newest signed build as its "latest" release.
+ * so this repo must always hold the newest signed build as its "latest" release.
  *
  * Each release also builds aether.chat Setup (installer/), the one-click installer people download
  * (it carries the signed NSIS installer inside), and deploys the web app to Vercel.
@@ -24,7 +24,6 @@ import { basename, join, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const SOURCE_REPO = 'aether.chat';
-const FEED_REPO = 'aether.chat-releases';
 const TAURI_CONF = join(ROOT, 'src-tauri', 'tauri.conf.json');
 
 const run = (cmd, args, opts = {}) => {
@@ -42,12 +41,11 @@ function changelogSection(version) {
 
 function ensureRepos(owner) {
   for (const [name, visibility] of [
-    [SOURCE_REPO, '--private'],
-    [FEED_REPO, '--public'],
+    [SOURCE_REPO, '--public'],
   ]) {
     const exists = spawnSync('gh', ['repo', 'view', `${owner}/${name}`], { cwd: ROOT, stdio: 'ignore', shell: true }).status === 0;
     if (!exists) {
-      const desc = name === FEED_REPO ? 'Signed installers and the auto-update feed for aether.chat' : 'aether.chat source';
+      const desc = 'Aether source';
       run('gh', ['repo', 'create', `${owner}/${name}`, visibility, '--description', `"${desc}"`]);
     }
   }
@@ -57,7 +55,7 @@ function ensureEndpoint(owner) {
   const conf = readFileSync(TAURI_CONF, 'utf8');
   if (conf.includes('__GITHUB_OWNER__')) {
     writeFileSync(TAURI_CONF, conf.replaceAll('__GITHUB_OWNER__', owner));
-    console.log(`Updater endpoint set to github.com/${owner}/${FEED_REPO}`);
+    console.log(`Updater endpoint set to github.com/${owner}/${SOURCE_REPO}`);
     return true;
   }
   return false;
@@ -92,7 +90,7 @@ async function main() {
       notesFile,
       `${changelogSection(version)}\n\n> Legacy build from before the auto-updater existed. Install the latest version to get automatic updates.`,
     );
-    for (const repo of [`${owner}/${SOURCE_REPO}`, `${owner}/${FEED_REPO}`]) {
+    for (const repo of [`${owner}/${SOURCE_REPO}`]) {
       publish(repo, `v${version}`, `v${version} (legacy)`, notesFile, [installer], { latest: false });
     }
     return;
@@ -107,7 +105,7 @@ async function main() {
   if (dirty && !endpointChanged) throw new Error(`Commit your changes before releasing:\n${dirty}`);
   if (endpointChanged) {
     run('git', ['add', 'src-tauri/tauri.conf.json']);
-    run('git', ['commit', '-m', `"chore: point updater at github.com/${owner}/${FEED_REPO}"`]);
+    run('git', ['commit', '-m', `"chore: point updater at github.com/${owner}/${SOURCE_REPO}"`]);
   }
 
   // Signed build
@@ -158,7 +156,6 @@ async function main() {
   writeFileSync(notesFile, download + notes);
   const assets = [setupExe, legacySetupExe, installer, sigFile, latestJson];
   publish(`${owner}/${SOURCE_REPO}`, tag, `Aether ${tag}`, notesFile, assets, { latest: true });
-  publish(`${owner}/${FEED_REPO}`, tag, `Aether ${tag}`, notesFile, assets, { latest: true });
 
   // Web app
   try {
@@ -167,7 +164,7 @@ async function main() {
     console.warn(`\nWeb deploy skipped: ${err.message}\nRun \`npx vercel login\` once, then \`npm run deploy:web\`.`);
   }
 
-  console.log(`\nReleased ${tag}\n  feed: https://github.com/${owner}/${FEED_REPO}/releases/tag/${tag}`);
+  console.log(`\nReleased ${tag}\n  https://github.com/${owner}/${SOURCE_REPO}/releases/tag/${tag}`);
 }
 
 main().catch((err) => {

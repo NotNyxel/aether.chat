@@ -269,7 +269,7 @@ Aether uses two GitHub repos:
 | Repo | Visibility | Holds |
 |---|---|---|
 | `aether.chat` | private | Source code, tags and releases with every installer |
-| `aether.chat-releases` | public | Old update feed. Still receives each release so pre-1.8.4 apps can update; will be archived. New apps update from `aether.chat` releases |
+| `aether.chat-releases` | archived | Old update feed, frozen at 1.8.4 so very old installs can still update once and switch to `aether.chat` |
 
 The update feed has to be public: an installed app can't authenticate to a private repo without shipping a secret.
 

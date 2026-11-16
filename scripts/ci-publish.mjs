@@ -16,7 +16,6 @@ if (!dirArg || !version || !sha) throw new Error('usage: ci-publish.mjs <artifac
 const ROOT = resolve(import.meta.dirname, '..');
 const OWNER = 'NotNyxel';
 const SRC = `${OWNER}/aether.chat`;
-const FEED = `${OWNER}/aether.chat-releases`;
 const tag = `v${version}`;
 const out = join(ROOT, 'release-out');
 mkdirSync(out, { recursive: true });
@@ -86,7 +85,7 @@ const exists = (repo) => {
     return false;
   }
 };
-for (const repo of [SRC, FEED]) {
+for (const repo of [SRC]) {
   if (exists(repo)) gh(['release', 'upload', tag, ...assets, '--repo', repo, '--clobber']);
   else gh(['release', 'create', tag, ...assets, '--repo', repo, '--title', `Aether ${tag}`, '--notes-file', notesFile, '--latest', ...(repo === SRC ? ['--target', sha] : [])]);
   console.log(`Published ${tag} on ${repo}`);

@@ -483,6 +483,8 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
   const blockedRef = useRef<ReadonlySet<string>>(new Set());
   const forcedRef = useRef({ mute: false, deafen: false });
   const statsPrevRef = useRef(new Map<string, { at: number; inBytes: number; outBytes: number }>());
+  /** Adaptive quality (2.0): per outgoing connection, how much of the normal bitrate to use (1 = all). */
+  const adaptRef = useRef(new WeakMap<MediaConnection, { factor: number; good: number }>());
 
   useEffect(() => {
     userIdRef.current = userId;
@@ -649,6 +651,10 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
     if (!pc) return;
     const profile = settingsRef.current.bandwidthProfile;
     const screenOpts = screenOptionsRef.current;
+    // A bad connection to this person lowers what we send them; big calls lower camera video for
+    // everyone (in a mesh call each camera is sent once per person, so 5+ people add up fast).
+    const factor = adaptRef.current.get(call)?.factor ?? 1;
+    const crowd = recordsRef.current.size >= 4;
     await Promise.all(
       pc.getSenders().map(async (sender) => {
         const track = sender.track;
@@ -657,17 +663,20 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
         if (!params.encodings || params.encodings.length === 0) return;
         for (const enc of params.encodings) {
           if (track.kind === 'audio') {
-            enc.maxBitrate = kind === 'screen' ? SCREEN_AUDIO_BITRATE[profile] : AUDIO_BITRATE[profile];
+            const base = kind === 'screen' ? SCREEN_AUDIO_BITRATE[profile] : AUDIO_BITRATE[profile];
+            // Voice stays clear on a struggling link: a lower Opus rate with its loss recovery beats dropouts.
+            enc.maxBitrate = factor < 0.5 ? Math.min(base, 32_000) : base;
             enc.priority = kind === 'audio' ? 'high' : 'medium';
             enc.networkPriority = kind === 'audio' ? 'high' : 'medium';
           } else if (kind === 'camera') {
-            enc.maxBitrate = CAMERA_BITRATE[profile];
-            enc.maxFramerate = 30;
+            enc.maxBitrate = Math.round(CAMERA_BITRATE[profile] * factor * (crowd ? 0.5 : 1));
+            enc.maxFramerate = crowd || factor < 0.5 ? 15 : 30;
+            enc.scaleResolutionDownBy = factor < 0.5 ? 2 : crowd ? 1.5 : 1;
             enc.priority = 'medium';
             enc.networkPriority = 'medium';
           } else {
-            enc.maxBitrate = screenVideoBitrate(screenOpts, profile);
-            enc.maxFramerate = screenOpts.frameRate;
+            enc.maxBitrate = Math.round(screenVideoBitrate(screenOpts, profile) * factor);
+            enc.maxFramerate = factor < 0.5 ? Math.min(screenOpts.frameRate, 15) : screenOpts.frameRate;
             enc.priority = 'low';
             enc.networkPriority = 'low';
           }
@@ -1692,6 +1701,74 @@ export function useVoiceEngine({ supabase, userId, initialSettings, peerServer }
       outKbps: prev && secs > 0 ? Math.round(((outBytes - prev.outBytes) * 8) / secs / 1000) : null,
     };
   }, []);
+
+  // ── Adaptive quality (2.0) ────────────────────────────────────────────────────────────────
+  // Every few seconds, look at how each outgoing video connection is doing (loss reported back by
+  // the other side, and the bandwidth the browser estimates) and step its quality down quickly
+  // or back up slowly. Audio keeps top priority throughout.
+  const crowdSize = baseParticipants.length;
+  useEffect(() => {
+    if (status !== 'connected') return;
+    // Joining/leaving across the "big call" line changes camera limits for everyone.
+    for (const rec of recordsRef.current.values()) {
+      for (const kind of VIDEO_KINDS) {
+        const call = rec.videoOut[kind];
+        if (call) void applySenderLimits(call, kind);
+      }
+    }
+  }, [crowdSize >= 5, status, applySenderLimits]);
+  useEffect(() => {
+    if (status !== 'connected') return;
+    const STEPS = [1, 0.6, 0.35];
+    const check = async () => {
+      for (const rec of recordsRef.current.values()) {
+        for (const kind of VIDEO_KINDS) {
+          const call = rec.videoOut[kind];
+          const pc = call?.peerConnection as RTCPeerConnection | undefined;
+          if (!call || !pc) continue;
+          let loss: number | null = null;
+          let available: number | null = null;
+          let sentKbps: number | null = null;
+          try {
+            const report = await pc.getStats();
+            report.forEach((r: Record<string, unknown>) => {
+              if (r.type === 'remote-inbound-rtp' && r.kind === 'video' && typeof r.fractionLost === 'number') loss = Math.max(loss ?? 0, r.fractionLost);
+              if (r.type === 'candidate-pair' && (r.nominated || r.selected) && typeof r.availableOutgoingBitrate === 'number') available = r.availableOutgoingBitrate;
+              if (r.type === 'outbound-rtp' && r.kind === 'video' && typeof r.targetBitrate === 'number') sentKbps = r.targetBitrate / 1000;
+            });
+          } catch {
+            continue;
+          }
+          const state = adaptRef.current.get(call) ?? { factor: 1, good: 0 };
+          const i = Math.max(0, STEPS.indexOf(state.factor));
+          const want = sentKbps ?? 0;
+          const bad = (loss ?? 0) > 0.08 || (available !== null && want > 0 && available / 1000 < want * 0.7);
+          const fine = (loss ?? 0) < 0.02 && (available === null || want === 0 || available / 1000 > want * 1.5);
+          let next = state.factor;
+          if (bad && i < STEPS.length - 1) {
+            next = STEPS[i + 1]!;
+            state.good = 0;
+          } else if (fine && i > 0) {
+            state.good += 1;
+            // Recover only after ~15 s of a healthy link, so quality doesn't flap.
+            if (state.good >= 3) {
+              next = STEPS[i - 1]!;
+              state.good = 0;
+            }
+          } else if (!fine) state.good = 0;
+          const changed = next !== state.factor;
+          state.factor = next;
+          adaptRef.current.set(call, state);
+          if (changed) {
+            void applySenderLimits(call, kind);
+            if (rec.audioCall) void applySenderLimits(rec.audioCall, 'audio');
+          }
+        }
+      }
+    };
+    const t = setInterval(() => void check(), 5_000);
+    return () => clearInterval(t);
+  }, [status, applySenderLimits]);
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────────────────
 

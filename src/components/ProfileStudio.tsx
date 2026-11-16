@@ -312,7 +312,7 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
 
       <div className="flex min-h-0 flex-1">
         {/* Left: decorations and details */}
-        <aside className="ae-scroll w-[340px] shrink-0 space-y-5 overflow-y-auto border-r border-ae-border p-4">
+        <aside aria-label="Profile settings" className="ae-scroll w-[340px] shrink-0 space-y-5 overflow-y-auto border-r border-ae-border p-4">
           <section>
             <p className="mb-2 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Customize</p>
             <div className="grid grid-cols-2 gap-2">
@@ -371,7 +371,7 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
         </aside>
 
         {/* Center: the live profile */}
-        <main className="ae-scroll min-w-0 flex-1 overflow-y-auto bg-ae-sunken/40 p-6">
+        <section aria-label="Preview" className="ae-scroll min-w-0 flex-1 overflow-y-auto bg-ae-sunken/40 p-6">
           <div className="mx-auto max-w-[760px] space-y-4">
             <FullProfile
               profile={{ ...merged, profile_widgets: widgets }}
@@ -394,10 +394,10 @@ function Studio({ userId, onClose }: { userId: string; onClose: () => void }) {
               </div>
             </div>
           </div>
-        </main>
+        </section>
 
         {/* Right: the board */}
-        <aside className="ae-scroll w-[340px] shrink-0 overflow-y-auto border-l border-ae-border p-4">
+        <aside aria-label="Profile board" className="ae-scroll w-[340px] shrink-0 overflow-y-auto border-l border-ae-border p-4">
           <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-ae-muted uppercase">
             <WidgetIcon size={12} /> Board
           </p>

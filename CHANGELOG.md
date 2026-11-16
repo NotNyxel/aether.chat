@@ -12,6 +12,9 @@ GitHub Releases page, and installs from 0.3.0 onward update themselves.
   menu took it for a tap somewhere else. It now stays open.
 - **Fixed:** a quick tap on a reaction right after the menu opened could be ignored. Only the release of the long press
   itself is ignored now.
+- **Fixed:** on phones held sideways, **Add reaction** did nothing. A sideways phone gets the wider desktop layout, so
+  the emoji picker opened inside the mouse-hover toolbar, which touch screens never show. Touch screens now always get
+  the touch menu (with quick reactions) and the touch emoji picker, in any orientation and on tablets too.
 - If a reaction can't be saved, you now see why, instead of it quietly disappearing.
 
 ## [1.9.4] - 2026-11-16

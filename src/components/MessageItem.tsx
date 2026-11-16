@@ -13,7 +13,7 @@ import { buildMessageLink, extractEmbedUrls } from '../lib/messageLinks';
 import { Markdown } from '../lib/markdown';
 import { Emoji, EmojiText, emojiSize } from '../lib/twemoji';
 import { getRecentEmoji, pushRecentEmoji } from '../lib/emoji';
-import { isPhoneLayout } from '../lib/phone';
+import { isTouchUi } from '../lib/phone';
 import { openReactionPicker, useQuickReactions } from './ReactionPicker';
 import { useUiStore } from '../stores/uiStore';
 import type { Attachment, Message, PollVote } from '../types/db';
@@ -193,8 +193,9 @@ function MessageItemImpl(props: MessageItemProps) {
     props.onReact(message.id, emoji, active);
   };
   const quick = useQuickReactions(4);
-  // Phones and tablets: the picker opens as its own sheet, not inside the hover toolbar.
-  const openPicker = () => (isPhoneLayout() ? openReactionPicker(react) : setPicker(true));
+  // Touch screens (also phones held sideways): the picker opens as its own sheet, since the hover
+  // toolbar it would otherwise open in is never shown without a mouse.
+  const openPicker = () => (isTouchUi() ? openReactionPicker(react) : setPicker(true));
   const qcR = useQueryClient();
   // Encrypted chats: the readable text (or a placeholder when this device can't decrypt it).
   const text = useMessageText(message.content);

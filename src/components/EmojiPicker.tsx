@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { isPhoneLayout } from '../lib/phone';
+import { isPhoneLayout, isTouchUi } from '../lib/phone';
 import { EMOJI_GROUPS, getRecentEmoji, pushRecentEmoji, searchEmoji, useEmojiData } from '../lib/emoji';
 import { useEscape } from '../lib/escape';
 import { useMeId } from '../hooks/useMe';
@@ -22,7 +22,7 @@ const SOLID = 'bg-[var(--ae-bg-solid,var(--ae-bg-elevated))]';
 /** The floating box: a pop-up on computers, a bottom sheet over everything on phones and tablets. */
 export function FloatingPanel({ onClose, className = 'bottom-full right-0 mb-2', width = 'w-[min(372px,calc(100vw-16px))]', height = 'h-[420px]', children }: { onClose: () => void; className?: string; width?: string; height?: string; children: ReactNode }) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const [phone] = useState(isPhoneLayout);
+  const [phone] = useState(isTouchUi);
   useEscape(onClose);
   useEffect(() => {
     const onDown = (e: MouseEvent | TouchEvent) => {

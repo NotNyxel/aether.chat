@@ -16,3 +16,12 @@ export function installPhoneLayout(): void {
   apply();
   mq.addEventListener('change', apply);
 }
+
+/**
+ * A touch screen as the main input (phones and tablets in any orientation). Touch-first pieces (the
+ * press-and-hold sheet, the reaction picker sheet) follow this, not the layout: a phone turned
+ * sideways gets the wider desktop layout but still has no mouse to hover with.
+ */
+export function isTouchUi(): boolean {
+  return typeof window !== 'undefined' && (isPhoneLayout() || window.matchMedia('(pointer: coarse)').matches);
+}

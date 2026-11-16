@@ -5,7 +5,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { create } from 'zustand';
-import { isPhoneLayout } from '../lib/phone';
+import { isTouchUi } from '../lib/phone';
 
 export interface MenuItem {
   label: string;
@@ -44,7 +44,7 @@ export function ContextMenuLayer() {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y });
   // Phones get a bottom sheet with big rows instead of a tiny floating menu.
-  const sheet = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches && isPhoneLayout();
+  const sheet = isTouchUi();
 
   useLayoutEffect(() => {
     if (!items || !ref.current || sheet) return;

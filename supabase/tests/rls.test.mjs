@@ -1373,6 +1373,24 @@ await expectOk('admins delete a server, and it is logged', async () => {
   if (left !== 0 || logged !== 1) throw new Error(`${left} ${logged}`);
 });
 
+console.log('\nHardening (2.0)');
+await expectError('nobody can write fake server audit entries', () => as(E, `select public.write_audit($1, 'member_ban', 'member', '${A}', 'fake')`, [srv2]), 'permission denied');
+await expectError('nobody can write fake admin audit entries', () => as(E, `select public.admin_log('ban', '${A}', '{}')`), 'permission denied');
+await expectError("nobody can look up someone else's warning points", () => as(E, `select public.warning_points('${A}')`), 'permission denied');
+await expectError("nobody can look up someone else's standing", () => as(E, `select public.danger_level('${A}')`), 'permission denied');
+await expectError("nobody can read someone else's privacy settings", () => as(E, `select public.privacy_of('${A}')`), 'permission denied');
+await expectError('nobody can check whether two other people blocked each other', () => as(E, `select public.is_blocked_between('${A}', '${B}')`), 'permission denied');
+await expectError('trigger functions cannot be called directly', () => as(E, `select public.automod_message()`), 'permission denied');
+await expectOk('things that use those helpers still work (moderation summary, sending)', async () => {
+  await as(E, `select public.my_moderation()`);
+  await as(E, `insert into public.messages (channel_id, content) values ($1, 'still works')`, [gen2]);
+});
+await expectOk('every foreign key has an index', async () => {
+  const missing = (await db.query(`select c.conrelid::regclass::text t from pg_constraint c where c.contype = 'f' and c.connamespace = 'public'::regnamespace
+      and array_length(c.conkey, 1) = 1 and not exists (select 1 from pg_index i where i.indrelid = c.conrelid and i.indkey[0] = c.conkey[1])`)).rows;
+  if (missing.length) throw new Error(missing.map((r) => r.t).join(', '));
+});
+
 console.log('\nUnconfirmed account cleanup');
 await expectOk('sign-ups never confirmed after 7 days are removed; everyone else stays', async () => {
   const ids = ['c1eaa001-0000-4000-8000-000000000001', 'c1eaa001-0000-4000-8000-000000000002', 'c1eaa001-0000-4000-8000-000000000003', 'c1eaa001-0000-4000-8000-000000000004'];

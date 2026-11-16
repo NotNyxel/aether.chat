@@ -3,6 +3,84 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.0.0] - 2026-11-16
+
+**Aether 2.0: out of beta**
+
+The biggest update yet: new ways to organise your chats, private extras, offline sending, 12 new languages, smoother
+calls, and hundreds of fixes from a full sweep of the app and server.
+
+### Your chats, organised
+
+- **Folders, pins and archive.** Pin chats to the top, archive the ones you don't need every day, and sort the rest
+  into folders (Family, School, Gaming…). Right-click a chat, or press and hold it on a phone or tablet. Chips above
+  the list switch between All, each folder and Archived. Synced across your devices.
+- **Reminders.** Choose **Remind me…** on any message (in 20 minutes up to next week, or a custom time like "2h").
+  Aether brings it back with a sound and a notification. They're listed in **Inbox → Reminders**.
+- **Media & files.** A new button in every chat header shows every photo, video, file and voice message shared there.
+- **A sound for each chat.** **Notification sound…** on any DM, group or text channel: pick one of seven tones, or
+  silent.
+
+### Privacy
+
+- **Disappearing messages.** The timer in a DM or group header makes new messages vanish for everyone after 1 hour,
+  24 hours, 7 days or 90 days.
+- **Encrypted files.** In end-to-end encrypted chats, photos, videos, files and voice messages are now encrypted on
+  your device too, file names included. Only the people in the chat can open them.
+- **Who can add you to groups:** friends, or no one (Settings → Privacy & Safety).
+- **Quiet hours.** No message sounds, pop-ups or phone notifications between two times every night (Settings →
+  Notifications & Sounds). Calls still ring.
+- **Devices.** See everywhere you're signed in and sign devices out (Settings → My Account).
+- **Leaked passwords are refused.** New passwords are checked against known data breaches without ever sending your
+  password anywhere.
+- **Download my data** now includes everything new: saved and scheduled messages, drafts, folders, reminders and
+  more.
+
+### Works when you don't have a connection
+
+- Messages you send offline wait in the chat ("Waiting for connection") and go out on their own when you're back,
+  even if you close the app in between. A small notice shows while you're offline.
+- More of your recent chats are kept on your device, so you can keep reading them offline.
+
+### Languages
+
+- Aether now speaks Spanish, French, German, Portuguese, Italian, Turkish, Russian, Polish, Indonesian, Hindi,
+  Japanese and Arabic (right-to-left). It follows your device, or pick one in **Settings → Appearance → Language**.
+  The main screens are translated; anything not translated yet shows in English.
+
+### Calls and voice
+
+- **Smoother calls.** Video quality now adjusts on its own to each person's connection, and voice always comes first.
+  Calls with 5 or more people use lighter camera video so everyone keeps up.
+- **New voice messages.** Hold the mic to record and let go to send. Slide left to lock, then tap send when you're
+  done. The microphone is always released afterwards (this fixes the mic staying on, notably on iPad).
+
+### Feels better
+
+- **More animation** at the Full setting: chats and tabs glide in, reactions pop, menus cascade, and the active tab
+  hops. Subtle and Off stay calm.
+- **What's new** shows the highlights after an update, and new accounts get a short **welcome tour** (both can be
+  opened again from Settings or the You tab).
+- Text on light profile cards is now always readable, and the default accent colour is a little deeper.
+- Avatar decorations follow every avatar shape.
+- The emoji picker is never cut off, and emoji images download in the background on first launch so they appear
+  instantly.
+
+### Help us fix things
+
+- **Report a bug** (Settings sidebar, or the You tab) sends a description and an optional screenshot straight to the
+  team. Crashes are also reported automatically, without any message contents.
+
+### Fixes
+
+- If an action fails, Aether always tells you why instead of doing nothing.
+- If you're signed out elsewhere, Aether takes you to sign in instead of showing stale chats that don't respond.
+- The Friends header no longer stacks its buttons on phones and tablets.
+- In narrow browser windows, side panels slide over the chat instead of squeezing it.
+- Better labels for screen readers across the app.
+- Server-side hardening: internal database functions locked down, missing indexes added, and public uploads limited
+  to the file types they're meant for.
+
 ## [1.11.1] - 2026-11-16
 
 - **Fixed:** the account warning notice could get stuck. Pressing **I understand** did nothing if the app then couldn't

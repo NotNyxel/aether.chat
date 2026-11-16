@@ -2,7 +2,7 @@
  * Settings → My Account (email, password, two-factor, sessions, data export, delete account)
  * and Settings → Privacy & Safety (DMs, friend requests, message requests, blocked users).
  */
-import { DownloadIcon, LockIcon, UnlockIcon } from './icons';
+import { DownloadIcon, LockIcon, MonitorIcon, PhoneDeviceIcon, UnlockIcon } from './icons';
 import { ask } from './ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -354,6 +354,93 @@ function Passkeys() {
   );
 }
 
+/** "Chrome on Windows", "Aether app on iPad"… from a browser's user agent. */
+function deviceLabel(ua: string | null): { label: string; phone: boolean } {
+  const u = ua ?? '';
+  const os = /iPad/.test(u) ? 'iPad' : /iPhone/.test(u) ? 'iPhone' : /Android/.test(u) ? 'Android' : /Windows/.test(u) ? 'Windows' : /Mac OS X|Macintosh/.test(u) ? 'Mac' : /Linux|X11/.test(u) ? 'Linux' : 'an unknown device';
+  const app = /Edg\//.test(u) ? 'Edge' : /OPR\//.test(u) ? 'Opera' : /Firefox\//.test(u) ? 'Firefox' : /CriOS|Chrome\//.test(u) ? 'Chrome' : /Safari\//.test(u) ? 'Safari' : /AppleWebKit/.test(u) ? 'Aether app' : 'Browser';
+  return { label: u ? `${app} on ${os}` : 'Unknown device', phone: /iPhone|Android|iPad/.test(u) };
+}
+
+const ago = (iso: string) => {
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (m < 2) return 'active now';
+  if (m < 60) return `${m} minutes ago`;
+  if (m < 48 * 60) return `${Math.round(m / 60)} hours ago`;
+  return new Date(iso).toLocaleDateString();
+};
+
+/** Everywhere you're signed in, with a way to sign each device out. */
+function Devices() {
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  const sessions = useQuery({
+    queryKey: ['my-sessions'],
+    queryFn: async () => {
+      const { data, error } = await sb.rpc('my_sessions');
+      if (error) throw new Error(error.message);
+      return data as { id: string; created_at: string; last_active: string; user_agent: string | null; ip: string | null; current: boolean }[];
+    },
+  });
+  const refresh = () => void qc.invalidateQueries({ queryKey: ['my-sessions'] });
+  const list = sessions.data ?? [];
+  return (
+    <Section title="Devices" description="Everywhere you're signed in. If you don't recognise one, sign it out and change your password.">
+      {sessions.isLoading && <div className="ae-skeleton h-16" />}
+      <ul className="space-y-1.5">
+        {list.map((s) => {
+          const d = deviceLabel(s.user_agent);
+          return (
+            <li key={s.id} className="flex items-center gap-3 rounded-ae bg-ae-surface/50 px-3 py-2.5">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ae-sunken text-ae-muted">{d.phone ? <PhoneDeviceIcon size={17} /> : <MonitorIcon size={17} />}</span>
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 truncate text-sm font-semibold">
+                  {d.label}
+                  {s.current && <span className="rounded bg-ae-success/15 px-1.5 text-[10px] font-bold text-ae-success uppercase">This device</span>}
+                </p>
+                <p className="truncate text-xs text-ae-muted">
+                  {ago(s.last_active)}
+                  {s.ip ? ` · ${s.ip}` : ''} · signed in {new Date(s.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              {!s.current && (
+                <button
+                  type="button"
+                  className={`${btn} bg-ae-surface text-xs hover:bg-ae-hover`}
+                  onClick={async () => {
+                    if (!(await ask(`Sign out ${d.label}? It will need to sign in again.`, { title: 'Sign out device', confirmLabel: 'Sign out', danger: true }))) return;
+                    const { error } = await sb.rpc('end_session', { p_session_id: s.id });
+                    if (error) return toast.error(error.message);
+                    toast.success(`${d.label} is signed out.`);
+                    refresh();
+                  }}
+                >
+                  Sign out
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {list.filter((s) => !s.current).length > 1 && (
+        <button
+          type="button"
+          className={`${btn} mt-2 bg-ae-surface text-ae-danger hover:bg-ae-hover`}
+          onClick={async () => {
+            if (!(await ask('Sign out everywhere except this device?', { title: 'Sign out other devices', confirmLabel: 'Sign out all', danger: true }))) return;
+            const { error } = await sb.auth.signOut({ scope: 'others' });
+            if (error) return toast.error(error.message);
+            toast.success('Signed out of all your other devices.');
+            refresh();
+          }}
+        >
+          Sign out all other devices
+        </button>
+      )}
+    </Section>
+  );
+}
+
 function DeleteAccount({ email, onClose }: { email: string; onClose: () => void }) {
   const sb = useSupabase();
   const [password, setPassword] = useState('');
@@ -473,6 +560,7 @@ export function AccountTab({ userId, onSignOut }: { userId: string; onSignOut: (
 
       <TwoFactor />
       <Passkeys />
+      <Devices />
 
       <Section title="Your data" description="Download a copy of your profile, settings, servers, friends, notes, and every message you've sent (JSON).">
         <button

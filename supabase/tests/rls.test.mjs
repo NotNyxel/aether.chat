@@ -16,7 +16,7 @@ const db = new PGlite({ extensions: { citext } });
 const STUBS = `
 create role anon nologin; create role authenticated nologin; create role service_role nologin;
 create schema auth;
-create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid);
+create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid, created_at timestamptz default now(), updated_at timestamptz default now(), refreshed_at timestamp, user_agent text, ip inet, aal text default 'aal1');
 create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb, raw_app_meta_data jsonb default '{}'::jsonb, email text, last_sign_in_at timestamptz, email_confirmed_at timestamptz, created_at timestamptz default now());
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;
@@ -1390,6 +1390,23 @@ await expectOk('every foreign key has an index', async () => {
       and array_length(c.conkey, 1) = 1 and not exists (select 1 from pg_index i where i.indrelid = c.conrelid and i.indkey[0] = c.conkey[1])`)).rows;
   if (missing.length) throw new Error(missing.map((r) => r.t).join(', '));
 });
+
+console.log('\nActive sessions (2.0)');
+await expectOk('you see only your own sessions, with the current one marked', async () => {
+  const mine = 'aaaaaaaa-0000-4000-8000-000000000001';
+  await db.exec(`insert into auth.sessions (id, user_id, user_agent, ip) values ('${mine}', '${A}', 'Mozilla/5.0 (Windows NT 10.0) Chrome/130', '1.2.3.4'), (gen_random_uuid(), '${A}', 'Aether iPad', '5.6.7.8'), (gen_random_uuid(), '${B}', 'other', '9.9.9.9')`);
+  const rows = (await as(A, `select * from public.my_sessions()`, [], { session_id: mine })).rows;
+  if (rows.length !== 2 || rows.filter((r) => r.current).length !== 1 || !rows.some((r) => r.ip === '1.2.3.4')) throw new Error(JSON.stringify(rows));
+});
+await expectOk("you can end your other sessions, but not someone else's", async () => {
+  const other = (await db.query(`select id from auth.sessions where user_id = '${A}' and user_agent = 'Aether iPad'`)).rows[0].id;
+  const theirs = (await db.query(`select id from auth.sessions where user_id = '${B}'`)).rows[0].id;
+  await as(A, `select public.end_session($1)`, [other]);
+  await as(A, `select public.end_session($1)`, [theirs]);
+  const left = (await db.query(`select user_agent from auth.sessions where user_agent is not null order by user_agent`)).rows.map((r) => r.user_agent).join(',');
+  if (left !== 'Mozilla/5.0 (Windows NT 10.0) Chrome/130,other') throw new Error(left);
+});
+await expectError("ending this device's own session goes through Sign out", () => as(A, `select public.end_session('aaaaaaaa-0000-4000-8000-000000000001')`, [], { session_id: 'aaaaaaaa-0000-4000-8000-000000000001' }), 'Sign out');
 
 console.log('\nUnconfirmed account cleanup');
 await expectOk('sign-ups never confirmed after 7 days are removed; everyone else stays', async () => {

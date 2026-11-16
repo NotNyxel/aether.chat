@@ -1,4 +1,6 @@
 /** One chat message: header, reply/forward context, Markdown, attachments, poll, embeds, reactions, hover toolbar. */
+import { useCancelQueued } from '../hooks/useChatData';
+import { ClockIcon } from './icons';
 import { useEncryptedAttachment } from '../hooks/useEncryptedAttachment';
 import { inviteCodesIn } from '../lib/invites';
 import { InviteEmbed } from './Invites';
@@ -117,6 +119,24 @@ function PlainAttachmentView({ a, messageId, scopeId }: { a: Attachment; message
         <span className="rounded-full bg-black/70 px-3 py-1 text-xs font-bold tracking-wider text-white">SPOILER</span>
       </span>
     </button>
+  );
+}
+
+/** A message written offline: it sends by itself once the connection is back. */
+function QueuedLabel({ message }: { message: Message }) {
+  const cancel = useCancelQueued({ kind: message.channel_id ? 'channel' : 'conversation', id: (message.channel_id ?? message.conversation_id)! });
+  useEffect(() => {
+    const on = (e: Event) => (e as CustomEvent<string>).detail === message.id && cancel(message.id);
+    window.addEventListener('aether-cancel-queued', on);
+    return () => window.removeEventListener('aether-cancel-queued', on);
+  }, [cancel, message.id]);
+  return (
+    <span className="ml-1 inline-flex items-center gap-1.5 text-[11px] text-ae-muted">
+      <ClockIcon size={11} /> Waiting for connection
+      <button type="button" className="text-ae-danger hover:underline" onClick={() => cancel(message.id)}>
+        Cancel
+      </button>
+    </span>
   );
 }
 
@@ -242,9 +262,17 @@ function MessageItemImpl(props: MessageItemProps) {
     <li
       ref={rowRef}
       id={`msg-${message.id}`}
-      className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-4 pt-0.5 pb-px' : 'py-px'} ${mentioned && !mine ? 'ae-mentioned' : ''} ${(message as { pending?: boolean }).pending ? 'ae-msg-pending pointer-events-none' : ''}`}
+      className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-4 pt-0.5 pb-px' : 'py-px'} ${mentioned && !mine ? 'ae-mentioned' : ''} ${(message as { pending?: boolean }).pending ? 'ae-msg-pending pointer-events-none' : ''} ${(message as { queued?: boolean }).queued ? 'opacity-70' : ''}`}
       onContextMenu={(e) => {
         if (editing) return;
+        // Not on the server yet: nothing to react to, reply to or edit.
+        if ((message as { queued?: boolean }).queued) {
+          openContextMenu(e, [
+            message.content && { label: 'Copy text', icon: <CopyIcon size={15} />, onClick: () => void navigator.clipboard.writeText(text) },
+            { label: 'Don’t send', icon: <TrashIcon size={15} />, danger: true, onClick: () => window.dispatchEvent(new CustomEvent('aether-cancel-queued', { detail: message.id })) },
+          ]);
+          return;
+        }
         openContextMenu(e, [
           { label: 'Add reaction', icon: <ReactIcon size={15} />, onClick: openPicker },
           { label: 'Reply', icon: <ReplyIcon size={15} />, onClick: () => props.onReply(message) },
@@ -447,6 +475,7 @@ function MessageItemImpl(props: MessageItemProps) {
           )}
         </div>
         {!editing && <EditedLabel message={message} canSeeHistory={!!myProfile?.is_admin || (!!props.serverId && props.canPin)} />}
+        {(message as { queued?: boolean }).queued && <QueuedLabel message={message} />}
 
         {message.poll && <PollCard message={message} votes={props.votes ?? []} me={me} onVote={(ids) => props.onVote(message.id, ids)} />}
         {embeds

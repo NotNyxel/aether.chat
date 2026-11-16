@@ -3,15 +3,15 @@
  * messages of your recent chats) is kept on this device and shown right away on the next start,
  * while fresh data loads in the background and replaces it.
  *
- * Only small, recent pieces are kept (the newest 40 messages of up to 15 chats), per account, and
+ * Only recent pieces are kept (the newest 60 messages of up to 25 chats, enough to read offline), per account, and
  * the copy is dropped when you sign out or after a week.
  */
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query';
 
 const VERSION = 1;
 const MAX_AGE = 7 * 24 * 3600_000;
-const MAX_CHATS = 15;
-const MAX_MESSAGES = 40;
+const MAX_CHATS = 25;
+const MAX_MESSAGES = 60;
 const storeKey = (userId: string) => `aether.cache.${userId}`;
 
 interface Saved {
@@ -51,10 +51,10 @@ function snapshot(qc: QueryClient): Saved {
   const rest = all.filter((q) => q.queryKey[0] !== 'messages');
   const q: Saved['q'] = rest.map((x) => ({ k: x.queryKey, d: x.state.data, t: x.state.dataUpdatedAt }));
   for (const x of msgs) {
-    const data = x.state.data as InfiniteData<{ pending?: boolean }[], unknown> | undefined;
+    const data = x.state.data as InfiniteData<{ pending?: boolean; queued?: boolean }[], unknown> | undefined;
     const first = data?.pages?.[0];
     if (!first) continue;
-    q.push({ k: x.queryKey, d: { pages: [first.filter((m) => !m.pending).slice(0, MAX_MESSAGES)], pageParams: [data.pageParams[0] ?? null] }, t: x.state.dataUpdatedAt });
+    q.push({ k: x.queryKey, d: { pages: [first.filter((m) => !m.pending && !m.queued).slice(0, MAX_MESSAGES)], pageParams: [data.pageParams[0] ?? null] }, t: x.state.dataUpdatedAt });
   }
   return { v: VERSION, at: Date.now(), q };
 }

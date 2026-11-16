@@ -269,6 +269,19 @@ await expectOk('carol votes, then changes her vote', async () => {
   if (r.rows.length !== 1 || r.rows[0].option_id !== 1) throw new Error(JSON.stringify(r.rows));
 });
 await expectError('single-choice poll rejects two answers', () => as(C, `select public.vote_poll($1, array[0,1]::smallint[])`, [pollMsg]), 'only one');
+await expectOk('offline sends: the app can choose a message id, and a retry with the same id is refused', async () => {
+  const id = '0ff11e00-0000-4000-8000-000000000001';
+  await as(A, `insert into public.messages (id, channel_id, content) values ($1, $2, 'sent from the outbox')`, [id, general]);
+  let dup = '';
+  try {
+    await as(A, `insert into public.messages (id, channel_id, content) values ($1, $2, 'sent from the outbox')`, [id, general]);
+  } catch (e) {
+    dup = e.message;
+  }
+  const n = (await db.query(`select count(*)::int n from public.messages where id = $1`, [id])).rows[0].n;
+  if (!/duplicate/.test(dup) || n !== 1) throw new Error(`${dup} ${n}`);
+});
+await expectError('choosing an id does not let an outsider post', () => as(B, `insert into public.messages (id, channel_id, content) values ('0ff11e00-0000-4000-8000-000000000002', $1, 'sneaky')`, [general]));
 await expectError('outsider cannot vote', () => as(B, `select public.vote_poll($1, array[0]::smallint[])`, [pollMsg]), 'not found');
 await expectOk('outsider cannot see votes', async () => {
   const r = await as(B, `select count(*)::int n from public.poll_votes`);

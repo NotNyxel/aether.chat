@@ -292,7 +292,7 @@ export function Composer(props: ComposerProps) {
     }
     // Instant: clear the box and show the message now; sends go out one after another in order,
     // so fast typing is never blocked or wiped while the server answers.
-    const vars = { content, replyToId: props.replyTo?.id ?? null, attachments: pending, tempId: `local-${crypto.randomUUID()}`, authorId: meId };
+    const vars = { content, replyToId: props.replyTo?.id ?? null, attachments: pending, tempId: crypto.randomUUID(), authorId: meId };
     setDraft('');
     setPending([]);
     props.onCancelReply();

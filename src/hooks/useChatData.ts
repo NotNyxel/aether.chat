@@ -3,10 +3,12 @@
  * messages for both server channels and DM conversations. RLS decides what each query returns,
  * so these hooks never filter by membership themselves.
  */
+import { dequeue, enqueue, isNetworkError, readOutbox } from '../lib/outbox';
+import { useMeId } from './useMe';
 import { encryptBytes, encryptText } from '../lib/e2e';
 import { toast } from '../components/Toaster';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useSupabase } from '../lib/supabase';
 import { toMask } from '../lib/permissions';
 import type {
@@ -252,13 +254,20 @@ export function useMessages(scope: MessageScope) {
   const qc = useQueryClient();
   const column = scopeColumn(scope);
 
+  const me = useMeId();
   const query = useInfiniteQuery({
     queryKey: ['messages', scope.id],
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       let q = sb.from('messages').select('*').eq(column, scope.id).order('created_at', { ascending: false }).limit(PAGE_SIZE);
       if (pageParam) q = q.lt('created_at', pageParam);
-      return unwrap(await q) as Message[];
+      const rows = unwrap(await q) as Message[];
+      if (pageParam || !me) return rows;
+      // Messages still waiting to send (offline) stay at the bottom of the chat.
+      const waiting = readOutbox(me)
+        .filter((m) => m.scope.id === scope.id && !rows.some((r) => r.id === m.id))
+        .map((m) => queuedMessage(m.scope, m.id, m, m.createdAt));
+      return [...waiting.reverse(), ...rows];
     },
     getNextPageParam: (lastPage) => (lastPage.length === PAGE_SIZE ? lastPage[lastPage.length - 1].created_at : undefined),
     staleTime: Infinity, // Realtime keeps it fresh
@@ -305,11 +314,41 @@ export interface SendVars extends SendMessageInput {
   authorId?: string;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A message waiting in the outbox, as it shows in the chat ("Waiting for connection"). */
+export function queuedMessage(scope: MessageScope, id: string, v: { content: string; replyToId?: string | null; attachments?: Attachment[]; authorId?: string }, createdAt = new Date().toISOString()): Message {
+  return {
+    id,
+    channel_id: scope.kind === 'channel' ? scope.id : null,
+    conversation_id: scope.kind === 'channel' ? null : scope.id,
+    author_id: v.authorId ?? null,
+    content: v.content,
+    attachments: v.attachments ?? [],
+    reply_to_id: v.replyToId ?? null,
+    pinned: false,
+    edited_at: null,
+    created_at: createdAt,
+    mentions: [],
+    mention_roles: [],
+    mention_everyone: false,
+    poll: null,
+    forwarded_from: null,
+    thread_id: null,
+    crossposted_from: null,
+    published_at: null,
+    queued: true,
+  } as unknown as Message;
+}
+
 export function useSendMessage(scope: MessageScope) {
   const sb = useSupabase();
   const qc = useQueryClient();
   const key = ['messages', scope.id];
   return useMutation({
+    // Run even when the device says it's offline: the send itself falls back to the outbox
+    // (TanStack would otherwise pause it in memory and lose it if the app closed).
+    networkMode: 'always',
     // Show it right away; the real row replaces it when the server answers.
     onMutate: (v: SendVars) => {
       if (!v.tempId) return;
@@ -340,18 +379,28 @@ export function useSendMessage(scope: MessageScope) {
       if (v.tempId) qc.setQueryData<MessagePages>(key, (d) => removeMessage(d, v.tempId!));
     },
     mutationFn: async (input: SendVars) => {
-      const rows = unwrap(
-        await sb
-          .from('messages')
-          .insert({
-            [scopeColumn(scope)]: scope.id,
-            content: input.content,
-            reply_to_id: input.replyToId ?? null,
-            attachments: input.attachments ?? [],
-            ...(input.poll ? { poll: input.poll } : {}),
-          })
-          .select('*'),
-      ) as Message[];
+      // The id is picked here, so a retry after a dropped connection can't post it twice.
+      const id = input.tempId && UUID.test(input.tempId) ? input.tempId : crypto.randomUUID();
+      const res = await sb
+        .from('messages')
+        .insert({
+          id,
+          [scopeColumn(scope)]: scope.id,
+          content: input.content,
+          reply_to_id: input.replyToId ?? null,
+          attachments: input.attachments ?? [],
+          ...(input.poll ? { poll: input.poll } : {}),
+        })
+        .select('*');
+      if (res.error) {
+        // Offline: keep it on this device and send it when the connection is back.
+        if (!input.poll && input.authorId && isNetworkError(res.error)) {
+          enqueue({ id, scope, content: input.content, replyToId: input.replyToId ?? null, attachments: input.attachments ?? [], createdAt: new Date().toISOString(), authorId: input.authorId });
+          return queuedMessage(scope, id, input);
+        }
+        throw new Error(res.error.message);
+      }
+      const rows = res.data as Message[];
       if (rows[0]) return rows[0];
       // No row back means the server's AutoMod dropped it. Explain which rule, if we can.
       const { data: { user } } = await sb.auth.getUser();
@@ -372,6 +421,68 @@ export function useSendMessage(scope: MessageScope) {
       qc.setQueryData<MessagePages>(key, (d) => upsertMessage(v.tempId ? removeMessage(d, v.tempId) : d, msg));
     },
   });
+}
+
+/**
+ * Sends what's waiting in the outbox, oldest first, whenever the app is online: at start, when the
+ * connection comes back, and every 20 seconds while anything is waiting. Mounted once.
+ */
+export function useOutboxFlusher(userId: string) {
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  useEffect(() => {
+    let busy = false;
+    const flush = async () => {
+      if (busy || !navigator.onLine) return;
+      const items = readOutbox(userId);
+      if (!items.length) return;
+      busy = true;
+      try {
+        for (const m of items) {
+          const key = ['messages', m.scope.id];
+          const res = await sb
+            .from('messages')
+            .insert({ id: m.id, [scopeColumn(m.scope)]: m.scope.id, content: m.content, reply_to_id: m.replyToId, attachments: m.attachments })
+            .select('*');
+          if (res.error && isNetworkError(res.error)) break; // still offline: try again later
+          dequeue(userId, m.id);
+          if (res.error && !/duplicate key/i.test(res.error.message)) {
+            // The server said no (left the chat, blocked, slow mode, AutoMod…): don't retry forever.
+            qc.setQueryData<MessagePages>(key, (d) => removeMessage(d, m.id));
+            toast.error(`A message you wrote offline couldn’t be sent: ${res.error.message}`);
+            continue;
+          }
+          const row = (res.data as Message[] | null)?.[0];
+          if (row) qc.setQueryData<MessagePages>(key, (d) => upsertMessage(d, row));
+          else void qc.invalidateQueries({ queryKey: key }); // already there (an earlier try got through)
+        }
+      } finally {
+        busy = false;
+      }
+    };
+    void flush();
+    const onOnline = () => void flush();
+    window.addEventListener('online', onOnline);
+    const t = setInterval(() => void flush(), 20_000);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      clearInterval(t);
+    };
+  }, [sb, qc, userId]);
+}
+
+/** Cancel a message that hasn't been sent yet. */
+export function useCancelQueued(scope: MessageScope) {
+  const qc = useQueryClient();
+  const me = useMeId();
+  const scopeId = scope.id;
+  return useCallback(
+    (id: string) => {
+      dequeue(me, id);
+      qc.setQueryData<MessagePages>(['messages', scopeId], (d) => removeMessage(d, id));
+    },
+    [qc, me, scopeId],
+  );
 }
 
 export function useEditMessage(scope: MessageScope) {

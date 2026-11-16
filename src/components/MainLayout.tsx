@@ -1,4 +1,6 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { useOutboxFlusher } from '../hooks/useChatData';
+import { OfflineBar } from './OfflineBar';
 import { WhatsNewLayer } from './WhatsNew';
 import { BugReportLayer } from './BugReport';
 import { AddServerDialog } from './Invites';
@@ -241,6 +243,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <Lightbox />
       <ReminderWatcher />
       <BugReportLayer />
+      <OfflineBar userId={userId} />
       <WhatsNewLayer userId={userId} />
       <ProfilePeekLayer me={userId} server={server} />
       <ThemeStudio />
@@ -273,6 +276,8 @@ export function MainLayout({ userId, onSignOut }: { userId: string; onSignOut: (
   const status = useAutoIdle(me?.presence_status ?? 'invisible');
   const activity = useGameActivity();
   const listening = useSpotifyListening();
+  // Offline mode: messages written without a connection go out when it's back.
+  useOutboxFlusher(userId);
 
   return (
     <MeContext.Provider value={userId}>

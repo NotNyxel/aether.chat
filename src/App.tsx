@@ -1,4 +1,5 @@
 /** Root gating: email links → session → two-factor check → main shell. */
+import { clearOutbox } from './lib/outbox';
 import { MailIcon, PartyIcon } from './components/icons';
 import type { Session } from '@supabase/supabase-js';
 import { MutationCache, QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
@@ -160,6 +161,7 @@ function AuthGate() {
 
   const signOut = () => {
     clearCache(userId);
+    clearOutbox(userId);
     void sb.auth.signOut();
     qc.clear();
   };

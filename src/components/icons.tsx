@@ -112,6 +112,7 @@ export {
   Monitor as MonitorIcon,
   Laptop as WindowsIcon,
   Wifi as NetworkIcon,
+  WifiOff as WifiOffIcon,
   Signal as SignalIcon,
   Zap as ZapIcon,
   Star as StarIcon,

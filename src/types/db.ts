@@ -97,6 +97,10 @@ export interface Server {
   owner_id: string;
   created_at: string;
   verification_level?: 'none' | 'low' | 'medium' | 'high';
+  /** Moderators paused chat until then ('infinity' = until unlocked). */
+  chat_locked_until?: string | null;
+  /** Accounts younger than this many days can't join. */
+  min_account_days?: number;
   welcome_channel_id?: string | null;
   welcome_message?: string | null;
   rules?: string | null;
@@ -446,7 +450,7 @@ export interface UserNote {
   updated_at: string;
 }
 
-export type AutomodTrigger = 'keyword' | 'link' | 'mention' | 'spam';
+export type AutomodTrigger = 'keyword' | 'link' | 'mention' | 'spam' | 'invite' | 'caps';
 export type AutomodAction = 'block' | 'block_and_timeout' | 'alert';
 
 export interface AutomodRule {
@@ -458,6 +462,8 @@ export interface AutomodRule {
   keywords: string[];
   allow_list: string[];
   mention_limit: number;
+  /** caps: block when at least this % of letters are capitals. */
+  caps_percent?: number;
   action: AutomodAction;
   timeout_minutes: number;
   block_message: string | null;

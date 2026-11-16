@@ -47,6 +47,8 @@ export interface ComposerProps {
   roles?: ServerRole[];
   /** When set, the user is timed out and cannot send. */
   timedOutUntil?: string | null;
+  /** When set, the moderators have locked chat (ISO time or 'infinity'). */
+  lockedUntil?: string | null;
   /** Slow-mode delay that applies to this user (0 = none). */
   slowmodeSeconds?: number;
   replyTo: Message | null;
@@ -381,6 +383,17 @@ export function Composer(props: ComposerProps) {
       addFiles(e.clipboardData.files);
     }
   };
+
+  if (props.lockedUntil) {
+    return (
+      <div className="px-4 pb-1">
+        <div className="rounded-ae border border-ae-border bg-ae-surface px-4 py-3 text-sm">
+          🔒 The moderators have locked chat
+          {props.lockedUntil === 'infinity' ? ' for now' : <> until <strong>{new Date(props.lockedUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</strong></>}. You can read, but not send.
+        </div>
+      </div>
+    );
+  }
 
   if (props.timedOutUntil) {
     return (

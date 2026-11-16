@@ -248,6 +248,7 @@ export function ServerView({ server, channel, channels, userId }: { server: Serv
         scope={scope}
         userId={userId}
         serverId={server.id}
+        lockedUntil={server.chat_locked_until ?? null}
         memberIds={memberIds}
         channels={channels}
         placeholder={`Message #${channel.name}`}

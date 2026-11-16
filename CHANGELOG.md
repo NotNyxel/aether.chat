@@ -3,6 +3,24 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.9.2] - 2026-11-16
+
+**Better search and moderation tools**
+
+- **Search filters you can click.** Use **From**, **Mentions**, **In channel**, **Has**, **Date** and **Pinned**
+  instead of typing the syntax. Active filters show as chips you can remove.
+  - New filters: who's mentioned, a channel, voice messages, stickers, videos, and a single day.
+  - Sort by oldest or newest, and **Load more** for long result lists.
+- **Search encrypted chats.** Encrypted DMs and groups are searched on your device, across the latest 1,500 messages.
+  Aether's servers can't read them, so they can't search them.
+- **AutoMod: two new rule types.** **Invite links** blocks invites to other servers (and Discord); invites to your own
+  server are fine. **Shouting** blocks messages that are mostly capital letters; short ones like "LOL" are fine.
+- **Lock chat.** In **Server Settings → Moderation**, lock chat for 10 minutes, an hour or until you unlock it.
+  Everyone except moderators can read but not post. Useful during raids.
+- **Minimum account age.** Keep accounts younger than 1–30 days out of your server (**Server Settings → Community**).
+- **Delete recent messages.** Moderators can right-click a channel and choose **Delete recent messages…** to remove the
+  latest 1–200 at once. It's recorded in the audit log.
+
 ## [1.9.1] - 2026-11-16
 
 **Backup codes, passkeys, and two-factor that can't be skipped**

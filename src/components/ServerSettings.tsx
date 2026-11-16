@@ -824,6 +824,9 @@ const ACTION_LABELS: Record<string, { icon: ReactNode; text: string }> = {
   event_active: { icon: <PlayIcon size={15} />, text: 'started the event' },
   event_completed: { icon: <SquareIcon size={15} />, text: 'ended the event' },
   event_canceled: { icon: <BlockIcon size={15} />, text: 'canceled the event' },
+  chat_lock: { icon: <LockIcon size={15} />, text: 'locked chat' },
+  chat_unlock: { icon: <UnlockIcon size={15} />, text: 'unlocked chat' },
+  messages_purge: { icon: <TrashIcon size={15} />, text: 'bulk-deleted messages in' },
 };
 
 function AuditRow({ e }: { e: AuditEntry }) {
@@ -842,6 +845,8 @@ function AuditRow({ e }: { e: AuditEntry }) {
       ? `(${String((e.changes as { role_name?: string }).role_name ?? 'role')})`
       : e.action === 'member_timeout'
         ? `for ${String((e.changes as { minutes?: number }).minutes)} min`
+        : e.action === 'messages_purge'
+          ? `(${String((e.changes as { count?: number }).count ?? 0)} messages)`
         : e.action.endsWith('_update') && changed.length
           ? `(${changed.join(', ')})`
           : '';

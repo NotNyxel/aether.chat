@@ -86,9 +86,11 @@ interface MessagePaneProps {
   group?: boolean;
   /** Phones: what the back arrow does (default: back to the list). */
   onBack?: () => void;
+  /** Servers: chat is locked by the moderators until then. */
+  lockedUntil?: string | null;
 }
 
-export function MessagePane({ scope, userId, serverId, header, placeholder, emptyState, memberIds, channels = [], top, aside, onBack, reads, group }: MessagePaneProps) {
+export function MessagePane({ scope, userId, serverId, header, placeholder, emptyState, memberIds, channels = [], top, aside, onBack, reads, group, lockedUntil }: MessagePaneProps) {
   const qc = useQueryClient();
   const messages = useMessages(scope);
   const reactionsQ = useReactions(scope);
@@ -474,6 +476,11 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             canMentionEveryone={canMentionEveryone}
             roles={roles}
             timedOutUntil={timedOutUntil}
+            lockedUntil={
+              lockedUntil && (lockedUntil === 'infinity' || new Date(lockedUntil) > new Date()) && !canManageMessages && !hasPermission(perms, Permission.MODERATE_MEMBERS)
+                ? lockedUntil
+                : null
+            }
             slowmodeSeconds={serverId && !hasPermission(perms, Permission.MANAGE_MESSAGES) ? slowmode : 0}
             replyTo={replyTo}
             onCancelReply={() => setReplyTo(null)}

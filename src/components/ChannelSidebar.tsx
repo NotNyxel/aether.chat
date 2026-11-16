@@ -3,6 +3,9 @@ import { InviteDialog } from './Invites';
 import { toast } from './Toaster';
 import { openContextMenu } from './ContextMenu';
 import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSupabase } from '../lib/supabase';
+import { ask, promptText } from './ConfirmDialog';
 import { useCreateChannel, useDeleteServer, useLeaveServer, useServerPermissions } from '../hooks/useChatData';
 import { isRowUnread, useMarkRead, useUnreadSummary } from '../hooks/useMessageExtras';
 import { muteUntil, useNotifyResolver, useSetNotificationSetting } from '../hooks/useNotifications';
@@ -85,6 +88,20 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
   const canManageRoles = isOwner || hasPermission(perms, Permission.MANAGE_ROLES);
   const canInvite = isOwner || hasPermission(perms, Permission.CREATE_INVITE);
   const canOpenChannelSettings = canManageChannels || canManageRoles;
+  const canManageMessages = isOwner || hasPermission(perms, Permission.MANAGE_MESSAGES);
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  /** Moderators: delete the latest messages in a channel. */
+  const purge = async (ch: Channel) => {
+    const raw = await promptText(`Delete how many of the latest messages in #${ch.name}? (1 to 200)`, { title: 'Delete recent messages', placeholder: '50', initial: '50' });
+    const n = Math.min(200, Math.max(1, Math.floor(Number(raw))));
+    if (raw === null || !Number.isFinite(n)) return;
+    if (!(await ask(`Delete the latest ${n} message${n === 1 ? '' : 's'} in #${ch.name}? This can’t be undone.`, { title: 'Delete recent messages', confirmLabel: 'Delete', danger: true }))) return;
+    const { data, error } = await sb.rpc('purge_messages', { p_channel_id: ch.id, p_count: n });
+    if (error) return toast.error(error.message);
+    void qc.invalidateQueries({ queryKey: ['messages', ch.id] });
+    toast.success(`Deleted ${data as number} message${data === 1 ? '' : 's'}.`, <TrashIcon size={14} />);
+  };
   const openServerSettings = useUiStore((s) => s.openServerSettings);
   const openChannelSettings = useUiStore((s) => s.openChannelSettings);
   const channelActions = useChannelActions(server.id);
@@ -382,6 +399,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                                 : { label: 'Mute channel for 1 hour', icon: <BellOffIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: ch.id, kind: 'channel', patch: { muted_until: muteUntil(60) } }) }),
                             canOpenChannelSettings && { label: 'Edit channel', icon: <SettingsIcon size={15} />, onClick: () => openChannelSettings(ch.id) },
                             canManageChannels && { label: 'Reorder channels', icon: <GripIcon size={15} />, onClick: () => setReordering(true) },
+                            ch.type === 'text' && canManageMessages && { label: 'Delete recent messages…', icon: <TrashIcon size={15} />, danger: true, onClick: () => void purge(ch) },
                             'divider',
                             {
                               label: 'Copy channel link',

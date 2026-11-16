@@ -4,6 +4,7 @@
 import { ArchiveIcon, CheckIcon, CrownIcon, FontIcon, LinkIcon, ShieldIcon, SunIcon, ZapIcon } from './icons';
 import { ask } from './ConfirmDialog';
 import { useMemo, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useProfile, useServerMembers } from '../hooks/useChatData';
 import { useAutomod, useResolveReport, useServerReports } from '../hooks/useAccount';
 import { useServerRoles } from '../hooks/useServerAdmin';
@@ -137,6 +138,49 @@ function ReportCard({ r, server }: { r: Report; server: Server }) {
   );
 }
 
+/** Lock chat: only moderators can post until it's unlocked (raids, heated moments). */
+function ChatLock({ server }: { server: Server }) {
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  const [until, setUntil] = useState(server.chat_locked_until ?? null);
+  const locked = !!until && (until === 'infinity' || new Date(until) > new Date());
+  const set = async (minutes: number | null) => {
+    const { data, error } = await sb.rpc('set_chat_lock', { p_server_id: server.id, p_minutes: minutes });
+    if (error) return toast.error(error.message);
+    setUntil((data as string | null) ?? null);
+    void qc.invalidateQueries({ queryKey: ['servers'] });
+    toast(minutes === 0 ? 'Chat is unlocked.' : 'Chat is locked. Only moderators can post.');
+  };
+  const btn = 'rounded-ae border border-ae-border px-3 py-1.5 text-sm font-semibold hover:bg-ae-hover';
+  return (
+    <div className={`flex flex-wrap items-center justify-between gap-3 rounded-ae border p-3 ${locked ? 'border-ae-warning/60 bg-ae-warning/10' : 'border-ae-border'}`}>
+      <div className="min-w-0 text-sm">
+        <p className="font-semibold">{locked ? '🔒 Chat is locked' : 'Lock chat'}</p>
+        <p className="text-xs text-ae-muted">
+          {locked
+            ? until === 'infinity'
+              ? 'Only moderators can post until you unlock it.'
+              : `Only moderators can post until ${new Date(until!).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`
+            : 'For raids or heated moments: everyone except moderators can read but not post.'}
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {locked ? (
+          <button type="button" className={btn} onClick={() => void set(0)}>
+            Unlock
+          </button>
+        ) : (
+          <>
+            <button type="button" className={btn} onClick={() => void set(10)}>10 min</button>
+            <button type="button" className={btn} onClick={() => void set(60)}>1 hour</button>
+            <button type="button" className={btn} onClick={() => void set(null)}>Until I unlock</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ModerationTab({ server, channels }: { server: Server; channels: Channel[] }) {
   const { data: reports = [] } = useServerReports(server.id, true);
   const { events } = useAutomod(server.id, true);
@@ -157,6 +201,7 @@ export function ModerationTab({ server, channels }: { server: Server; channels: 
 
   return (
     <div className="space-y-4">
+      <ChatLock server={server} />
       <div className="flex gap-1 border-b border-ae-border">
         {tab('open', 'Open reports', open.length)}
         {tab('closed', 'Closed', closed.length)}
@@ -206,6 +251,8 @@ const TRIGGERS: { id: AutomodTrigger; label: string; icon: ReactNode; hint: stri
   { id: 'link', label: 'Links', icon: <LinkIcon size={15} />, hint: 'Blocks every link except the domains you allow.' },
   { id: 'mention', label: 'Mention spam', icon: '@', hint: 'Too many @mentions in one message.' },
   { id: 'spam', label: 'Message spam', icon: <ZapIcon size={15} />, hint: 'Flooding (5+ messages in 5 seconds) or repeating the same message.' },
+  { id: 'invite', label: 'Invite links', icon: '✉', hint: 'Invite links to other Aether servers (and Discord). Invites to this server are fine.' },
+  { id: 'caps', label: 'Shouting', icon: 'Aa', hint: 'Messages that are mostly CAPITAL LETTERS. Short ones like “LOL” or “OK” are fine.' },
 ];
 const ACTIONS: { id: AutomodAction; label: string }[] = [
   { id: 'block', label: 'Block the message' },
@@ -216,7 +263,7 @@ const ACTIONS: { id: AutomodAction; label: string }[] = [
 function RuleEditor({ server, initial, onClose }: { server: Server; initial: Partial<AutomodRule>; onClose: () => void }) {
   const { save } = useAutomod(server.id, true);
   const { data: roles = [] } = useServerRoles(server.id);
-  const [r, setR] = useState<Partial<AutomodRule>>({ enabled: true, action: 'block', timeout_minutes: 10, mention_limit: 10, keywords: [], allow_list: [], exempt_roles: [], ...initial });
+  const [r, setR] = useState<Partial<AutomodRule>>({ enabled: true, action: 'block', timeout_minutes: 10, mention_limit: 10, caps_percent: 70, keywords: [], allow_list: [], exempt_roles: [], ...initial });
   const [kw, setKw] = useState((initial.keywords ?? []).join(', '));
   const [allow, setAllow] = useState((initial.allow_list ?? []).join(', '));
   const split = (v: string) => v.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
@@ -256,6 +303,11 @@ function RuleEditor({ server, initial, onClose }: { server: Server; initial: Par
         {r.trigger === 'mention' && (
           <Field label={`Block messages with more than ${r.mention_limit} mentions`}>
             <input type="range" min={2} max={50} value={r.mention_limit} onChange={(e) => setR({ ...r, mention_limit: Number(e.target.value) })} className="w-full" />
+          </Field>
+        )}
+        {r.trigger === 'caps' && (
+          <Field label={`Block when ${r.caps_percent ?? 70}% or more of the letters are capitals`}>
+            <input type="range" min={50} max={100} step={5} value={r.caps_percent ?? 70} onChange={(e) => setR({ ...r, caps_percent: Number(e.target.value) })} className="w-full" />
           </Field>
         )}
         <Field label="What happens">

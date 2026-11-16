@@ -116,20 +116,41 @@ export function useForwardMessage() {
 
 export interface SearchQuery {
   /** Where to search: one conversation, or every text channel id of a server. */
-  scope: { kind: 'conversation'; id: string } | { kind: 'channels'; ids: string[] };
+  scope: { kind: 'conversation'; id: string } | { kind: 'channels'; ids: string[]; names?: Record<string, string> };
   raw: string;
+  /** Encrypted chats: decrypts a message so it can be searched here, on the device. */
+  decrypt?: (content: string) => Promise<string | null>;
 }
 
-/** Parses `from:user has:link|file|image|poll pinned:true before:2026-01-01 after:2025-12-01 free text`. */
+export const HAS_KINDS = ['link', 'image', 'video', 'file', 'voice', 'sticker', 'poll'] as const;
+
+export interface SearchFilters {
+  from?: string;
+  mentions?: string;
+  in?: string;
+  has: string[];
+  before?: string;
+  after?: string;
+  during?: string;
+  pinned?: boolean;
+  oldest?: boolean;
+}
+
+/**
+ * Parses `from:user mentions:user in:channel has:link|image|video|file|voice|sticker|poll pinned:true
+ * before:2026-01-01 after:2025-12-01 during:2026-01-15 order:oldest free text`.
+ */
 export function parseSearch(raw: string) {
-  const filters: { from?: string; has: string[]; before?: string; after?: string; pinned?: boolean } = { has: [] };
+  const filters: SearchFilters = { has: [] };
   const text = raw
-    .replace(/\b(from|has|before|after|pinned):(\S+)/gi, (_, key: string, value: string) => {
+    .replace(/\b(from|mentions|in|has|before|after|during|pinned|order):(\S+)/gi, (_, key: string, value: string) => {
       const k = key.toLowerCase();
-      if (k === 'from') filters.from = value.replace(/^@/, '');
-      else if (k === 'has') filters.has.push(value.toLowerCase());
-      else if (k === 'before' || k === 'after') filters[k] = value;
-      else if (k === 'pinned') filters.pinned = value.toLowerCase() !== 'false';
+      const v = value.replace(/^[@#]/, '');
+      if (k === 'from' || k === 'mentions' || k === 'in') filters[k] = v;
+      else if (k === 'has') filters.has.push(v.toLowerCase());
+      else if (k === 'before' || k === 'after' || k === 'during') filters[k] = v;
+      else if (k === 'pinned') filters.pinned = v.toLowerCase() !== 'false';
+      else if (k === 'order') filters.oldest = v.toLowerCase() === 'oldest';
       return ' ';
     })
     .replace(/\s+/g, ' ')
@@ -137,32 +158,76 @@ export function parseSearch(raw: string) {
   return { text, filters };
 }
 
-export function useMessageSearch(query: SearchQuery | null) {
+const PAGE = 50;
+const isType = (m: Message, prefix: string) => m.attachments.some((a) => a.content_type.startsWith(prefix) && !a.sticker);
+const day = (d: string) => {
+  const t = new Date(d);
+  return Number.isNaN(t.getTime()) ? null : t;
+};
+
+/** Filters that are checked on the device (encrypted chats, and types the database can't tell apart). */
+function matchesLocally(m: Message, text: string, f: SearchFilters, plain: string): boolean {
+  if (text) {
+    const hay = plain.toLowerCase();
+    if (!text.toLowerCase().split(/\s+/).every((w) => hay.includes(w.replace(/^"|"$/g, '')))) return false;
+  }
+  if (f.has.includes('link') && !/https?:\/\//i.test(plain)) return false;
+  if (f.has.includes('image') && !isType(m, 'image/')) return false;
+  if (f.has.includes('video') && !isType(m, 'video/')) return false;
+  if (f.has.includes('voice') && !isType(m, 'audio/')) return false;
+  if (f.has.includes('sticker') && !m.attachments.some((a) => a.sticker)) return false;
+  if (f.has.includes('file') && !m.attachments.some((a) => !a.sticker)) return false;
+  return true;
+}
+
+export function useMessageSearch(query: SearchQuery | null, pages = 1) {
   const sb = useSupabase();
   return useQuery({
-    queryKey: ['search', query],
+    queryKey: ['search', query?.scope, query?.raw, !!query?.decrypt, pages],
     enabled: !!query && query.raw.trim().length > 0,
     staleTime: 30_000,
-    queryFn: async () => {
-      const { text, filters } = parseSearch(query!.raw);
-      let q = sb.from('messages').select('*').order('created_at', { ascending: false }).limit(100);
-      q = query!.scope.kind === 'conversation' ? q.eq('conversation_id', query!.scope.id) : q.in('channel_id', query!.scope.ids);
-      if (text) q = q.textSearch('content', text, { type: 'websearch', config: 'simple' });
-      if (filters.from) {
-        const user = unwrap(await sb.from('users').select('id').eq('username', filters.from).maybeSingle()) as { id: string } | null;
-        if (!user) return [] as Message[];
-        q = q.eq('author_id', user.id);
+    placeholderData: (prev) => prev,
+    queryFn: async (): Promise<{ rows: Message[]; more: boolean }> => {
+      const { text, filters: f } = parseSearch(query!.raw);
+      const local = !!query!.decrypt;
+      // Encrypted chats can't be searched on the server: look through the latest messages here.
+      const limit = local ? 1500 : PAGE * pages + 1;
+      let q = sb.from('messages').select('*').order('created_at', { ascending: !!f.oldest }).limit(limit);
+      if (query!.scope.kind === 'conversation') q = q.eq('conversation_id', query!.scope.id);
+      else {
+        let ids = query!.scope.ids;
+        if (f.in) {
+          const names = query!.scope.names ?? {};
+          ids = ids.filter((id) => (names[id] ?? '').toLowerCase() === f.in!.toLowerCase());
+          if (!ids.length) return { rows: [], more: false };
+        }
+        q = q.in('channel_id', ids);
       }
-      if (filters.before) q = q.lt('created_at', new Date(filters.before).toISOString());
-      if (filters.after) q = q.gt('created_at', new Date(filters.after).toISOString());
-      if (filters.pinned) q = q.eq('pinned', true);
-      if (filters.has.includes('link')) q = q.ilike('content', '%http%');
-      if (filters.has.includes('poll')) q = q.not('poll', 'is', null);
-      if (filters.has.includes('file') || filters.has.includes('image') || filters.has.includes('video')) q = q.neq('attachments', '[]');
-      let rows = unwrap(await q) as Message[];
-      if (filters.has.includes('image')) rows = rows.filter((m) => m.attachments.some((a) => a.content_type.startsWith('image/')));
-      if (filters.has.includes('video')) rows = rows.filter((m) => m.attachments.some((a) => a.content_type.startsWith('video/')));
-      return rows.slice(0, 50);
+      if (text && !local) q = q.textSearch('content', text, { type: 'websearch', config: 'simple' });
+      for (const key of ['from', 'mentions'] as const) {
+        if (!f[key]) continue;
+        const user = unwrap(await sb.from('users').select('id').ilike('username', f[key]!).maybeSingle()) as { id: string } | null;
+        if (!user) return { rows: [], more: false };
+        q = key === 'from' ? q.eq('author_id', user.id) : q.contains('mentions', [user.id]);
+      }
+      const before = f.before && day(f.before);
+      const after = f.after && day(f.after);
+      const during = f.during && day(f.during);
+      if (before) q = q.lt('created_at', before.toISOString());
+      if (after) q = q.gt('created_at', after.toISOString());
+      if (during) q = q.gte('created_at', during.toISOString()).lt('created_at', new Date(during.getTime() + 86_400_000).toISOString());
+      if (f.pinned) q = q.eq('pinned', true);
+      if (f.has.includes('link') && !local) q = q.ilike('content', '%http%');
+      if (f.has.includes('poll')) q = q.not('poll', 'is', null);
+      if (f.has.some((h) => ['file', 'image', 'video', 'voice', 'sticker'].includes(h))) q = q.neq('attachments', '[]');
+      const fetched = unwrap(await q) as Message[];
+      const out: Message[] = [];
+      for (const m of fetched) {
+        const plain = local && m.content ? ((await query!.decrypt!(m.content)) ?? '') : m.content;
+        if (matchesLocally(m, local ? text : '', f, plain)) out.push(m);
+      }
+      const want = PAGE * pages;
+      return { rows: out.slice(0, want), more: out.length > want || (!local && fetched.length > want) };
     },
   });
 }

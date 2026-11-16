@@ -1263,6 +1263,61 @@ await expectOk('every table with row-level security enforces two-factor', async 
   if (missing.length) throw new Error(missing.join(', '));
 });
 
+console.log('\nModeration tools (1.9.2)');
+const ownInvite = (await as(A, `insert into public.server_invites (server_id, code) values ($1, 'ourcode1') returning code`, [srv2])).rows[0].code;
+await expectOk('AutoMod blocks invite links to other servers, not to this one', async () => {
+  await as(A, `insert into public.automod_rules (server_id, name, trigger) values ($1, 'No advertising', 'invite')`, [srv2]);
+  const other = await as(E, `insert into public.messages (channel_id, content) values ($1, 'join us https://joinaether.vercel.app/inv/elsewhere') returning id`, [gen2]);
+  const disc = await as(E, `insert into public.messages (channel_id, content) values ($1, 'or discord.gg/abc123') returning id`, [gen2]);
+  const ours = await as(E, `insert into public.messages (channel_id, content) values ($1, $2) returning id`, [gen2, `invite friends: aether.chat/inv/${ownInvite}`]);
+  if (other.rows.length !== 0 || disc.rows.length !== 0 || ours.rows.length !== 1) throw new Error(`${other.rows.length} ${disc.rows.length} ${ours.rows.length}`);
+});
+await expectOk('AutoMod blocks shouting, but not short caps or normal text', async () => {
+  await as(A, `insert into public.automod_rules (server_id, name, trigger, caps_percent) values ($1, 'No shouting', 'caps', 70)`, [srv2]);
+  const loud = await as(E, `insert into public.messages (channel_id, content) values ($1, 'WHY IS NOBODY ANSWERING ME') returning id`, [gen2]);
+  const lol = await as(E, `insert into public.messages (channel_id, content) values ($1, 'LOL OK') returning id`, [gen2]);
+  const fine = await as(E, `insert into public.messages (channel_id, content) values ($1, 'Just Visited NASA And The ISS Today') returning id`, [gen2]);
+  if (loud.rows.length !== 0 || lol.rows.length !== 1 || fine.rows.length !== 1) throw new Error(`${loud.rows.length} ${lol.rows.length} ${fine.rows.length}`);
+});
+await as(A, `delete from public.automod_rules where server_id = $1`, [srv2]);
+await expectError('members cannot lock chat', () => as(E, `select public.set_chat_lock($1, 10)`, [srv2]), 'permission');
+await expectOk('while chat is locked, members cannot post but moderators can; unlocking lets them back', async () => {
+  await as(A, `select public.set_chat_lock($1, 30)`, [srv2]);
+  let blocked = false;
+  try {
+    await as(E, `insert into public.messages (channel_id, content) values ($1, 'hello?')`, [gen2]);
+  } catch (e) {
+    blocked = /locked/.test(e.message);
+  }
+  const mod = await as(A, `insert into public.messages (channel_id, content) values ($1, 'Chat is paused for a bit') returning id`, [gen2]);
+  await as(A, `select public.set_chat_lock($1, 0)`, [srv2]);
+  const after = await as(E, `insert into public.messages (channel_id, content) values ($1, 'back again') returning id`, [gen2]);
+  const audit = (await db.query(`select count(*)::int n from public.audit_log where server_id = $1 and action in ('chat_lock', 'chat_unlock')`, [srv2])).rows[0].n;
+  if (!blocked || mod.rows.length !== 1 || after.rows.length !== 1 || audit !== 2) throw new Error(`${blocked} ${mod.rows.length} ${after.rows.length} ${audit}`);
+});
+await expectOk('a minimum account age keeps brand-new accounts out', async () => {
+  await as(A, `update public.servers set min_account_days = 3 where id = $1`, [srv2]);
+  const fresh = 'f0f0f0f0-0000-4000-8000-0000000000f1';
+  await db.exec(`insert into auth.users (id, raw_user_meta_data, email_confirmed_at, created_at) values ('${fresh}', '{"username":"freshie"}', now(), now() - interval '1 day')`);
+  let refused = false;
+  try {
+    await db.query(`insert into public.server_members (server_id, user_id) values ($1, $2)`, [srv2, fresh]);
+  } catch (e) {
+    refused = /3 day/.test(e.message);
+  }
+  await as(A, `update public.servers set min_account_days = 0 where id = $1`, [srv2]);
+  if (!refused) throw new Error('let in');
+});
+await expectError('members cannot bulk-delete', () => as(E, `select public.purge_messages($1, 10)`, [gen2]), 'permission');
+await expectOk('moderators bulk-delete the latest messages, optionally from one person', async () => {
+  for (let i = 0; i < 4; i++) await as(E, `insert into public.messages (channel_id, content) values ($1, $2)`, [gen2, `spam ${i}`]);
+  await as(A, `insert into public.messages (channel_id, content) values ($1, 'keep me')`, [gen2]);
+  const n = (await as(A, `select public.purge_messages($1, 3, '${E}') n`, [gen2])).rows[0].n;
+  const left = (await db.query(`select count(*)::int n from public.messages where channel_id = $1 and content like 'spam %'`, [gen2])).rows[0].n;
+  const kept = (await db.query(`select count(*)::int n from public.messages where channel_id = $1 and content = 'keep me'`, [gen2])).rows[0].n;
+  if (n !== 3 || left !== 1 || kept !== 1) throw new Error(`${n} ${left} ${kept}`);
+});
+
 console.log('\nUnconfirmed account cleanup');
 await expectOk('sign-ups never confirmed after 7 days are removed; everyone else stays', async () => {
   const ids = ['c1eaa001-0000-4000-8000-000000000001', 'c1eaa001-0000-4000-8000-000000000002', 'c1eaa001-0000-4000-8000-000000000003', 'c1eaa001-0000-4000-8000-000000000004'];

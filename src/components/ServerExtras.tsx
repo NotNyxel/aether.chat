@@ -48,6 +48,7 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
   const text = channels.filter((c) => c.type === 'text' && !c.thread_parent_id);
   const initial = () => ({
     verification_level: server.verification_level ?? 'none',
+    min_account_days: server.min_account_days ?? 0,
     welcome_channel_id: server.welcome_channel_id ?? null,
     welcome_message: server.welcome_message ?? '',
     rules: server.rules ?? '',
@@ -83,6 +84,16 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
             </button>
           ))}
         </div>
+      </Section>
+
+      <Section title="Minimum account age" description="Keep out brand-new accounts, which raids and spam usually come from.">
+        <select className={inputCls} disabled={!editable} value={d.min_account_days} onChange={(e) => setD((x) => ({ ...x, min_account_days: Number(e.target.value) }))}>
+          {[0, 1, 3, 7, 14, 30].map((n) => (
+            <option key={n} value={n}>
+              {n === 0 ? 'Any age' : `At least ${n} day${n === 1 ? '' : 's'} old`}
+            </option>
+          ))}
+        </select>
       </Section>
 
       <Section title="Welcome" description="Where the bot greets new members. Turn the bot on in the Bot tab.">
@@ -158,6 +169,7 @@ export function CommunityTab({ server, userId, editable }: { server: Server; use
             id: server.id,
             patch: {
               verification_level: d.verification_level,
+              min_account_days: d.min_account_days,
               welcome_channel_id: d.welcome_channel_id,
               welcome_message: d.welcome_message.trim() || null,
               rules: d.rules.trim() || null,

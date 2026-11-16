@@ -95,6 +95,7 @@ export function ThemeStudio() {
                 onClick={() => set({ mode: m })}
                 className={`grid h-9 place-items-center rounded-[calc(var(--ae-radius)-2px)] ${c.mode === m ? 'bg-ae-surface text-ae-text shadow' : 'text-ae-muted hover:text-ae-text'}`}
                 data-tip={m === 'dark' ? 'Dark' : 'Light'}
+                aria-label={m === 'dark' ? 'Dark mode' : 'Light mode'}
               >
                 {m === 'dark' ? <MoonIcon size={17} /> : <SunIcon size={17} />}
               </button>

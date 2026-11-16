@@ -436,7 +436,7 @@ export function TransferOwnership({ server, userId }: { server: Server; userId: 
   return (
     <Section title="Transfer ownership" description="Give this server to another member. You'll lose owner powers, and you can't undo it yourself.">
       <div className="flex gap-2">
-        <select className={inputCls} value={to} onChange={(e) => setTo(e.target.value)}>
+        <select aria-label="New owner" className={inputCls} value={to} onChange={(e) => setTo(e.target.value)}>
           <option value="">Choose a member…</option>
           {others.map((m) => (
             <MemberOption key={m.user_id} userId={m.user_id} nickname={m.nickname} />

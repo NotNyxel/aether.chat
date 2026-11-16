@@ -340,6 +340,7 @@ function RoleEditor({ server, role, rank, members, onDeleted }: {
           </ul>
           {editable && candidates.length > 0 && (
             <select
+              aria-label="Add a member to this role"
               className={inputCls}
               value=""
               onChange={(e) => e.target.value && actions.assign.mutate({ userId: e.target.value, roleId: role.id })}
@@ -512,6 +513,7 @@ export function MemberModeration({ server, member, rank, compact = false }: { se
         })}
         {rank.can(Permission.MANAGE_ROLES) && assignable.length > 0 && (
           <select
+            aria-label="Give a role"
             className="rounded-full border border-dashed border-ae-border bg-transparent px-2 py-0.5 text-xs text-ae-muted"
             value=""
             onChange={(e) => e.target.value && roleActions.assign.mutate({ userId: member.user_id, roleId: e.target.value })}
@@ -551,6 +553,7 @@ export function MemberModeration({ server, member, rank, compact = false }: { se
           )}
           {rank.can(Permission.MODERATE_MEMBERS) && !timedOut && (
             <select
+              aria-label="Time out this member"
               className="rounded-ae bg-ae-surface px-2 py-1 text-xs hover:bg-ae-hover"
               value=""
               onChange={async (e) => {

@@ -280,6 +280,8 @@ export interface Message {
   mention_everyone: boolean;
   mention_roles: string[];
   edited_at: string | null;
+  /** Disappearing messages: hidden and deleted after this time. */
+  expires_at?: string | null;
   created_at: string;
   /** Thread started from this message. */
   thread_id: string | null;
@@ -344,6 +346,8 @@ export interface Conversation {
   owner_id: string | null;
   last_message_at: string;
   created_at: string;
+  /** Disappearing messages (2.0): new messages vanish this many seconds after they're sent. */
+  disappear_after?: number | null;
   conversation_members: ConversationMember[];
 }
 
@@ -439,6 +443,8 @@ export interface PrivacySettings {
   dm_policy: 'everyone' | 'servers' | 'friends';
   friend_request_policy: 'everyone' | 'mutuals' | 'nobody';
   message_requests: boolean;
+  /** Who can add you to group chats (2.0). */
+  group_add_policy: 'friends' | 'nobody';
   updated_at: string;
 }
 

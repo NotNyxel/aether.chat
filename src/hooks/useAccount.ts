@@ -8,6 +8,7 @@ export const DEFAULT_PRIVACY: Omit<PrivacySettings, 'user_id' | 'updated_at'> = 
   dm_policy: 'everyone',
   friend_request_policy: 'everyone',
   message_requests: true,
+  group_add_policy: 'friends',
 };
 
 export function usePrivacySettings(userId: string) {

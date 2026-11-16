@@ -30,6 +30,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToggleSaved } from '../hooks/useSaved';
 import { previewText, useMessageText } from './E2eChat';
 import { useRemindMenuItem } from './Reminders';
+import { EditedLabel } from './EditHistory';
 
 export function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -167,6 +168,7 @@ function ThreadChip({ parentId, threadId, onOpen }: { parentId: string; threadId
 function MessageItemImpl(props: MessageItemProps) {
   const { message, grouped, me, editing } = props;
   const { data: author } = useProfile(message.author_id);
+  const { data: myProfile } = useProfile(message.edited_at ? me : null);
   const peekProfile = useUiStore((s) => s.peekProfile);
   const goTo = useUiStore((s) => s.goTo);
   const openForward = useUiStore((s) => s.openForward);
@@ -420,7 +422,7 @@ function MessageItemImpl(props: MessageItemProps) {
             </div>
           )}
         </div>
-        {message.edited_at && !editing && <span className="text-[10px] text-ae-muted" data-tip={`Edited ${new Date(message.edited_at).toLocaleString()}`}>(edited)</span>}
+        {!editing && <EditedLabel message={message} canSeeHistory={!!myProfile?.is_admin || (!!props.serverId && props.canPin)} />}
 
         {message.poll && <PollCard message={message} votes={props.votes ?? []} me={me} onVote={(ids) => props.onVote(message.id, ids)} />}
         {embeds

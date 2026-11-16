@@ -142,7 +142,17 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
   const canMentionEveryone = !!serverId && hasPermission(perms, Permission.MENTION_EVERYONE);
 
   // Newest-first list, rendered inside flex-col-reverse so the view stays pinned to the bottom.
-  const list = useMemo(() => messages.data?.pages.flat() ?? [], [messages.data]);
+  const [now, setNow] = useState(() => Date.now());
+  const hasExpiring = !!messages.data?.pages.some((p) => p.some((m) => m.expires_at));
+  useEffect(() => {
+    if (!hasExpiring) return;
+    const t = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(t);
+  }, [hasExpiring]);
+  const list = useMemo(
+    () => (messages.data?.pages.flat() ?? []).filter((m) => !m.expires_at || Date.parse(m.expires_at) > now),
+    [messages.data, now],
+  );
   const byId = useMemo(() => new Map(list.map((m) => [m.id, m])), [list]);
   const reactionsByMessage = useMemo(() => {
     const map = new Map<string, Map<string, string[]>>();

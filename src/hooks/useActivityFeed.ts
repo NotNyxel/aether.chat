@@ -11,6 +11,7 @@ import { useEffect, useRef } from 'react';
 import { notify } from '../lib/desktop';
 import { playSound, playTone } from '../lib/sounds';
 import type { ChatPref } from './useChatPrefs';
+import { isQuietNow, useQuietHours, type QuietHours } from './useQuietHours';
 import { useSupabase } from '../lib/supabase';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
@@ -54,6 +55,8 @@ function preview(m: Message, show: boolean): string {
 }
 
 export function useActivityFeed(userId: string, viewingScopeId: string | null, status: PresenceStatus | undefined) {
+  // Loaded once so quiet hours can silence pop-ups without opening Settings first.
+  useQuietHours();
   const sb = useSupabase();
   const qc = useQueryClient();
   // Every role I hold in any server, so @role mentions can count as mentions of me.
@@ -120,6 +123,8 @@ export function useActivityFeed(userId: string, viewingScopeId: string | null, s
           isDm &&
           !!qc.getQueryData<Conversation[]>(['conversations'])?.find((c) => c.id === scopeId)?.conversation_members.find((x) => x.user_id === userId)?.request_pending;
         if (mine || viewing || statusRef.current === 'dnd' || rule.muted || rule.level === 'none' || pendingRequest) return;
+        // Quiet hours: the message arrives and counts as unread, but makes no sound or pop-up.
+        if (isQuietNow(qc.getQueryData<QuietHours | null>(['quiet-hours']))) return;
         const wanted = isDm || rule.level === 'all' || mentioned;
         if (!wanted) return;
 

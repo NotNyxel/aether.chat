@@ -8,6 +8,7 @@
  *   Bandwidth  : audio/video bitrate profile and screen-share resolution and frame-rate defaults
  * Audio settings live in the settings store. MainLayout pushes changes into the running voice engine.
  */
+import { isQuietNow, useQuietHours, useSaveQuietHours } from '../hooks/useQuietHours';
 import { AccountTab, PrivacyTab } from './SettingsAccount';
 import { ProfileEditor } from './ProfileEditor';
 import { AdminTab } from './AdminPanel';
@@ -591,6 +592,7 @@ function NotificationsTab() {
     <div className="space-y-6">
       <DesktopNotificationsSection />
       <PushSection />
+      <QuietHoursSection />
       <Section
         title="Sounds"
         description="DM and mention sounds only play when you're not already looking at that chat. Do Not Disturb silences messages and ringing."
@@ -645,6 +647,43 @@ function NotificationsTab() {
         </Section>
       ))}
     </div>
+  );
+}
+
+function QuietHoursSection() {
+  const { data: q, isLoading } = useQuietHours();
+  const save = useSaveQuietHours();
+  const on = !!q;
+  const start = q?.start_at.slice(0, 5) ?? '22:00';
+  const end = q?.end_at.slice(0, 5) ?? '07:00';
+  const put = (s: string, e: string) => {
+    if (s === e) return toast.error('Pick two different times.');
+    save.mutate({ start_at: s, end_at: e }, { onError: (err) => toast.error(err.message) });
+  };
+  return (
+    <Section
+      title="Quiet hours"
+      description="Every night between these times: no message sounds, pop-ups or push notifications on any device. Messages still arrive, and calls still ring."
+    >
+      <Toggle
+        label="Turn on quiet hours"
+        checked={on}
+        onChange={(v) => !isLoading && !save.isPending && (v ? put(start, end) : save.mutate(null, { onError: (err) => toast.error(err.message) }))}
+      />
+      {on && (
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <label className="flex items-center gap-2">
+            From
+            <input type="time" className="ae-input w-32" value={start} onChange={(e) => e.target.value && put(e.target.value, end)} />
+          </label>
+          <label className="flex items-center gap-2">
+            to
+            <input type="time" className="ae-input w-32" value={end} onChange={(e) => e.target.value && put(start, e.target.value)} />
+          </label>
+          <span className="text-xs text-ae-muted">{isQuietNow(q) ? 'Quiet right now.' : `Time zone: ${q?.tz}`}</span>
+        </div>
+      )}
+    </Section>
   );
 }
 

@@ -1,4 +1,5 @@
 /** A DM or group DM: header with call buttons, the in-call panel, chat history and (for groups) members. */
+import { DisappearingBar, DisappearingButton } from './Disappearing';
 import { isTabletLayout } from '../lib/phone';
 import { ask, promptText } from './ConfirmDialog';
 import { useMemo, useState } from 'react';
@@ -186,6 +187,7 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
           <CameraIcon size={20} />
         </button>
         <E2eButton conv={conv} me={userId} />
+        <DisappearingButton conv={conv} />
         {conv.type === 'dm' && (
           <button
             type="button"
@@ -264,6 +266,7 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
         top={
           <>
             <E2eUnlockBar me={userId} />
+            <DisappearingBar conv={conv} />
             {top}
           </>
         }

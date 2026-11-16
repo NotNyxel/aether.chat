@@ -65,6 +65,9 @@ Deno.serve(async (req) => {
     (settings ?? []).filter((s) => s.level === 'none' || (s.muted_until && new Date(s.muted_until) > new Date())).map((s) => s.user_id),
   );
   recipients = recipients.filter((id) => !dnd.has(id) && !muted.has(id));
+  // Quiet hours (2.0): no pushes between the times each person picked, in their own time zone.
+  const quiet = await Promise.all(recipients.map(async (id) => (await sb.rpc('in_quiet_hours', { p_user: id })).data === true));
+  recipients = recipients.filter((_, i) => !quiet[i]);
   if (!recipients.length) return json({ sent: 0 });
 
   const { data: subs } = await sb.from('push_subscriptions').select('id, endpoint, p256dh, auth').in('user_id', recipients);

@@ -1454,11 +1454,18 @@ await expectOk('people who choose "nobody" cannot be added to group chats', asyn
   if (!/allow/.test(err)) throw new Error(err);
 });
 await expectOk('quiet hours are detected across midnight', async () => {
-  await db.query(`update public.users set quiet_start = (now() at time zone 'UTC')::time - interval '1 hour', quiet_end = (now() at time zone 'UTC')::time + interval '1 hour', quiet_tz = 'UTC' where id = $1`, [A]);
+  await as(A, `insert into public.quiet_hours (start_at, end_at, tz) values ((now() at time zone 'UTC')::time - interval '1 hour', (now() at time zone 'UTC')::time + interval '1 hour', 'UTC')`);
   const on = (await db.query(`select public.in_quiet_hours($1) q`, [A])).rows[0].q;
-  await db.query(`update public.users set quiet_start = null, quiet_end = null where id = $1`, [A]);
+  await as(A, `delete from public.quiet_hours`);
   const off = (await db.query(`select public.in_quiet_hours($1) q`, [A])).rows[0].q;
   if (!on || off) throw new Error(`${on} ${off}`);
+});
+await expectOk("quiet hours are private: others can't read them", async () => {
+  await as(A, `insert into public.quiet_hours (start_at, end_at, tz) values ('22:00', '07:00', 'Asia/Dubai')`);
+  const own = (await as(A, `select count(*)::int n from public.quiet_hours`)).rows[0].n;
+  const other = (await as(B, `select count(*)::int n from public.quiet_hours`)).rows[0].n;
+  await as(A, `delete from public.quiet_hours`);
+  if (own !== 1 || other !== 0) throw new Error(`${own} ${other}`);
 });
 await expectOk("bug reports: you see your own, admins see all, others don't", async () => {
   await as(E, `insert into public.bug_reports (description, app_version, platform) values ('The send button does nothing', '2.0.0', 'web')`);

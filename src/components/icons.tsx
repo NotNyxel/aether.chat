@@ -179,6 +179,7 @@ export {
   Repeat as RepeatIcon,
   GripVertical as GripIcon,
   History as HistoryIcon,
+  Timer as TimerIcon,
   Gauge as GaugeIcon,
   Scale as ScaleIcon,
   ShieldX as BannedIcon,

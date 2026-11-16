@@ -663,6 +663,17 @@ export function PrivacyTab({ userId }: { userId: string }) {
         />
       </Section>
 
+      <Section title="Group chats" description="Who can add you to a group chat. You can always leave a group, and you can always start your own.">
+        <Choice
+          value={p.group_add_policy}
+          onChange={(v) => set({ group_add_policy: v })}
+          options={[
+            { id: 'friends', label: 'Friends', hint: 'Any of your friends can add you to a group.' },
+            { id: 'nobody', label: 'No one', hint: 'Friends see a note that you don’t join groups this way. Ask them to message you instead.' },
+          ]}
+        />
+      </Section>
+
       <Section title="Discovery">
         <DiscoverableToggle userId={userId} />
       </Section>

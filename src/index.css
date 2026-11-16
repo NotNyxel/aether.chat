@@ -897,3 +897,36 @@ html {
 :root[data-ae-times='true'] .ae-msg time.invisible {
   visibility: visible;
 }
+
+/* ── 1.9.5: phones held sideways use the phone layout, fitted to a wide, short screen ──────── */
+@media (orientation: landscape) and (pointer: coarse) and (max-height: 540px) {
+  :root[data-ae-phone='true'] {
+    /* Keep clear of the notch and rounded corners, which are now on the left and right. */
+    .ae-shell,
+    .ae-tabbar,
+    .ae-thread-panel {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+    /* Height is what's scarce: a shorter tab bar and chat header. */
+    .ae-tabbar > button {
+      gap: 0;
+      padding-top: 3px;
+      padding-bottom: 2px;
+    }
+    .ae-tabbar > button > span:first-child {
+      height: 24px;
+    }
+    .ae-chat-header {
+      min-height: 46px;
+    }
+    /* Bottom sheets and dialogs: centred at a comfortable width, not stretched edge to edge. */
+    .ae-sheet {
+      width: min(560px, 100vw);
+      margin-inline: auto;
+    }
+    .ae-backdrop > .ae-dialog {
+      width: min(560px, 100vw) !important;
+    }
+  }
+}

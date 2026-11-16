@@ -5,7 +5,14 @@ GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
 ## [1.9.5] - 2026-11-16
 
-**Reactions work on phones**
+**Reactions work on phones, and phones held sideways get the phone layout**
+
+- **Phones turned sideways now use the same layout as upright**, instead of switching to the desktop one, fitted to the
+  wide, short screen:
+  - content stays clear of the notch and rounded corners on the sides;
+  - the tab bar and chat headers are shorter;
+  - menus and dialogs sit centered at a comfortable width instead of stretching edge to edge.
+  - Tablets keep the desktop layout when sideways, since they have the room.
 
 - **Fixed:** on Android (the web app in Chrome and the Android app), pressing and holding a message opened the reaction
   menu, which then closed itself straight away. The browser sends its own long-press event a moment after ours, and the

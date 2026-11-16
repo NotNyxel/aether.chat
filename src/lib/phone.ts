@@ -1,9 +1,10 @@
 /**
- * Phone layout or desktop layout. Phones always get the phone layout; tablets get it while held
- * upright (portrait), and the desktop layout when turned sideways. Sets <html data-ae-phone>,
- * which the CSS keys off, and keeps it updated when the device rotates or the window resizes.
+ * Phone layout or desktop layout. Phones always get the phone layout, upright or sideways (a touch
+ * screen under 540px tall is a phone on its side); tablets get it while held upright (portrait),
+ * and the desktop layout when turned sideways. Sets <html data-ae-phone>, which the CSS keys off,
+ * and keeps it updated when the device rotates or the window resizes.
  */
-export const PHONE_QUERY = '(max-width: 767px), (orientation: portrait) and (pointer: coarse) and (max-width: 1199px)';
+export const PHONE_QUERY = '(max-width: 767px), (orientation: portrait) and (pointer: coarse) and (max-width: 1199px), (pointer: coarse) and (max-height: 540px)';
 
 export function isPhoneLayout(): boolean {
   return typeof window !== 'undefined' && window.matchMedia(PHONE_QUERY).matches;

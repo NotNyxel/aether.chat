@@ -1,5 +1,6 @@
 /** If a screen crashes, show what happened and a way back instead of a blank window. */
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportError } from '../lib/errorTracking';
 
 export class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
@@ -10,6 +11,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Aether crashed:', error, info.componentStack);
+    reportError(error, 'crash');
   }
 
   render() {

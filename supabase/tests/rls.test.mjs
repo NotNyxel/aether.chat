@@ -1474,6 +1474,14 @@ await expectOk("bug reports: you see your own, admins see all, others don't", as
   const other = (await as(B, `select count(*)::int n from public.bug_reports`)).rows[0].n;
   if (own !== 1 || admin < 1 || other !== 0) throw new Error(`${own} ${admin} ${other}`);
 });
+await expectOk('data export covers 2.0 data (folders, reminders, bug reports) and only your own', async () => {
+  await as(E, `insert into public.chat_folders (name) values ('Family')`);
+  const d = (await as(E, `select public.export_my_data() d`)).rows[0].d;
+  const other = (await as(B, `select public.export_my_data() d`)).rows[0].d;
+  if (d.chat_folders.length !== 1 || d.bug_reports.length !== 1 || !Array.isArray(d.reminders) || !d.profile) throw new Error(JSON.stringify(Object.keys(d)));
+  if (other.chat_folders.length !== 0 || other.bug_reports.length !== 0) throw new Error('leaked');
+  await as(E, `delete from public.chat_folders`);
+});
 await expectOk('errors are grouped and counted; only admins can read them', async () => {
   for (const u of [E, E, B]) await as(u, `select public.log_client_error('abc123', 'TypeError: x is undefined', 'at foo', '2.0.0', 'web', '/app')`);
   const r = (await as(A, `select count, cardinality(users) n from public.client_errors where fingerprint = 'abc123'`)).rows[0];

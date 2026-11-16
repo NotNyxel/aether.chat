@@ -10,8 +10,9 @@ import { useSupabase } from '../lib/supabase';
 import { adminUserCall, AdminUserManager, AuditList } from './AdminUserManager';
 import { ask, promptText } from './ConfirmDialog';
 import { LevelChip } from './Moderation';
-import { AdminIcon, AuditIcon, BannedIcon, CheckIcon, CloseIcon, DashboardIcon, FlagIcon, GavelIcon, MegaphoneIcon, MessageIcon, ReportsIcon, ScaleIcon, SearchIcon, ServerIcon, SlidersIcon, UserPlusIcon, UsersIcon, LiveIcon, WarningIcon } from './icons';
+import { AdminIcon, AuditIcon, BannedIcon, BugIcon, CheckIcon, CloseIcon, DashboardIcon, FlagIcon, GavelIcon, MegaphoneIcon, MessageIcon, ReportsIcon, ScaleIcon, SearchIcon, ServerIcon, SlidersIcon, UserPlusIcon, UsersIcon, LiveIcon, WarningIcon } from './icons';
 import { BadgeRow } from './ProfileCard';
+import { BugReportsAdmin, ErrorsAdmin } from './AdminBugs';
 import { ActivityCharts, BadgesAdmin, BadgeToggles, ServersAdmin } from './AdminExtras';
 import { Section, Toggle } from './SettingsPanel';
 import { toast } from './Toaster';
@@ -57,7 +58,7 @@ interface AppealRow {
   created_at: string;
   ban: { reason: string; created_at: string; expires_at: string | null; lifted_at: string | null };
 }
-type AdminSection = 'overview' | 'users' | 'servers' | 'badges' | 'appeals' | 'reports' | 'settings' | 'audit';
+type AdminSection = 'overview' | 'users' | 'servers' | 'badges' | 'appeals' | 'reports' | 'bugs' | 'errors' | 'settings' | 'audit';
 interface ReportRow {
   id: string;
   reporter_id: string | null;
@@ -570,6 +571,8 @@ export function AdminTab({ userId }: { userId: string }) {
     { id: 'badges', label: 'Badges', icon: <AdminIcon size={14} /> },
     { id: 'appeals', label: 'Appeals', icon: <ScaleIcon size={14} />, count: s?.open_appeals },
     { id: 'reports', label: 'Reports', icon: <ReportsIcon size={14} />, count: s?.open_reports },
+    { id: 'bugs', label: 'Bug reports', icon: <BugIcon size={14} /> },
+    { id: 'errors', label: 'Errors', icon: <WarningIcon size={14} /> },
     { id: 'settings', label: 'App settings', icon: <SlidersIcon size={14} /> },
     { id: 'audit', label: 'Audit log', icon: <AuditIcon size={14} /> },
   ];
@@ -632,6 +635,16 @@ export function AdminTab({ userId }: { userId: string }) {
         {section === 'settings' && (
           <Section title="App settings">
             <Config />
+          </Section>
+        )}
+        {section === 'bugs' && (
+          <Section title="Bug reports" description="Sent from Report a bug, with the app version, platform and screen. Screenshots are private to staff and the reporter.">
+            <BugReportsAdmin />
+          </Section>
+        )}
+        {section === 'errors' && (
+          <Section title="Errors" description="Crashes and unexpected errors from everyone's apps, grouped and counted per version. Click one for its stack trace.">
+            <ErrorsAdmin />
           </Section>
         )}
         {section === 'audit' && (

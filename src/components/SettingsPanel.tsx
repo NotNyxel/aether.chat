@@ -8,6 +8,9 @@
  *   Bandwidth  : audio/video bitrate profile and screen-share resolution and frame-rate defaults
  * Audio settings live in the settings store. MainLayout pushes changes into the running voice engine.
  */
+import { openTour, openWhatsNew } from './WhatsNew';
+import { openBugReport } from './BugReport';
+import { BugIcon } from './icons';
 import { isQuietNow, useQuietHours, useSaveQuietHours } from '../hooks/useQuietHours';
 import { AccountTab, PrivacyTab } from './SettingsAccount';
 import { ProfileEditor } from './ProfileEditor';
@@ -857,10 +860,21 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
           </div>
         ))}
         <div className="mt-auto border-t border-ae-border pt-3">
+          <button type="button" onClick={openBugReport} className="flex w-full items-center gap-2.5 rounded-ae px-3 py-2 text-left text-sm text-ae-muted hover:bg-ae-hover hover:text-ae-text">
+            <span className="w-5 text-center"><BugIcon size={15} className="ae-ico" /></span> Report a bug
+          </button>
           <button type="button" onClick={onSignOut} className="flex w-full items-center gap-2.5 rounded-ae px-3 py-2 text-left text-sm text-ae-danger hover:bg-ae-hover">
             <span className="w-5 text-center"><LogOutIcon size={15} className="ae-ico" /></span> Sign out
           </button>
-          <p className="mt-2 px-3 text-[11px] text-ae-muted">Aether v{__APP_VERSION__}</p>
+          <p className="mt-2 flex items-center gap-2 px-3 text-[11px] text-ae-muted">
+            Aether v{__APP_VERSION__}
+            <button type="button" className="text-ae-accent hover:underline" onClick={openWhatsNew}>
+              What&apos;s new
+            </button>
+            <button type="button" className="hover:text-ae-text hover:underline" onClick={openTour}>
+              Tour
+            </button>
+          </p>
         </div>
       </nav>
 

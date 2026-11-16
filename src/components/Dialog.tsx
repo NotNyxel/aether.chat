@@ -3,11 +3,12 @@ import { CloseIcon } from './icons';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useEscape } from '../lib/escape';
 
-export function Dialog({ title, onClose, children, wide = false }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+/** `z` lifts a dialog that can open over Settings or another full-screen layer. */
+export function Dialog({ title, onClose, children, wide = false, z = 'z-40' }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; z?: string }) {
   useEscape(() => onClose(), true);
 
   return (
-    <div className="ae-backdrop fixed inset-0 z-40 grid place-items-center bg-black/60 p-4" onMouseDown={onClose}>
+    <div className={`ae-backdrop fixed inset-0 ${z} grid place-items-center bg-black/60 p-4`} onMouseDown={onClose}>
       <div
         role="dialog"
         aria-modal="true"

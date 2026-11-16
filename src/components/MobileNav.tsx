@@ -3,6 +3,10 @@
  * Servers, Notifications and You, each a full screen with a large title, like a native app.
  * Opening a chat hides the tab bar; the chat header has a back button.
  */
+import { openTour, openWhatsNew } from './WhatsNew';
+import { RocketIcon, SparklesIcon } from './icons';
+import { openBugReport } from './BugReport';
+import { BugIcon } from './icons';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useProfile, useUpdateProfile } from '../hooks/useChatData';
 import type { PresenceStatus } from '../types/db';
@@ -269,6 +273,9 @@ export function MobileYou({ userId }: { userId: string }) {
         <Row icon={<PaletteIcon size={17} />} label="Customize your theme" hint="Colours, gradient and effects" onClick={openThemeStudio} />
         <Row icon={<BellIcon size={17} />} label="Notifications" onClick={() => openSettings('notifications')} />
         <Row icon={<SettingsIcon size={17} />} label="All settings" onClick={() => openSettings()} />
+        <Row icon={<SparklesIcon size={17} />} label="What's new" hint={`Aether ${__APP_VERSION__}`} onClick={openWhatsNew} />
+        <Row icon={<RocketIcon size={17} />} label="Take the tour" hint="A quick look around" onClick={openTour} />
+        <Row icon={<BugIcon size={17} />} label="Report a bug" hint="Tell us what went wrong" onClick={openBugReport} />
       </div>
     </div>
   );

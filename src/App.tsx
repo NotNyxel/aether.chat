@@ -22,6 +22,8 @@ import { resolveBackendConfig, SupabaseProvider, useSupabase } from './lib/supab
 import { installTouchControls } from './lib/touch';
 import { clearCache, hydrateCache, persistCache } from './lib/persistCache';
 import { warmEmojiCache } from './lib/emojiWarm';
+import { installErrorTracking, reportError, setPageLabel } from './lib/errorTracking';
+import { useUiStore } from './stores/uiStore';
 
 /** A failed change never fails silently: if an action has no error handling of its own, say so. */
 export function friendlyError(err: unknown): string {
@@ -33,10 +35,21 @@ export function friendlyError(err: unknown): string {
   return msg || 'Something went wrong. Try again.';
 }
 
+// The screen name sent with error reports (never ids or contents).
+setPageLabel(() => {
+  const s = useUiStore.getState();
+  if (s.settingsOpen) return `settings/${s.settingsTab}`;
+  if (s.serverSettings) return `server-settings/${s.serverSettings.tab}`;
+  if (s.view === 'server') return 'server';
+  return s.homeTarget === 'friends' || s.homeTarget === 'requests' ? s.homeTarget : 'dm';
+});
+
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (err, _vars, _ctx, mutation) => {
       if (!mutation.options.onError) toast.error(friendlyError(err));
+      // Server refusals (permissions, limits) are expected; a thrown TypeError is a bug.
+      if (err instanceof TypeError || err instanceof ReferenceError) reportError(err, 'mutation');
     },
   }),
   defaultOptions: {
@@ -134,6 +147,10 @@ function AuthGate() {
     hydrated.current = userId;
   }
   useEffect(() => (userId ? persistCache(qc, userId) : undefined), [qc, userId]);
+  // Crash and error reports (only accepted from signed-in users).
+  useEffect(() => {
+    if (userId) installErrorTracking(sb);
+  }, [sb, userId]);
   // First run on a device: download the emoji images in the background so they're instant later.
   useEffect(() => {
     if (!userId) return;

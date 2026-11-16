@@ -1,4 +1,6 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { WhatsNewLayer } from './WhatsNew';
+import { BugReportLayer } from './BugReport';
 import { AddServerDialog } from './Invites';
 import { InboxButton } from './Inbox';
 import { QuickSwitcher, QuickSwitcherButton } from './QuickSwitcher';
@@ -238,6 +240,8 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <ForwardDialog me={userId} />
       <Lightbox />
       <ReminderWatcher />
+      <BugReportLayer />
+      <WhatsNewLayer userId={userId} />
       <ProfilePeekLayer me={userId} server={server} />
       <ThemeStudio />
       <AndroidUpdate />

@@ -1,4 +1,5 @@
 /** A DM or group DM: header with call buttons, the in-call panel, chat history and (for groups) members. */
+import { isTabletLayout } from '../lib/phone';
 import { ask, promptText } from './ConfirmDialog';
 import { useMemo, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
@@ -131,6 +132,8 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
   const { data: activeCalls = [] } = useActiveCalls();
   const actions = useConversationActions();
   const [showMembers, setShowMembersRaw] = useState(() => {
+    // Tablets: side panels slide over the chat, so they start closed (the header button opens them).
+    if (isTabletLayout()) return false;
     if (conv.type === 'group') return true;
     try {
       return localStorage.getItem('aether.dmProfilePanel') !== '0';

@@ -3,6 +3,24 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.10.1] - 2026-11-16
+
+**The tablet layout, reworked**
+
+1.10.0 still looked too much like the desktop app on tablets. Tablets and iPads now use the phone app's navigation in a
+split view:
+
+- **Left:** the same screens as on phones (Messages with its big title, search, Friends and Requests; Notifications;
+  You), with the **phone tab bar** at the bottom of the column. On the Servers tab, server icons and the channel list
+  share the column.
+- **Right:** the open chat, always beside the list. There's no back arrow, desktop title bar or server rail.
+- **Profiles, members, search, pins and threads:**
+  - when held sideways, they open beside the chat;
+  - when held upright, they slide over it;
+  - DM profiles start closed on tablets (open them with the header button).
+- Your user panel lives on the **You** tab, as on phones.
+- Held upright, the list column is a little slimmer so the chat keeps its width.
+
 ## [1.10.0] - 2026-11-16
 
 **A tablet layout for iPads and Android tablets**

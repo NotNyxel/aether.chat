@@ -947,41 +947,128 @@ html {
   }
 }
 
-/* Tablets and iPads: the desktop arrangement (servers, list, chat, side panels), made for touch. */
+/* Phones: the tab bar only shows on list screens, not inside a chat. */
+:root[data-ae-phone='true'] .ae-shell[data-pane='main'] ~ .ae-tabbar {
+  display: none !important;
+}
+
+/* Tablets and iPads: the phone app's navigation in a split view. The left column is the phone
+   screens (big titles, chat list, Notifications, You) with the phone tab bar at its foot; the open
+   chat is always beside it on the right. No desktop title bar, server rail or back arrow. */
 :root[data-ae-tablet='true'] {
-  /* Everything a little larger and easier to hit. */
+  --ae-col: 360px;
+  --ae-tabbar-h: calc(64px + env(safe-area-inset-bottom));
   font-size: 106.25%;
-  /* Clear of rounded corners and the home indicator. */
+
+  .ae-titlebar {
+    display: none !important;
+  }
+  .ae-mobile-only {
+    display: flex !important;
+  }
+  /* Your own panel lives on the You tab, as on phones. */
+  .ae-userpanel {
+    display: none !important;
+  }
+  /* The list is always there, so chats need no back arrow; search lives in the list. */
+  .ae-chat-header .ae-mobile-only,
+  .ae-chat-header form.ae-desktop-only {
+    display: none !important;
+  }
+
   .ae-shell {
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+  /* Left column: the phone screen for the current tab. */
+  .ae-shell > .ae-tabview {
+    display: none;
+  }
+  .ae-shell[data-tab='home'] > .ae-tabview,
+  .ae-shell[data-tab='inbox'] > .ae-tabview,
+  .ae-shell[data-tab='you'] > .ae-tabview,
+  .ae-shell[data-tab='servers'][data-view='home'] > .ae-tabview {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 var(--ae-col);
+    width: var(--ae-col);
+    min-height: 0;
+    padding-bottom: var(--ae-tabbar-h);
+    background: var(--ae-bg);
+  }
+  .ae-shell:not([data-tab='servers']) > nav,
+  .ae-shell:not([data-tab='servers']) > aside,
+  .ae-shell[data-tab='servers'][data-view='home'] > aside {
+    display: none;
+  }
+  /* Servers tab: the server icons and the channel list share the column. */
+  .ae-shell[data-tab='servers'] > nav {
+    width: 72px;
+    padding-bottom: var(--ae-tabbar-h);
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  .ae-shell[data-tab='servers'] > aside {
+    flex: 0 0 auto;
+    width: calc(var(--ae-col) - 72px);
+    padding-bottom: var(--ae-tabbar-h);
+    border-right: 0;
+    background: var(--ae-bg);
+  }
+  .ae-shell[data-tab='servers'][data-view='home'] > .ae-tabview {
+    flex-basis: calc(var(--ae-col) - 72px);
+    width: calc(var(--ae-col) - 72px);
+  }
+  .ae-shell[data-tab='servers'] > aside > header:first-child {
+    padding-top: env(safe-area-inset-top);
+    height: auto;
+    min-height: 56px;
+    font-size: 17px;
+  }
+  /* Right: the open chat (or Friends), always visible. */
+  .ae-shell > main {
+    display: flex !important;
+    order: 2;
+    flex: 1 1 auto;
+    min-width: 0;
+    border-left: 1px solid var(--ae-border);
     padding-bottom: env(safe-area-inset-bottom);
   }
-  .ae-titlebar {
-    padding-top: env(safe-area-inset-top);
-    box-sizing: content-box;
+  .ae-chat-header {
+    height: auto !important;
+    min-height: 60px;
+    padding-top: env(safe-area-inset-top) !important;
+    background: var(--ae-bg-elevated);
   }
-  /* A roomier channel / DM list with full-size touch rows. */
-  .ae-shell > aside.ae-panel {
-    width: 292px;
+  /* The phone tab bar, at the foot of the left column. */
+  .ae-tabbar {
+    display: flex !important;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    z-index: 20;
+    width: calc(var(--ae-col) + env(safe-area-inset-left));
+    padding-left: env(safe-area-inset-left);
+    border-right: 1px solid var(--ae-border);
   }
+
+  /* Touch sizes. */
   .ae-shell > aside li > button,
   .ae-shell > aside li > a {
     min-height: 44px;
   }
-  .ae-shell > nav {
-    width: 76px;
-  }
-  .ae-chat-header {
-    min-height: 56px;
-  }
-  /* Typing: 16px stops iPadOS zooming into fields; a taller composer is easier to tap. */
   input,
   textarea,
   select {
     font-size: 16px !important;
   }
-  /* Menus and pickers rise from the bottom, centred at a comfortable width. */
+  .ae-composer {
+    border-radius: 16px;
+  }
+  .ae-msg {
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+  /* Menus, pickers and dialogs: centred sheets at a comfortable width. */
   .ae-sheet {
     width: min(520px, 100vw);
     margin-inline: auto;
@@ -989,67 +1076,38 @@ html {
   .ae-backdrop > .ae-dialog {
     max-height: calc(100dvh - 48px);
   }
+  /* Profiles, members, search, pins and threads: beside the chat when sideways (below), sliding
+     over it when upright. */
+  .ae-chat-body > aside {
+    width: 340px !important;
+    border-left: 1px solid var(--ae-border);
+  }
+}
+@media (orientation: portrait) {
+  :root[data-ae-tablet='true'] .ae-chat-body {
+    position: relative;
+  }
+  :root[data-ae-tablet='true'] .ae-chat-body > aside {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    width: min(360px, 62%) !important;
+    background: var(--ae-bg-solid, var(--ae-bg-elevated));
+    box-shadow: -18px 0 40px rgb(0 0 0 / 0.45);
+    animation: ae-slide-in-right 200ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
 }
 
-/* Tablets held upright: keep the chat wide. The list is a little narrower, and members, search,
-   pins and threads slide over the chat from the right instead of squeezing it. */
+/* Upright: a slimmer list column so the chat keeps its width. */
 @media (orientation: portrait) {
   :root[data-ae-tablet='true'] {
-    .ae-shell > aside.ae-panel {
-      width: 264px;
-    }
-    .ae-shell > nav {
-      width: 68px;
-    }
-    .ae-chat-body {
-      position: relative;
-    }
-    .ae-chat-body > aside {
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 30;
-      width: min(360px, 88%) !important;
-      background: var(--ae-bg-solid, var(--ae-bg-elevated));
-      box-shadow: -18px 0 40px rgb(0 0 0 / 0.45);
-      animation: ae-slide-in-right 200ms cubic-bezier(0.2, 0.9, 0.3, 1);
-    }
+    --ae-col: 320px;
   }
 }
 @keyframes ae-slide-in-right {
   from {
     transform: translateX(100%);
-  }
-}
-
-/* Tablets: floating rounded panels (server rail, list, chat), in the app and on the web.
-   (Doubled attributes so this outranks the computer web app's own floating-panel rules.) */
-:root[data-ae-tablet='true'][data-ae-touch='true'] {
-  .ae-shell {
-    gap: 10px;
-    padding: 10px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
-    background: var(--ae-bg);
-  }
-  .ae-shell > nav {
-    border-radius: 18px;
-    background: var(--ae-bg-sunken);
-    padding-top: 10px;
-    padding-bottom: 10px;
-  }
-  .ae-shell > aside,
-  .ae-shell > main {
-    border: 1px solid var(--ae-border);
-    border-radius: 20px;
-    overflow: hidden;
-  }
-  /* A rounder message box, lifted off the bottom edge. */
-  .ae-composer {
-    border-radius: 16px;
-  }
-  /* A little more air between messages for reading and tapping. */
-  .ae-msg {
-    padding-top: 3px;
-    padding-bottom: 3px;
   }
 }

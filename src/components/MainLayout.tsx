@@ -218,7 +218,8 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
         )}
       </section>
     </div>
-    {mobilePane === 'nav' && (
+    {/* Phones hide it while a chat is open (CSS); tablets keep it under the list column. */}
+    {(
       <MobileTabBar
         userId={userId}
         tab={mobileTab}

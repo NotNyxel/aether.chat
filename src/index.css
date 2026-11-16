@@ -1161,3 +1161,44 @@ select,
   }
 }
 
+/* ── Secret themes (2.1): the touches that make each one more than a palette ─────────────────── */
+/* Goblin Mode: things sit slightly crooked and wobble when you poke them. */
+:root[data-ae-theme='secret-goblin'] .ae-press:not(:disabled):hover {
+  transform: rotate(-2deg) scale(1.03);
+}
+:root[data-ae-theme='secret-goblin'] .ae-avatar {
+  transform: rotate(-3deg);
+}
+/* Insert Coin: pixel headings and chunky offset shadows. */
+:root[data-ae-theme='secret-arcade'] :is(h1, h2, h3) {
+  font-family: 'Press Start 2P', monospace;
+  font-size: max(0.8em, 12px);
+  letter-spacing: 0;
+  line-height: 1.6;
+}
+:root[data-ae-theme='secret-arcade'] :is(.ae-dialog, [role='menu']) {
+  box-shadow: 6px 6px 0 #ff3df2 !important;
+}
+/* Hackerman: CRT scanlines and glowing text. */
+:root[data-ae-theme='secret-hackerman'] body {
+  text-shadow: 0 0 6px rgba(51, 255, 102, 0.35);
+}
+:root[data-ae-theme='secret-hackerman'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
+}
+/* Disco Inferno: the accent glows everywhere. */
+:root[data-ae-theme='secret-disco'] .bg-ae-accent {
+  box-shadow: 0 0 16px rgba(255, 210, 63, 0.6);
+}
+/* Deep Fried: crunchy pictures and loud text. */
+:root[data-ae-theme='secret-deepfried'] img {
+  filter: saturate(2.4) contrast(1.35);
+}
+:root[data-ae-theme='secret-deepfried'] :is(h1, h2, h3) {
+  text-shadow: 1px 1px 0 #ff2a00, -1px -1px 0 #ff2a00;
+}

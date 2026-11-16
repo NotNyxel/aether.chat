@@ -11,7 +11,7 @@
 import { currentLanguage, LANGUAGES, languageSetting, setLanguage, t } from '../lib/i18n';
 import { openTour, openWhatsNew } from './WhatsNew';
 import { openBugReport } from './BugReport';
-import { BugIcon } from './icons';
+import { BugIcon, LockIcon, SparklesIcon } from './icons';
 import { isQuietNow, useQuietHours, useSaveQuietHours } from '../hooks/useQuietHours';
 import { AccountTab, PrivacyTab } from './SettingsAccount';
 import { ProfileEditor } from './ProfileEditor';
@@ -25,7 +25,8 @@ import { comboFromEvent, formatCombo } from '../lib/keybinds';
 import { ALL_SOUNDS, playSound, SOUND_INFO } from '../lib/sounds';
 import { useSettingsStore, type Keybinds } from '../stores/settingsStore';
 import { useUiStore, type SettingsTab } from '../stores/uiStore';
-import { isHexColor, PRESET_ORDER, THEME_PRESETS } from '../theme/presets';
+import { isHexColor, PRESET_ORDER, SECRET_PRESETS, THEME_PRESETS, type ThemePresetId } from '../theme/presets';
+import { redeemCode } from '../lib/secrets';
 import { AdminIcon, AppWindowIcon, ArrowLeftIcon as BackIcon, BellIcon, CloseIcon, GameIcon, GaugeIcon, IdCardIcon, KeyboardIcon, LogOutIcon, NetworkIcon, PaletteIcon, ShieldIcon, StageIcon, UserIcon } from './icons';
 import { ActivityTab, BackgroundShortcutsSection, DesktopNotificationsSection, WindowsTab } from './SettingsDesktop';
 import { useTheme } from './ThemeEngine';
@@ -174,10 +175,62 @@ function LanguageSection() {
   );
 }
 
+/** Secret codes (2.1): a small box under the themes. A right code unlocks and applies a hidden theme. */
+function SecretCodeBox({ onUnlocked }: { onUnlocked: (id: ThemePresetId) => void }) {
+  const unlock = useSettingsStore((s) => s.unlockSecret);
+  const unlocked = useSettingsStore((s) => s.secretsUnlocked);
+  const [code, setCode] = useState('');
+  const [state, setState] = useState<'idle' | 'checking' | 'wrong'>('idle');
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code.trim() || state === 'checking') return;
+    setState('checking');
+    const id = await redeemCode(code);
+    if (!id) return setState('wrong');
+    const fresh = !unlocked.includes(id);
+    unlock(id);
+    onUnlocked(id);
+    setCode('');
+    setState('idle');
+    toast.success(fresh ? `Secret unlocked: ${THEME_PRESETS[id].label}` : `${THEME_PRESETS[id].label} is back on.`, <SparklesIcon size={14} />);
+  };
+  return (
+    <form onSubmit={(e) => void submit(e)} className="mt-4 flex flex-wrap items-center gap-2 rounded-ae border border-dashed border-ae-border px-3 py-2.5">
+      <LockIcon size={15} className="text-ae-muted" />
+      <label className="flex min-w-48 flex-1 items-center gap-2 text-sm text-ae-muted">
+        <span className="shrink-0">Got a secret code?</span>
+        <input
+          value={code}
+          onChange={(e) => {
+            setCode(e.target.value);
+            if (state === 'wrong') setState('idle');
+          }}
+          maxLength={40}
+          autoComplete="off"
+          spellCheck={false}
+          aria-invalid={state === 'wrong'}
+          placeholder="Enter it here"
+          className={`ae-input min-w-0 flex-1 text-sm uppercase ${state === 'wrong' ? 'border-ae-danger' : ''}`}
+        />
+      </label>
+      <button type="submit" disabled={!code.trim() || state === 'checking'} className="rounded-ae bg-ae-surface px-3 py-1.5 text-sm font-semibold hover:bg-ae-hover disabled:opacity-50">
+        Unlock
+      </button>
+      {state === 'wrong' && (
+        <p role="alert" className="w-full text-xs text-ae-danger">
+          That's not a code. Keep guessing.
+        </p>
+      )}
+      {unlocked.length > 0 && state !== 'wrong' && <p className="w-full text-xs text-ae-muted">{unlocked.length} of {SECRET_PRESETS.length} secrets found.</p>}
+    </form>
+  );
+}
+
 function AppearanceTab() {
   const theme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const profileAccent = useSettingsStore((s) => s.profileAccent);
+  const secretsUnlocked = useSettingsStore((s) => s.secretsUnlocked);
   const { customCss } = useTheme();
   const [cssDraft, setCssDraft] = useState(theme.customCss);
 
@@ -203,7 +256,7 @@ function AppearanceTab() {
           </span>
         </button>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {PRESET_ORDER.map((id) => {
+          {[...PRESET_ORDER, ...secretsUnlocked.filter((id) => SECRET_PRESETS.includes(id))].map((id) => {
             const preset = THEME_PRESETS[id];
             const t = preset.tokens;
             const active = theme.presetId === id && !theme.custom?.enabled;
@@ -226,6 +279,7 @@ function AppearanceTab() {
                   <p className="text-sm font-semibold">
                     {preset.label}
                     {preset.light && <span className="ml-2 rounded bg-ae-surface px-1.5 text-[10px] text-ae-muted">LIGHT</span>}
+                    {SECRET_PRESETS.includes(id) && <span className="ml-2 rounded bg-ae-accent/20 px-1.5 text-[10px] text-ae-accent">SECRET</span>}
                   </p>
                   <p className="text-xs text-ae-muted">{preset.description}</p>
                 </div>
@@ -233,6 +287,7 @@ function AppearanceTab() {
             );
           })}
         </div>
+        <SecretCodeBox onUnlocked={(id) => setTheme({ presetId: id, custom: theme.custom ? { ...theme.custom, enabled: false } : null })} />
       </Section>
 
       <Section title="Accent color">

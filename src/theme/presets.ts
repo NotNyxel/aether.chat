@@ -45,7 +45,13 @@ export type ThemePresetId =
   | 'retro-terminal'
   | 'cotton-candy'
   | 'github-light'
-  | 'nightfall';
+  | 'nightfall'
+  // Secret themes (2.1): hidden until unlocked with a code (lib/secrets.ts).
+  | 'secret-goblin'
+  | 'secret-arcade'
+  | 'secret-hackerman'
+  | 'secret-disco'
+  | 'secret-deepfried';
 
 export interface ThemeTokens {
   /** Page backdrop (may be a gradient). */
@@ -370,6 +376,32 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
     bg: '#fff5fb', bgElevated: '#ffffff', bgSunken: '#fbe9f4', surface: '#f8e6f2', surfaceHover: '#f0d7e9', border: '#ecd2e4',
     text: '#3a2440', textMuted: '#8a6b90', accent: '#ff6fb5', radius: '18px',
   }, true),
+  // ── Secret themes: never listed until unlocked. Each also has its own touches in index.css. ──
+  'secret-goblin': preset('secret-goblin', 'Goblin Mode', 'Feral. Mossy. Slightly crooked. Unlocked with a secret code.', {
+    bg: '#141a0d', bgElevated: '#1b2312', bgSunken: '#0f140a', surface: '#232d17', surfaceHover: '#2c391d', border: '#3a4a25',
+    text: '#e3f0c8', textMuted: '#a3b77f', accent: '#9be22d', radius: '18px',
+    font: `'Comic Sans MS', 'Comic Neue', 'Chalkboard SE', cursive`,
+  }),
+  'secret-arcade': preset('secret-arcade', 'Insert Coin', 'Pixel headings, hard corners, arcade neon. Unlocked with a secret code.', {
+    backdrop: '#0d0620', bg: '#12082a', bgElevated: '#1a0d3a', bgSunken: '#0d0620', surface: '#23124c', surfaceHover: '#2e1863', border: '#4b2a8c',
+    text: '#f3eaff', textMuted: '#b9a6e0', accent: '#00f0ff', radius: '0px', glow: '0 0 0 2px #ff3df2',
+    font: `'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace`,
+  }),
+  'secret-hackerman': preset('secret-hackerman', 'Hackerman', 'A green CRT with scanlines. You’re in. Unlocked with a secret code.', {
+    backdrop: '#000802', bg: '#000a02', bgElevated: '#001404', bgSunken: '#000601', surface: '#002108', surfaceHover: '#003010', border: '#0b4a1c',
+    text: '#33ff66', textMuted: '#1fae48', accent: '#33ff66', radius: '0px', glow: '0 0 12px rgba(51, 255, 102, 0.45)',
+    font: `'Cascadia Code', 'JetBrains Mono', 'Consolas', ui-monospace, monospace`,
+  }),
+  'secret-disco': preset('secret-disco', 'Disco Inferno', 'Gold on hot pink, everything glows. Unlocked with a secret code.', {
+    backdrop: 'linear-gradient(135deg, #2a0033, #3d0020 50%, #2a1400)', bg: '#1c0622', bgElevated: '#24082c', bgSunken: '#15041a',
+    surface: '#300b3a', surfaceHover: '#3d0f4a', border: '#5a1a6a', text: '#fff0fb', textMuted: '#e0a8d6', accent: '#ffd23f',
+    radius: '16px', glow: '0 0 18px rgba(255, 210, 63, 0.55)',
+  }),
+  'secret-deepfried': preset('secret-deepfried', 'Deep Fried', 'Over-saturated, crunchy, loud. Unlocked with a secret code.', {
+    bg: '#2a0f00', bgElevated: '#3a1500', bgSunken: '#200b00', surface: '#4a1c00', surfaceHover: '#5c2400', border: '#ff6a00',
+    text: '#fff3c4', textMuted: '#ffc070', accent: '#ffea00', radius: '4px',
+    font: `Impact, 'Arial Black', 'Segoe UI', sans-serif`,
+  }),
   'github-light': preset('github-light', 'Clean Light', 'Neutral, high-clarity light theme.', {
     backdrop: '#f6f8fa', bg: '#ffffff', bgElevated: '#ffffff', bgSunken: '#f6f8fa', surface: '#f3f4f6', surfaceHover: '#eaeef2', border: '#d8dee4',
     text: '#1f2328', textMuted: '#656d76', accent: '#0969da', radius: '8px',
@@ -426,3 +458,6 @@ export function readableTextOn(hex: string): string {
   const lum = 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);
   return lum > 0.4 ? '#0b0b0f' : '#ffffff';
 }
+
+/** Hidden themes, shown in Settings only once unlocked with a code. */
+export const SECRET_PRESETS: ThemePresetId[] = ['secret-goblin', 'secret-arcade', 'secret-hackerman', 'secret-disco', 'secret-deepfried'];

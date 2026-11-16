@@ -122,6 +122,9 @@ interface SettingsState {
   e2eAuto: boolean;
   setE2eAuto: (on: boolean) => void;
   setTheme: (patch: Partial<ThemeSettings>) => void;
+  /** Secret themes unlocked on this device with a code. */
+  secretsUnlocked: ThemePresetId[];
+  unlockSecret: (id: ThemePresetId) => void;
   setAudio: (patch: Partial<AudioProcessingSettings>) => void;
   setScreen: (patch: Partial<ScreenShareOptions>) => void;
   setKeybinds: (patch: Partial<Keybinds>) => void;
@@ -188,6 +191,7 @@ export const useSettingsStore = create<SettingsState>()(
       system: DEFAULT_SYSTEM,
       activity: DEFAULT_ACTIVITY,
       profileAccent: null,
+      secretsUnlocked: [],
       e2eAuto: true,
       setE2eAuto: (e2eAuto) => set({ e2eAuto }),
       setTheme: (patch) => set((s) => ({ theme: { ...s.theme, ...patch } })),
@@ -200,6 +204,7 @@ export const useSettingsStore = create<SettingsState>()(
       setSystem: (patch) => set((s) => ({ system: { ...s.system, ...patch } })),
       setActivity: (patch) => set((s) => ({ activity: { ...s.activity, ...patch } })),
       setProfileAccent: (profileAccent) => set({ profileAccent }),
+      unlockSecret: (id) => set((s) => ({ secretsUnlocked: s.secretsUnlocked.includes(id) ? s.secretsUnlocked : [...s.secretsUnlocked, id] })),
     }),
     {
       name: 'aether.settings',

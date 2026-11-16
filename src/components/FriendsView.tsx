@@ -190,18 +190,19 @@ export function FriendsView({ userId }: { userId: string }) {
   const error = actions.accept.error ?? actions.remove.error ?? actions.unblock.error ?? convo.openDm.error;
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-ae-border px-4 ae-chat-header">
+    <section className="@container flex min-w-0 flex-1 flex-col">
+      {/* Narrow screens (phones, tablets upright): one line that scrolls sideways instead of wrapping. */}
+      <header className="ae-scroll flex h-12 shrink-0 items-center gap-2 overflow-x-auto border-b border-ae-border px-3 whitespace-nowrap ae-chat-header @lg:px-4 [scrollbar-width:none] @lg:gap-3 [&>*]:shrink-0">
         <MobileBack />
-        <UsersIcon size={20} className="text-ae-muted" />
-        <h1 className="font-semibold">Friends</h1>
-        <div className="mx-2 h-6 w-px bg-ae-border" />
+        <UsersIcon size={20} className="hidden text-ae-muted @3xl:block" />
+        <h1 className="sr-only font-semibold @3xl:not-sr-only">Friends</h1>
+        <div className="mx-2 hidden h-6 w-px bg-ae-border @3xl:block" />
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 rounded-ae px-2 py-0.5 text-sm ${tab === t.id ? 'bg-ae-surface text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'}`}
+            className={`flex items-center gap-1.5 rounded-ae px-1.5 py-0.5 text-sm @lg:px-2 ${tab === t.id ? 'bg-ae-surface text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'}`}
           >
             {t.label}
             {!!t.badge && <span className="rounded-full bg-ae-danger px-1.5 text-xs font-bold text-white">{t.badge}</span>}
@@ -212,14 +213,18 @@ export function FriendsView({ userId }: { userId: string }) {
           onClick={() => setTab('add')}
           className={`rounded-ae px-2 py-0.5 text-sm font-medium ${tab === 'add' ? 'text-ae-success' : 'bg-ae-success text-black'}`}
         >
-          Add Friend
+          Add<span className="hidden @lg:inline"> Friend</span>
         </button>
         <button
           type="button"
           onClick={() => setTab('search')}
+          aria-label="Search for someone"
           className={`flex items-center gap-1.5 rounded-ae px-2 py-0.5 text-sm font-medium ${tab === 'search' ? 'bg-ae-surface text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'}`}
         >
-          <SearchIcon size={14} /> Search for someone
+          <SearchIcon size={14} />
+          <span className="hidden @lg:inline">
+            Search<span className="hidden @2xl:inline"> for someone</span>
+          </span>
         </button>
       </header>
 

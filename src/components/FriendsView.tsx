@@ -1,4 +1,5 @@
 /** Friends page: Online / All / Pending / Blocked tabs and Add Friend by username. */
+import { t } from '../lib/i18n';
 import { MessageRequests, SearchPeople } from './FriendsExtras';
 import { ask } from './ConfirmDialog';
 import { useFriendNickname } from '../hooks/useAccount';
@@ -95,7 +96,7 @@ function AddFriend() {
         <input
           autoFocus
           className="flex-1 bg-transparent px-2 text-sm outline-none"
-          placeholder="Enter a username"
+          placeholder={t('Enter a username')}
           value={username}
           maxLength={33}
           onChange={(e) => setUsername(e.target.value)}
@@ -162,14 +163,14 @@ export function FriendsView({ userId }: { userId: string }) {
 
   const friendActions = (id: string) => (
     <>
-      <ActionButton title="Message" onClick={() => message(id)}>
+      <ActionButton title={t('Message')} onClick={() => message(id)}>
         <MessageIcon size={16} />
       </ActionButton>
-      <ActionButton title="Start voice call" onClick={() => call(id)}>
+      <ActionButton title={t('Start voice call')} onClick={() => call(id)}>
         <PhoneIcon size={16} />
       </ActionButton>
       <ActionButton
-        title="Remove friend"
+        title={t('Remove friend')}
         danger
         onClick={async () => {
           if ((await ask('Remove this friend?'))) actions.remove.mutate(id);
@@ -181,10 +182,10 @@ export function FriendsView({ userId }: { userId: string }) {
   );
 
   const TABS: { id: Tab; label: string; badge?: number }[] = [
-    { id: 'online', label: 'Online' },
-    { id: 'all', label: 'All' },
-    { id: 'pending', label: 'Pending', badge: incoming.length },
-    { id: 'blocked', label: 'Blocked' },
+    { id: 'online', label: t('Online') },
+    { id: 'all', label: t('All') },
+    { id: 'pending', label: t('Pending'), badge: incoming.length },
+    { id: 'blocked', label: t('Blocked') },
   ];
 
   const error = actions.accept.error ?? actions.remove.error ?? actions.unblock.error ?? convo.openDm.error;
@@ -195,7 +196,7 @@ export function FriendsView({ userId }: { userId: string }) {
       <header className="ae-scroll flex h-12 shrink-0 items-center gap-2 overflow-x-auto border-b border-ae-border px-3 whitespace-nowrap ae-chat-header @lg:px-4 [scrollbar-width:none] @lg:gap-3 [&>*]:shrink-0">
         <MobileBack />
         <UsersIcon size={20} className="hidden text-ae-muted @3xl:block" />
-        <h1 className="sr-only font-semibold @3xl:not-sr-only">Friends</h1>
+        <h1 className="sr-only font-semibold @3xl:not-sr-only">{t('Friends')}</h1>
         <div className="mx-2 hidden h-6 w-px bg-ae-border @3xl:block" />
         {TABS.map((t) => (
           <button
@@ -218,7 +219,7 @@ export function FriendsView({ userId }: { userId: string }) {
         <button
           type="button"
           onClick={() => setTab('search')}
-          aria-label="Search for someone"
+          aria-label={t('Search for someone')}
           className={`flex items-center gap-1.5 rounded-ae px-2 py-0.5 text-sm font-medium ${tab === 'search' ? 'bg-ae-surface text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'}`}
         >
           <SearchIcon size={14} />
@@ -259,13 +260,13 @@ export function FriendsView({ userId }: { userId: string }) {
                 <PersonRow
                   key={f.id}
                   userId={f.requester_id}
-                  subtitle="Incoming friend request"
+                  subtitle={t('Incoming friend request')}
                   actions={
                     <>
-                      <ActionButton title="Accept" onClick={() => actions.accept.mutate(f.requester_id)}>
+                      <ActionButton title={t('Accept')} onClick={() => actions.accept.mutate(f.requester_id)}>
                         <span className="text-ae-success"><CheckIcon size={15} className="ae-ico" /></span>
                       </ActionButton>
-                      <ActionButton title="Ignore" danger onClick={() => actions.remove.mutate(f.requester_id)}>
+                      <ActionButton title={t('Ignore')} danger onClick={() => actions.remove.mutate(f.requester_id)}>
                         <CloseIcon size={16} />
                       </ActionButton>
                     </>
@@ -276,9 +277,9 @@ export function FriendsView({ userId }: { userId: string }) {
                 <PersonRow
                   key={f.id}
                   userId={f.addressee_id}
-                  subtitle="Outgoing friend request"
+                  subtitle={t('Outgoing friend request')}
                   actions={
-                    <ActionButton title="Cancel" danger onClick={() => actions.remove.mutate(f.addressee_id)}>
+                    <ActionButton title={t('Cancel')} danger onClick={() => actions.remove.mutate(f.addressee_id)}>
                       <CloseIcon size={16} />
                     </ActionButton>
                   }
@@ -297,9 +298,9 @@ export function FriendsView({ userId }: { userId: string }) {
                 <PersonRow
                   key={b.blocked_id}
                   userId={b.blocked_id}
-                  subtitle="Blocked"
+                  subtitle={t('Blocked')}
                   actions={
-                    <ActionButton title="Unblock" onClick={() => actions.unblock.mutate(b.blocked_id)}>
+                    <ActionButton title={t('Unblock')} onClick={() => actions.unblock.mutate(b.blocked_id)}>
                       <CloseIcon size={16} />
                     </ActionButton>
                   }

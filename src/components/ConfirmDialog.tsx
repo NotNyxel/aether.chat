@@ -4,6 +4,7 @@
  *   await ask('Delete this?', { danger: true })            → true / false
  *   await promptText('Nickname', { initial: 'Bob' })        → the text, or null if cancelled
  */
+import { t } from '../lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { create } from 'zustand';
 
@@ -108,10 +109,10 @@ export function ConfirmLayer() {
           ))}
         <div className="flex justify-end gap-2">
           <button type="button" className="rounded-ae px-4 py-2 text-sm hover:bg-ae-hover" onClick={() => done(false)}>
-            {pending.cancelLabel ?? 'Cancel'}
+            {pending.cancelLabel ?? t('Cancel')}
           </button>
           <button ref={okRef} type="submit" className={`ae-press rounded-ae px-4 py-2 text-sm font-semibold ${danger ? 'bg-ae-danger text-white' : 'bg-ae-accent text-ae-on-accent'}`}>
-            {pending.confirmLabel ?? (pending.input ? 'Save' : danger ? 'Yes, do it' : 'OK')}
+            {pending.confirmLabel ?? (pending.input ? t('Save') : danger ? t('Yes, do it') : t('OK'))}
           </button>
         </div>
       </form>

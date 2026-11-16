@@ -1,8 +1,5 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './App';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { ThemeProvider } from './components/ThemeEngine';
 import './index.css';
 import './motion.css';
 import './decor.css';
@@ -15,16 +12,23 @@ import '@fontsource/playfair-display/700.css';
 import '@fontsource/press-start-2p/400.css';
 import { isTauri } from './lib/platform';
 import { installPhoneLayout } from './lib/phone';
+import { loadLanguage } from './lib/i18n';
 
 document.documentElement.dataset.aeWeb = String(!isTauri);
 installPhoneLayout();
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ThemeProvider>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </ThemeProvider>
-  </StrictMode>,
-);
+// The chosen language loads first (a few KB), then the app's code: labels defined when a module
+// loads are then already in the right language.
+void loadLanguage()
+  .then(() => Promise.all([import('./App'), import('./components/ErrorBoundary'), import('./components/ThemeEngine')]))
+  .then(([{ App }, { ErrorBoundary }, { ThemeProvider }]) =>
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <ThemeProvider>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        </ThemeProvider>
+      </StrictMode>,
+    ),
+  );

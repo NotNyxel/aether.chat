@@ -1,4 +1,5 @@
 /** Small modal primitives shared by server and channel creation flows. */
+import { t } from '../lib/i18n';
 import { CloseIcon } from './icons';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useEscape } from '../lib/escape';
@@ -18,7 +19,7 @@ export function Dialog({ title, onClose, children, wide = false, z = 'z-40' }: {
       >
         <div className="flex items-start justify-between gap-4">
           <h2 className="text-lg font-bold">{title}</h2>
-          <button type="button" aria-label="Close" className="-mt-1 -mr-2 grid h-8 w-8 shrink-0 place-items-center rounded-full text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={onClose}>
+          <button type="button" aria-label={t('Close')} className="-mt-1 -mr-2 grid h-8 w-8 shrink-0 place-items-center rounded-full text-ae-muted hover:bg-ae-hover hover:text-ae-text" onClick={onClose}>
             <CloseIcon size={15} className="ae-ico" />
           </button>
         </div>

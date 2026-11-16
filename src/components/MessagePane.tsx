@@ -313,7 +313,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
     );
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col">
+    <section className="ae-view-in flex min-w-0 flex-1 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ae-border px-4 ae-chat-header">
         <MobileBack onClick={onBack} />
         {header}

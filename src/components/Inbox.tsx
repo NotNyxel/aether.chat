@@ -2,6 +2,7 @@
  * Inbox: recent messages that mention you (direct, role, @everyone) and every channel or
  * conversation with unread messages. Opened from the tray icon in the server rail.
  */
+import { t } from '../lib/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { unwrap, useProfile } from '../hooks/useChatData';
@@ -84,9 +85,9 @@ export function InboxButton({ userId, servers }: { userId: string; servers: Serv
       <button
         type="button"
         data-inbox-toggle
-        data-tip="Inbox"
+        data-tip={t('Inbox')}
         data-tip-side="bottom"
-        aria-label="Inbox"
+        aria-label={t('Inbox')}
         onClick={() => setOpen((v) => !v)}
         className={`relative grid h-7 w-8 place-items-center rounded-md transition-colors ${open ? 'bg-ae-hover text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'}`}
       >
@@ -187,20 +188,20 @@ export function InboxPanel({ userId, servers, onClose, inline = false }: { userI
       ref={ref}
       className={inline ? 'flex h-full w-full flex-col' : 'ae-pop fixed top-10 right-3 z-[75] flex max-h-[min(640px,calc(100vh-56px))] w-[440px] flex-col rounded-ae border border-ae-border bg-ae-elevated shadow-2xl'}
       role="dialog"
-      aria-label="Inbox"
+      aria-label={t('Inbox')}
     >
       <header className="flex items-center gap-1 overflow-x-auto border-b sm:gap-2 border-ae-border p-3 [scrollbar-width:none] [&>button]:shrink-0">
         {!inline && (
           <>
             <InboxIcon size={18} />
-            <h2 className="mr-2 font-bold">Inbox</h2>
+            <h2 className="mr-2 font-bold">{t('Inbox')}</h2>
           </>
         )}
-        {tabBtn('mentions', 'Mentions')}
-        {tabBtn('unreads', 'Unreads', unreadRows.length)}
-        {tabBtn('saved', 'Saved')}
-        {tabBtn('reminders', 'Reminders')}
-        <button type="button" title="Close" className="ml-auto text-ae-muted hover:text-ae-text" onClick={onClose}>
+        {tabBtn('mentions', t('Mentions'))}
+        {tabBtn('unreads', t('Unreads'), unreadRows.length)}
+        {tabBtn('saved', t('Saved'))}
+        {tabBtn('reminders', t('Reminders'))}
+        <button type="button" title={t('Close')} className="ml-auto text-ae-muted hover:text-ae-text" onClick={onClose}>
           <CloseIcon size={16} />
         </button>
       </header>

@@ -8,6 +8,7 @@
  *   Bandwidth  : audio/video bitrate profile and screen-share resolution and frame-rate defaults
  * Audio settings live in the settings store. MainLayout pushes changes into the running voice engine.
  */
+import { currentLanguage, LANGUAGES, languageSetting, setLanguage, t } from '../lib/i18n';
 import { openTour, openWhatsNew } from './WhatsNew';
 import { openBugReport } from './BugReport';
 import { BugIcon } from './icons';
@@ -149,6 +150,30 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
 // Appearance tab
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
+/** Language (2.0): follows the device by default. Switching reloads the window. */
+function LanguageSection() {
+  const setting = languageSetting();
+  const active = currentLanguage();
+  return (
+    <Section title={t('Language')} description={t('Aether follows your device’s language. Pick one to change it; the window reloads.')}>
+      <select
+        aria-label={t('Language')}
+        className="ae-input w-full max-w-sm text-sm"
+        value={setting}
+        onChange={(e) => setLanguage(e.target.value)}
+      >
+        <option value="auto">{`${t('Same as my device')} (${LANGUAGES.find((l) => l.code === active)?.name ?? 'English'})`}</option>
+        {LANGUAGES.map((l) => (
+          <option key={l.code} value={l.code} lang={l.code} dir={l.dir ?? 'ltr'}>
+            {l.code === 'en' ? l.name : `${l.name} · ${l.english}`}
+          </option>
+        ))}
+      </select>
+      <p className="text-xs text-ae-muted">{t('Translations cover the main screens; anything not translated yet shows in English.')}</p>
+    </Section>
+  );
+}
+
 function AppearanceTab() {
   const theme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
@@ -164,6 +189,7 @@ function AppearanceTab() {
 
   return (
     <div className="space-y-6">
+      <LanguageSection />
       <Section title="Theme">
         <button
           type="button"
@@ -798,24 +824,24 @@ function BandwidthTab() {
 
 const TAB_GROUPS: { title: string; tabs: { id: SettingsTab; label: string; icon: ReactNode }[] }[] = [
   {
-    title: 'User settings',
+    title: t('User settings'),
     tabs: [
-      { id: 'account', label: 'My Account', icon: <UserIcon size={15} /> },
-      { id: 'profile', label: 'Profiles', icon: <IdCardIcon size={15} /> },
-      { id: 'privacy', label: 'Privacy & Safety', icon: <ShieldIcon size={15} /> },
-      { id: 'standing', label: 'Account Standing', icon: <GaugeIcon size={15} /> },
+      { id: 'account', label: t('My Account'), icon: <UserIcon size={15} /> },
+      { id: 'profile', label: t('Profiles'), icon: <IdCardIcon size={15} /> },
+      { id: 'privacy', label: t('Privacy & Safety'), icon: <ShieldIcon size={15} /> },
+      { id: 'standing', label: t('Account Standing'), icon: <GaugeIcon size={15} /> },
     ],
   },
   {
-    title: 'App settings',
+    title: t('App settings'),
     tabs: [
-      { id: 'appearance', label: 'Appearance', icon: <PaletteIcon size={15} /> },
-      { id: 'voice', label: 'Voice & Audio', icon: <StageIcon size={15} /> },
-      { id: 'notifications', label: 'Notifications & Sounds', icon: <BellIcon size={15} /> },
-      { id: 'keybinds', label: 'Keybinds', icon: <KeyboardIcon size={15} /> },
-      { id: 'bandwidth', label: 'Streaming & Bandwidth', icon: <NetworkIcon size={15} /> },
-      { id: 'activity', label: 'Activity Privacy', icon: <GameIcon size={15} /> },
-      { id: 'windows', label: 'Windows Settings', icon: <AppWindowIcon size={15} /> },
+      { id: 'appearance', label: t('Appearance'), icon: <PaletteIcon size={15} /> },
+      { id: 'voice', label: t('Voice & Audio'), icon: <StageIcon size={15} /> },
+      { id: 'notifications', label: t('Notifications & Sounds'), icon: <BellIcon size={15} /> },
+      { id: 'keybinds', label: t('Keybinds'), icon: <KeyboardIcon size={15} /> },
+      { id: 'bandwidth', label: t('Streaming & Bandwidth'), icon: <NetworkIcon size={15} /> },
+      { id: 'activity', label: t('Activity Privacy'), icon: <GameIcon size={15} /> },
+      { id: 'windows', label: t('Windows Settings'), icon: <AppWindowIcon size={15} /> },
     ],
   },
 ];
@@ -900,7 +926,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
         <button
           type="button"
           onClick={close}
-          aria-label="Close settings"
+          aria-label={t('Close settings')}
           className="absolute top-4 right-5 z-10 grid h-9 w-9 bg-ae-bg/80 backdrop-blur place-items-center rounded-full border border-ae-border text-ae-muted hover:text-ae-text"
         >
           <CloseIcon />

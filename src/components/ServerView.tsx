@@ -1,4 +1,5 @@
 /** Main pane for a server: text channels (with member list) or voice/stream channels. */
+import { t } from '../lib/i18n';
 import { useUserMenu } from '../hooks/useUserMenu';
 import { useMemo, useState } from 'react';
 import { useProfile, useServerMembers } from '../hooks/useChatData';
@@ -251,7 +252,7 @@ export function ServerView({ server, channel, channels, userId }: { server: Serv
         lockedUntil={server.chat_locked_until ?? null}
         memberIds={memberIds}
         channels={channels}
-        placeholder={`Message #${channel.name}`}
+        placeholder={t('Message {name}', { name: `#${channel.name}` })}
         top={streams.length > 0 ? <LiveBanner streams={streams} channels={channels} userId={userId} /> : undefined}
         header={
           <>

@@ -883,3 +883,91 @@ input[type='time'] {
 :root[data-ae-status-anim='true'] .ae-status[data-status='idle'] svg {
   animation: ae-status-sway 4s ease-in-out infinite;
 }
+
+/* ── 2.0: more motion ────────────────────────────────────────────────────────────────────────
+   Only at the "Full" animation level (or "Follow system" when the OS allows motion); Subtle and Off
+   stay calm, and reduce-motion turns everything off above. All of it is transform/opacity only. */
+:root:is([data-ae-animations='full'], [data-ae-animations='system']) {
+  /* Opening a chat or channel: the view rises in softly. */
+  & .ae-view-in {
+    animation: ae-view-in 220ms var(--ae-ease-out, cubic-bezier(0.2, 0.9, 0.3, 1)) both;
+  }
+  /* Phone/tablet bottom tabs: the new screen slides up a touch. */
+  & .ae-tabview {
+    animation: ae-view-in 240ms var(--ae-ease-out, cubic-bezier(0.2, 0.9, 0.3, 1)) both;
+  }
+  /* A new reaction pops in; the count bumps when it changes; yours pulses once. */
+  & .ae-reaction {
+    animation: ae-reaction-in 320ms var(--ae-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+  }
+  & .ae-reaction .ae-count {
+    display: inline-block;
+    animation: ae-count-bump 260ms var(--ae-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+  }
+  & .ae-reaction[data-active] > span:first-child {
+    animation: ae-react-burst 420ms ease-out both;
+  }
+  /* Menus: items cascade in. */
+  & [role='menu'] > [role='menuitem'] {
+    animation: ae-item-in 200ms ease-out both;
+  }
+  & [role='menu'] > [role='menuitem']:nth-child(2) { animation-delay: 15ms; }
+  & [role='menu'] > [role='menuitem']:nth-child(3) { animation-delay: 30ms; }
+  & [role='menu'] > [role='menuitem']:nth-child(4) { animation-delay: 45ms; }
+  & [role='menu'] > [role='menuitem']:nth-child(5) { animation-delay: 60ms; }
+  & [role='menu'] > [role='menuitem']:nth-child(6) { animation-delay: 75ms; }
+  & [role='menu'] > [role='menuitem']:nth-child(n + 7) { animation-delay: 90ms; }
+  /* Chat list rows lean in on hover; the hovered row's avatar lifts slightly. */
+  & .ae-shell aside li > button {
+    transition: transform 160ms ease, background-color 120ms ease;
+  }
+  & .ae-shell aside li > button:hover {
+    transform: translateX(2px);
+  }
+  & .ae-shell aside li > button:hover .ae-avatar {
+    transform: scale(1.05);
+    transition: transform 180ms var(--ae-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  }
+  /* Filter chips and tab pills: the active one settles in with a little spring. */
+  & [aria-pressed='true'].rounded-full,
+  & [role='tab'][aria-selected='true'] {
+    animation: ae-chip-on 260ms var(--ae-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  }
+  /* The bottom tab bar's active icon hops. */
+  & .ae-tabbar [aria-current='page'] svg {
+    animation: ae-hop 360ms var(--ae-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  }
+}
+
+@keyframes ae-view-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ae-reaction-in {
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { opacity: 1; transform: scale(1.08); }
+  100% { transform: none; }
+}
+@keyframes ae-count-bump {
+  from { transform: translateY(-40%); opacity: 0.2; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes ae-react-burst {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.35) rotate(-8deg); }
+  100% { transform: none; }
+}
+@keyframes ae-item-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ae-chip-on {
+  0% { transform: scale(0.92); }
+  60% { transform: scale(1.04); }
+  100% { transform: none; }
+}
+@keyframes ae-hop {
+  0% { transform: none; }
+  40% { transform: translateY(-4px) scale(1.08); }
+  100% { transform: none; }
+}

@@ -1,4 +1,5 @@
 /** A DM or group DM: header with call buttons, the in-call panel, chat history and (for groups) members. */
+import { t } from '../lib/i18n';
 import { DisappearingBar, DisappearingButton } from './Disappearing';
 import { isTabletLayout } from '../lib/phone';
 import { ask, promptText } from './ConfirmDialog';
@@ -271,7 +272,7 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
           </>
         }
         aside={aside}
-        placeholder={`Message ${conv.type === 'dm' ? '@' : ''}${title}`}
+        placeholder={t('Message {name}', { name: `${conv.type === 'dm' ? '@' : ''}${title}` })}
         emptyState={
           <div className="space-y-2">
             <ConversationAvatar conv={conv} me={userId} size={72} />

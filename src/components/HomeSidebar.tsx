@@ -1,4 +1,5 @@
-/** Home sidebar: Friends entry and the Direct Messages list (DMs + group DMs) with unread and call markers. */
+/** Home sidebar: Friends entry and the Direct Messages list (DMs + group DMs) with unread and call markers. */
+import { t } from '../lib/i18n';
 import { openQuickSwitcher } from './QuickSwitcher';
 import { ask } from './ConfirmDialog';
 import { useUserMenu } from '../hooks/useUserMenu';
@@ -41,12 +42,12 @@ function ConversationRow({ conv, me, active, inCall, count: rawCount, muted, pin
   const { data: otherProfile } = useProfile(other ?? null);
   const orgItems = useChatOrgItems(conv);
   const dmItems = [
-    { label: 'Mark as read', icon: <CheckIcon size={15} />, disabled: !unread && !count, onClick: () => markRead({ kind: 'conversation' as const, id: conv.id }) },
+    { label: t('Mark as read'), icon: <CheckIcon size={15} />, disabled: !unread && !count, onClick: () => markRead({ kind: 'conversation' as const, id: conv.id }) },
     muted
-      ? { label: 'Unmute', icon: <BellIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: conv.id, kind: 'conversation', patch: { muted_until: null } }) }
-      : { label: 'Mute for 1 hour', icon: <BellOffIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: conv.id, kind: 'conversation', patch: { muted_until: muteUntil(60) } }) },
+      ? { label: t('Unmute'), icon: <BellIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: conv.id, kind: 'conversation', patch: { muted_until: null } }) }
+      : { label: t('Mute for 1 hour'), icon: <BellOffIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: conv.id, kind: 'conversation', patch: { muted_until: muteUntil(60) } }) },
     {
-      label: conv.type === 'group' ? 'Leave group' : 'Close DM',
+      label: conv.type === 'group' ? t('Leave group') : t('Close DM'),
       icon: <CloseIcon size={15} />,
       danger: conv.type === 'group',
       onClick: async () => {
@@ -97,7 +98,7 @@ function ConversationRow({ conv, me, active, inCall, count: rawCount, muted, pin
       </button>
       <button
         type="button"
-        title={conv.type === 'group' ? 'Leave group' : 'Close DM'}
+        title={conv.type === 'group' ? t('Leave group') : t('Close DM')}
         className="absolute top-1/2 right-2 hidden -translate-y-1/2 text-ae-muted group-hover:block hover:text-ae-text"
         onClick={async () => {
           if (conv.type === 'group' && !(await ask('Leave this group? You will need to be re-added to return.'))) return;
@@ -138,7 +139,7 @@ export function HomeSidebar({ userId }: { userId: string }) {
           className="flex h-8 w-full items-center gap-2 rounded-md bg-ae-sunken px-2.5 text-left text-[13px] text-ae-muted transition-colors hover:text-ae-text"
         >
           <SearchIcon size={14} />
-          Find or start a conversation
+          {t('Find or start a conversation')}
         </button>
       </header>
 
@@ -151,7 +152,7 @@ export function HomeSidebar({ userId }: { userId: string }) {
           }`}
         >
           <UsersIcon size={20} />
-          <span className="flex-1 font-medium">Friends</span>
+          <span className="flex-1 font-medium">{t('Friends')}</span>
           {pending > 0 && <span className="rounded-full bg-ae-danger px-1.5 text-xs font-bold text-white">{pending}</span>}
         </button>
         <button
@@ -162,13 +163,13 @@ export function HomeSidebar({ userId }: { userId: string }) {
           }`}
         >
           <InboxIcon size={20} />
-          <span className="flex-1 font-medium">Message requests</span>
+          <span className="flex-1 font-medium">{t('Message requests')}</span>
           {requestCount > 0 && <span className="rounded-full bg-ae-danger px-1.5 text-xs font-bold text-white">{requestCount}</span>}
         </button>
 
         <div className="mt-4 mb-1 flex items-center justify-between px-2">
-          <span className="text-[11px] font-bold tracking-wide text-ae-muted uppercase">Direct Messages</span>
-          <button type="button" title="Create DM or group" className="text-ae-muted hover:text-ae-text" onClick={() => setGroupOpen(true)}>
+          <span className="text-[11px] font-bold tracking-wide text-ae-muted uppercase">{t('Direct Messages')}</span>
+          <button type="button" title={t('Create DM or group')} className="text-ae-muted hover:text-ae-text" onClick={() => setGroupOpen(true)}>
             <PlusIcon size={14} />
           </button>
         </div>

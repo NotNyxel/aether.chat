@@ -1,4 +1,5 @@
 /** One chat message: header, reply/forward context, Markdown, attachments, poll, embeds, reactions, hover toolbar. */
+import { t } from '../lib/i18n';
 import { useCancelQueued } from '../hooks/useChatData';
 import { ClockIcon } from './icons';
 import { useEncryptedAttachment } from '../hooks/useEncryptedAttachment';
@@ -268,17 +269,17 @@ function MessageItemImpl(props: MessageItemProps) {
         // Not on the server yet: nothing to react to, reply to or edit.
         if ((message as { queued?: boolean }).queued) {
           openContextMenu(e, [
-            message.content && { label: 'Copy text', icon: <CopyIcon size={15} />, onClick: () => void navigator.clipboard.writeText(text) },
+            message.content && { label: t('Copy text'), icon: <CopyIcon size={15} />, onClick: () => void navigator.clipboard.writeText(text) },
             { label: 'Don’t send', icon: <TrashIcon size={15} />, danger: true, onClick: () => window.dispatchEvent(new CustomEvent('aether-cancel-queued', { detail: message.id })) },
           ]);
           return;
         }
         openContextMenu(e, [
-          { label: 'Add reaction', icon: <ReactIcon size={15} />, onClick: openPicker },
-          { label: 'Reply', icon: <ReplyIcon size={15} />, onClick: () => props.onReply(message) },
-          { label: 'Forward', icon: <ForwardIcon size={15} />, onClick: () => openForward(message.id) },
+          { label: t('Add reaction'), icon: <ReactIcon size={15} />, onClick: openPicker },
+          { label: t('Reply'), icon: <ReplyIcon size={15} />, onClick: () => props.onReply(message) },
+          { label: t('Forward'), icon: <ForwardIcon size={15} />, onClick: () => openForward(message.id) },
           {
-            label: isSaved ? 'Remove from saved' : 'Save message',
+            label: isSaved ? t('Remove from saved') : t('Save message'),
             icon: isSaved ? <BookmarkCheckIcon size={15} /> : <BookmarkIcon size={15} />,
             onClick: () =>
               toggleSaved.mutate(
@@ -289,40 +290,40 @@ function MessageItemImpl(props: MessageItemProps) {
           !(message as { pending?: boolean }).pending && remindItem(message, props.serverId ?? null, { x: e.clientX, y: e.clientY }),
           props.canThread && message.channel_id
             ? {
-                label: message.thread_id ? 'Open thread' : 'Create thread',
+                label: message.thread_id ? t('Open thread') : t('Create thread'),
                 icon: <ThreadIcon size={15} />,
                 onClick: () => (message.thread_id ? openThread(message.thread_id) : openThreadDraft({ parentId: message.channel_id!, messageId: message.id })),
               }
             : null,
           mine && !message.poll && {
-            label: 'Edit message',
+            label: t('Edit message'),
             icon: <EditIcon size={15} />,
             onClick: () => {
               setDraft(text);
               props.onStartEdit(message.id);
             },
           },
-          props.canPin && { label: message.pinned ? 'Unpin message' : 'Pin message', icon: <PinIcon size={15} />, onClick: () => props.onTogglePin(message.id, !message.pinned) },
+          props.canPin && { label: message.pinned ? t('Unpin message') : t('Pin message'), icon: <PinIcon size={15} />, onClick: () => props.onTogglePin(message.id, !message.pinned) },
           props.canPublish && { label: 'Publish', icon: <MegaphoneIcon size={15} />, onClick: () => announcements.publish.mutate(message.id) },
           'divider',
           message.content && {
-            label: 'Copy text',
+            label: t('Copy text'),
             icon: <CopyIcon size={15} />,
             onClick: () => void navigator.clipboard.writeText(text).then(() => toast('Copied text', <CopyIcon size={14} />)),
           },
           {
-            label: 'Copy message link',
+            label: t('Copy message link'),
             icon: <LinkIcon size={15} />,
             onClick: () => void navigator.clipboard.writeText(buildMessageLink(message, props.serverId)).then(() => toast('Link copied', <LinkIcon size={14} />)),
           },
           'divider',
           !mine && message.author_id && {
-            label: 'Report message',
+            label: t('Report message'),
             icon: <FlagIcon size={15} />,
             danger: true,
             onClick: () => openReport({ messageId: message.id, userId: message.author_id, preview: message.content.slice(0, 280) }),
           },
-          mine && { label: 'Delete message', icon: <TrashIcon size={15} />, danger: true, onClick: () => props.onDelete(message.id) },
+          mine && { label: t('Delete message'), icon: <TrashIcon size={15} />, danger: true, onClick: () => props.onDelete(message.id) },
         ], (
           // Phones: one-tap reactions and reply at the top of the sheet (the hover bar's job on desktop).
           <div className="flex items-center gap-1.5">
@@ -501,12 +502,13 @@ function MessageItemImpl(props: MessageItemProps) {
                   data-tip-side="top"
                   type="button"
                   onClick={() => props.onReact(message.id, emoji, active)}
-                  className={`ae-press flex h-6 items-center gap-1.5 rounded-lg border px-1.5 text-xs font-semibold tabular-nums transition-colors ${
+                  data-active={active || undefined}
+                  className={`ae-reaction ae-press flex h-6 items-center gap-1.5 rounded-lg border px-1.5 text-xs font-semibold tabular-nums transition-colors ${
                     active ? 'border-ae-accent/70 bg-ae-accent/15 text-ae-accent' : 'border-transparent bg-ae-surface/70 text-ae-muted hover:border-ae-border'
                   }`}
                 >
                   <span className="text-[16px] leading-none"><EmojiText text={emoji} /></span>
-                  <span>{users.length}</span>
+                  <span key={users.length} className="ae-count">{users.length}</span>
                 </button>
               );
             })}
@@ -524,19 +526,19 @@ function MessageItemImpl(props: MessageItemProps) {
               <Emoji emoji={e} className="!m-0 !h-[18px] !w-[18px]" />
             </ToolbarButton>
           ))}
-          <ToolbarButton title="Add reaction" onClick={() => setPicker((p) => !p)}>
+          <ToolbarButton title={t('Add reaction')} onClick={() => setPicker((p) => !p)}>
             <ReactIcon size={15} className="ae-ico" />
           </ToolbarButton>
           <span className="mx-0.5 h-5 w-px bg-ae-border" />
-          <ToolbarButton title="Reply" onClick={() => props.onReply(message)}>
+          <ToolbarButton title={t('Reply')} onClick={() => props.onReply(message)}>
             <ReplyIcon size={16} />
           </ToolbarButton>
-          <ToolbarButton title="Forward" onClick={() => openForward(message.id)}>
+          <ToolbarButton title={t('Forward')} onClick={() => openForward(message.id)}>
             <ForwardIcon size={15} className="ae-ico" />
           </ToolbarButton>
           {props.canThread && message.channel_id && (
             <ToolbarButton
-              title={message.thread_id ? 'Open thread' : 'Create thread'}
+              title={message.thread_id ? t('Open thread') : t('Create thread')}
               onClick={() =>
                 message.thread_id ? openThread(message.thread_id) : openThreadDraft({ parentId: message.channel_id!, messageId: message.id })
               }

@@ -211,7 +211,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
         )}
       </main>
 
-      <section className="ae-tabview">
+      <section className="ae-tabview" key={mobileTab}>
         {mobileTab === 'home' ? (
           <MobileHome userId={userId} />
         ) : mobileTab === 'inbox' ? (

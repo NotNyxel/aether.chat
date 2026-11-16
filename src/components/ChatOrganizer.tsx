@@ -1,7 +1,8 @@
 /**
  * Folders, pinning and archive for the chat list (2.0), shared by the desktop sidebar and the
  * phone/tablet Messages screen: the filter chips above the list and the menu items on each chat.
- */
+ */
+import { t } from '../lib/i18n';
 import { organizeChats, useChatFilter, useChatFolders, useChatPrefs, useFolderActions, useSetChatPref } from '../hooks/useChatPrefs';
 import type { ButtonHTMLAttributes } from 'react';
 import type { Conversation } from '../types/db';
@@ -23,15 +24,15 @@ export function useSoundMenu() {
       else if (!sound) playSound(isDm ? 'message' : 'mention', true);
     };
     return {
-      label: 'Notification sound…',
+      label: t('Notification sound…'),
       icon: <MusicIcon size={15} />,
       hint: cur === 'none' ? 'Silent' : MESSAGE_TONES.find((t) => t.id === cur)?.label,
       onClick: () =>
         openContextMenu(new MouseEvent('contextmenu', { clientX: at.x, clientY: at.y }), [
-          { label: 'Default', icon: !cur ? <CheckIcon size={15} /> : undefined, onClick: () => pick(null) },
+          { label: t('Default'), icon: !cur ? <CheckIcon size={15} /> : undefined, onClick: () => pick(null) },
           ...MESSAGE_TONES.map((t) => ({ label: t.label, icon: cur === t.id ? <CheckIcon size={15} /> : undefined, onClick: () => pick(t.id) })),
           'divider',
-          { label: 'Silent (still notifies)', icon: cur === 'none' ? <CheckIcon size={15} /> : undefined, onClick: () => pick('none') },
+          { label: t('Silent (still notifies)'), icon: cur === 'none' ? <CheckIcon size={15} /> : undefined, onClick: () => pick('none') },
         ]),
     };
   };
@@ -49,7 +50,7 @@ export function useOrganizedChats(convs: Conversation[]) {
 }
 
 async function newFolder(create: ReturnType<typeof useFolderActions>['create']): Promise<string | null> {
-  const name = (await promptText('Name the new folder', { title: 'New folder', placeholder: 'Family, School, Gaming…', maxLength: 32, confirmLabel: 'Create' }))?.trim();
+  const name = (await promptText('Name the new folder', { title: t('New folder'), placeholder: 'Family, School, Gaming…', maxLength: 32, confirmLabel: 'Create' }))?.trim();
   if (!name) return null;
   try {
     return await create.mutateAsync({ name });
@@ -69,12 +70,12 @@ export function useChatOrgItems(conv: Conversation) {
   const p = prefs.get(conv.id);
   return (at: { x: number; y: number }): MenuEntry[] => [
     p?.pinned_at
-      ? { label: 'Unpin', icon: <PinOffIcon size={15} />, onClick: () => setPref.mutate({ scopeId: conv.id, patch: { pinned_at: null } }) }
-      : { label: 'Pin to top', icon: <PinIcon size={15} />, onClick: () => setPref.mutate({ scopeId: conv.id, patch: { pinned_at: new Date().toISOString(), archived: false } }) },
+      ? { label: t('Unpin'), icon: <PinOffIcon size={15} />, onClick: () => setPref.mutate({ scopeId: conv.id, patch: { pinned_at: null } }) }
+      : { label: t('Pin to top'), icon: <PinIcon size={15} />, onClick: () => setPref.mutate({ scopeId: conv.id, patch: { pinned_at: new Date().toISOString(), archived: false } }) },
     p?.archived
-      ? { label: 'Unarchive', icon: <UnarchiveIcon size={15} />, onClick: () => setPref.mutate({ scopeId: conv.id, patch: { archived: false } }) }
+      ? { label: t('Unarchive'), icon: <UnarchiveIcon size={15} />, onClick: () => setPref.mutate({ scopeId: conv.id, patch: { archived: false } }) }
       : {
-          label: 'Archive',
+          label: t('Archive'),
           icon: <ArchiveIcon size={15} />,
           onClick: () => {
             setPref.mutate({ scopeId: conv.id, patch: { archived: true, pinned_at: null } });
@@ -82,7 +83,7 @@ export function useChatOrgItems(conv: Conversation) {
           },
         },
     {
-      label: 'Move to folder…',
+      label: t('Move to folder…'),
       icon: <FolderIcon size={15} />,
       hint: folders.find((f) => f.id === p?.folder_id)?.name,
       onClick: () =>
@@ -93,10 +94,10 @@ export function useChatOrgItems(conv: Conversation) {
             icon: p?.folder_id === f.id ? <CheckIcon size={15} /> : <FolderIcon size={15} />,
             onClick: () => setPref.mutate({ scopeId: conv.id, patch: { folder_id: p?.folder_id === f.id ? null : f.id } }),
           })),
-          p?.folder_id && { label: 'Remove from folder', onClick: () => setPref.mutate({ scopeId: conv.id, patch: { folder_id: null } }) },
+          p?.folder_id && { label: t('Remove from folder'), onClick: () => setPref.mutate({ scopeId: conv.id, patch: { folder_id: null } }) },
           folders.length > 0 && 'divider',
           {
-            label: 'New folder…',
+            label: t('New folder…'),
             icon: <PlusIcon size={15} />,
             onClick: async () => {
               const id = await newFolder(create);
@@ -131,14 +132,14 @@ export function FolderChips({ archivedCount, compact }: { archivedCount: number;
     </button>
   );
   return (
-    <div role="toolbar" aria-label="Chat folders" className={compact ? "flex flex-wrap gap-1" : "ae-scroll flex gap-1.5 overflow-x-auto [scrollbar-width:none]"}>
+    <div role="toolbar" aria-label={t('Chat folders')} className={compact ? "flex flex-wrap gap-1" : "ae-scroll flex gap-1.5 overflow-x-auto [scrollbar-width:none]"}>
       {chip('all', 'All')}
       {folders.map((f) =>
         chip(f.id, `${f.emoji ? `${f.emoji} ` : ''}${f.name}`, {
           onContextMenu: (e) =>
             openContextMenu(e, [
               {
-                label: 'Rename folder',
+                label: t('Rename folder'),
                 icon: <EditIcon size={15} />,
                 onClick: async () => {
                   const name = (await promptText('Folder name', { initial: f.name, maxLength: 32, confirmLabel: 'Save' }))?.trim();
@@ -146,7 +147,7 @@ export function FolderChips({ archivedCount, compact }: { archivedCount: number;
                 },
               },
               {
-                label: 'Delete folder',
+                label: t('Delete folder'),
                 icon: <TrashIcon size={15} />,
                 danger: true,
                 onClick: async () => {
@@ -161,8 +162,8 @@ export function FolderChips({ archivedCount, compact }: { archivedCount: number;
       {archivedCount > 0 && chip('archived', `Archived · ${archivedCount}`)}
       <button
         type="button"
-        aria-label="New folder"
-        title="New folder"
+        aria-label={t('New folder')}
+        title={t('New folder')}
         onClick={async () => {
           const id = await newFolder(create);
           if (id) setFilter(id);

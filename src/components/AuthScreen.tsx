@@ -2,6 +2,7 @@
  * Signed-out screens: sign in, sign up and "forgot password", plus the two-factor step and the
  * "choose a new password" step that follow a reset link.
  */
+import { t } from '../lib/i18n';
 import { pwnedMessage } from '../lib/pwned';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { APP_NAME, DOWNLOAD_URL } from '../config';
@@ -53,7 +54,7 @@ function PasswordInput({ value, onChange, placeholder, autoComplete }: { value: 
         required
       />
       <button type="button" className="absolute top-1/2 right-2 -translate-y-1/2 rounded px-2 py-0.5 text-xs text-ae-muted hover:text-ae-text" onClick={() => setShow((v) => !v)}>
-        {show ? 'Hide' : 'Show'}
+        {show ? t('Hide') : t('Show')}
       </button>
     </div>
   );
@@ -124,11 +125,11 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
     }
   };
 
-  const titles = { signin: 'Welcome back', signup: `Join ${APP_NAME}`, reset: 'Forgot your password?' };
+  const titles = { signin: t('Welcome back'), signup: `Join ${APP_NAME}`, reset: t('Forgot your password?') };
   const subtitles = {
-    signin: 'Peer-to-peer voice and video. No servers in the middle.',
-    signup: 'Create an account. It takes ten seconds.',
-    reset: "Enter your email and we'll send you a reset link.",
+    signin: t('Peer-to-peer voice and video. No servers in the middle.'),
+    signup: t('Create an account. It takes ten seconds.'),
+    reset: t("Enter your email and we'll send you a reset link."),
   };
 
   return (
@@ -137,13 +138,13 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
         {mode === 'signup' && (
           <input className={input} placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />
         )}
-        <input className={input} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+        <input className={input} type="email" placeholder={t('Email')} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
         {mode !== 'reset' && (
-          <PasswordInput value={password} onChange={setPassword} placeholder="Password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} />
+          <PasswordInput value={password} onChange={setPassword} placeholder={t('Password')} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} />
         )}
         {mode === 'signin' && (
           <button type="button" className="text-xs text-ae-accent hover:underline" onClick={() => setMode('reset')}>
-            Forgot your password?
+            {t('Forgot your password?')}
           </button>
         )}
 
@@ -151,7 +152,7 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
         {notice && <p className="ae-enter rounded-ae bg-ae-success/10 px-3 py-2 text-sm text-ae-success">{notice}</p>}
 
         <Turnstile onToken={setCaptcha} resetKey={`${mode}-${captchaRound}`} />
-        <Submit busy={busy}>{mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}</Submit>
+        <Submit busy={busy}>{mode === 'signin' ? t('Sign in') : mode === 'signup' ? t('Create account') : t('Send reset link')}</Submit>
         {mode === 'signin' && passkeysHere() && (
           <button
             type="button"
@@ -171,7 +172,7 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
       </form>
 
       <p className="text-center text-sm text-ae-muted">
-        {mode === 'signin' ? 'New here? ' : mode === 'signup' ? 'Already have an account? ' : 'Remembered it? '}
+        {mode === 'signin' ? t('New here?') : mode === 'signup' ? t('Already have an account?') : t('Remembered it?')}{' '}
         <button
           type="button"
           className="text-ae-accent hover:underline"
@@ -181,7 +182,7 @@ export function AuthScreen({ linkError }: { linkError?: string | null }) {
             setNotice(null);
           }}
         >
-          {mode === 'signin' ? 'Create an account' : 'Sign in'}
+          {mode === 'signin' ? t('Create an account') : t('Sign in')}
         </button>
       </p>
     </Shell>

@@ -3,6 +3,7 @@
  * Servers, Notifications and You, each a full screen with a large title, like a native app.
  * Opening a chat hides the tab bar; the chat header has a back button.
  */
+import { t } from '../lib/i18n';
 import { openTour, openWhatsNew } from './WhatsNew';
 import { RocketIcon, SparklesIcon } from './icons';
 import { openBugReport } from './BugReport';
@@ -105,7 +106,7 @@ function DmRow({ conv, me, count, muted, inCall, pinned }: { conv: Conversation;
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
             <span className={`min-w-0 flex-1 truncate text-[15px] ${unread ? 'font-bold' : 'font-semibold'}`}>{title}</span>
-            {pinned && <PinIcon size={12} className="shrink-0 text-ae-muted" aria-label="Pinned" />}
+            {pinned && <PinIcon size={12} className="shrink-0 text-ae-muted" aria-label={t('Pinned')} />}
             <span className="shrink-0 text-[11px] text-ae-muted">{time}</span>
           </span>
           <span className="flex items-center gap-2">
@@ -150,8 +151,8 @@ export function MobileHome({ userId }: { userId: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <ScreenHeader title="Messages">
-        <RoundButton label="New message" onClick={() => setGroupOpen(true)}>
+      <ScreenHeader title={t('Messages')}>
+        <RoundButton label={t('New message')} onClick={() => setGroupOpen(true)}>
           <PlusIcon size={20} />
         </RoundButton>
       </ScreenHeader>
@@ -202,7 +203,7 @@ export function MobileHome({ userId }: { userId: string }) {
 export function MobileInbox({ userId, servers }: { userId: string; servers: Server[] }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <ScreenHeader title="Notifications" />
+      <ScreenHeader title={t('Notifications')} />
       <div className="min-h-0 flex-1">
         <InboxPanel userId={userId} servers={servers} onClose={() => {}} inline />
       </div>
@@ -256,7 +257,7 @@ export function MobileYou({ userId }: { userId: string }) {
         <MiniProfile userId={userId} me={userId} variant="panel" />
       </div>
       <div className="mx-4 mt-4 shrink-0 overflow-hidden rounded-2xl bg-ae-sunken/70">
-        <Row icon={<EditIcon size={17} />} label="Edit profile" hint="Avatar, banner, decorations, effects" onClick={openStudio} />
+        <Row icon={<EditIcon size={17} />} label={t('Edit profile')} hint={t('Avatar, banner, decorations, effects')} onClick={openStudio} />
         <Row
           icon={<PresenceDot status={status === 'invisible' ? 'offline' : status} size={12} />}
           label={STATUS_LABELS[status]}
@@ -270,12 +271,12 @@ export function MobileYou({ userId }: { userId: string }) {
         )}
       </div>
       <div className="mx-4 mt-3 shrink-0 overflow-hidden rounded-2xl bg-ae-sunken/70">
-        <Row icon={<PaletteIcon size={17} />} label="Customize your theme" hint="Colours, gradient and effects" onClick={openThemeStudio} />
-        <Row icon={<BellIcon size={17} />} label="Notifications" onClick={() => openSettings('notifications')} />
-        <Row icon={<SettingsIcon size={17} />} label="All settings" onClick={() => openSettings()} />
-        <Row icon={<SparklesIcon size={17} />} label="What's new" hint={`Aether ${__APP_VERSION__}`} onClick={openWhatsNew} />
-        <Row icon={<RocketIcon size={17} />} label="Take the tour" hint="A quick look around" onClick={openTour} />
-        <Row icon={<BugIcon size={17} />} label="Report a bug" hint="Tell us what went wrong" onClick={openBugReport} />
+        <Row icon={<PaletteIcon size={17} />} label={t('Customize your theme')} hint={t('Colours, gradient and effects')} onClick={openThemeStudio} />
+        <Row icon={<BellIcon size={17} />} label={t('Notifications')} onClick={() => openSettings('notifications')} />
+        <Row icon={<SettingsIcon size={17} />} label={t('All settings')} onClick={() => openSettings()} />
+        <Row icon={<SparklesIcon size={17} />} label={t("What's new")} hint={`Aether ${__APP_VERSION__}`} onClick={openWhatsNew} />
+        <Row icon={<RocketIcon size={17} />} label={t('Take the tour')} hint={t('A quick look around')} onClick={openTour} />
+        <Row icon={<BugIcon size={17} />} label={t('Report a bug')} hint={t('Tell us what went wrong')} onClick={openBugReport} />
       </div>
     </div>
   );
@@ -286,12 +287,12 @@ export function MobileTabBar({ userId, tab, onTab, homeBadge, inboxBadge }: { us
   const status = usePresenceOf(userId);
   const items: { id: MobileTab; label: string; icon: ReactNode; badge?: number }[] = useMemo(
     () => [
-      { id: 'home', label: 'Messages', icon: <MessageIcon size={22} />, badge: homeBadge },
-      { id: 'servers', label: 'Servers', icon: <ServerIcon size={22} /> },
-      { id: 'inbox', label: 'Notifications', icon: <BellIcon size={22} />, badge: inboxBadge },
+      { id: 'home', label: t('Messages'), icon: <MessageIcon size={22} />, badge: homeBadge },
+      { id: 'servers', label: t('Servers'), icon: <ServerIcon size={22} /> },
+      { id: 'inbox', label: t('Notifications'), icon: <BellIcon size={22} />, badge: inboxBadge },
       {
         id: 'you',
-        label: 'You',
+        label: t('You'),
         icon: (
           <span className="relative">
             <Avatar profile={me} size={24} showFrame={false} />
@@ -337,7 +338,7 @@ export function MobileServersEmpty() {
 export function MobileBack({ onClick }: { onClick?: () => void }) {
   const setPane = useUiStore((s) => s.setMobilePane);
   return (
-    <button type="button" aria-label="Back" className="ae-mobile-only -ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-full text-ae-text active:bg-ae-hover" onClick={onClick ?? (() => setPane('nav'))}>
+    <button type="button" aria-label={t('Back')} className="ae-mobile-only -ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-full text-ae-text active:bg-ae-hover" onClick={onClick ?? (() => setPane('nav'))}>
       <ChevronRightIcon size={24} className="rotate-180" />
     </button>
   );

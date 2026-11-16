@@ -3,7 +3,8 @@
  * and tracks `{ userId, status, activity }`. Invisible users do not track at all, so they appear offline.
  * `activity` is the opt-in "Playing …" game name and `listening` the opt-in Spotify track; both only
  * live in presence, never in the database.
- */
+ */
+import { t } from '../lib/i18n';
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useSupabase } from '../lib/supabase';
@@ -152,11 +153,11 @@ const DOT_COLORS: Record<VisibleStatus, string> = {
 };
 
 export const STATUS_LABELS: Record<PresenceStatus | 'offline', string> = {
-  online: 'Online',
-  idle: 'Idle',
-  dnd: 'Do Not Disturb',
-  invisible: 'Invisible',
-  offline: 'Offline',
+  online: t('Online'),
+  idle: t('Idle'),
+  dnd: t('Do Not Disturb'),
+  invisible: t('Invisible'),
+  offline: t('Offline'),
 };
 
 /**

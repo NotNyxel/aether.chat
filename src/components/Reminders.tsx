@@ -1,4 +1,5 @@
-/** Reminders UI (2.0): the "Remind me" message menu, the due-reminder alert, and Inbox → Reminders. */
+/** Reminders UI (2.0): the "Remind me" message menu, the due-reminder alert, and Inbox → Reminders. */
+import { t } from '../lib/i18n';
 import { useCallback } from 'react';
 import { parseReminderIn, reminderPresets, useReminderActions, useReminders, useReminderWatcher, whenText, type Reminder } from '../hooks/useReminders';
 import { notify } from '../lib/desktop';
@@ -30,7 +31,7 @@ export function ReminderWatcher() {
 export function useRemindMenuItem() {
   const { add } = useReminderActions();
   return (message: Message, serverId: string | null, at: { x: number; y: number }): MenuItem => ({
-    label: 'Remind me…',
+    label: t('Remind me…'),
     icon: <ClockIcon size={15} />,
     onClick: () => {
       const set = (when: Date) =>
@@ -42,7 +43,7 @@ export function useRemindMenuItem() {
         ...reminderPresets().map((p) => ({ label: p.label, hint: whenText(p.at.toISOString()).replace(/^(Today|Tomorrow) at /, ''), onClick: () => set(p.at) })),
         'divider',
         {
-          label: 'Custom…',
+          label: t('Custom…'),
           onClick: async () => {
             const text = await promptText('Remind me in…', { title: 'Custom reminder', placeholder: '45m, 2h, 3 days, 1w', maxLength: 40, confirmLabel: 'Set reminder' });
             if (!text) return;
@@ -76,7 +77,7 @@ function Row({ r }: { r: Reminder }) {
       <div className="mt-1.5 flex gap-3 text-xs">
         {r.messages && (
           <button type="button" className="text-ae-accent hover:underline" onClick={() => go(r)}>
-            Jump
+            {t('Jump')}
           </button>
         )}
         {r.done_at ? (
@@ -85,11 +86,11 @@ function Row({ r }: { r: Reminder }) {
           </button>
         ) : (
           <button type="button" className="inline-flex items-center gap-1 text-ae-muted hover:text-ae-text" onClick={() => done.mutate(r.id)}>
-            <CheckIcon size={12} /> Done
+            <CheckIcon size={12} /> {t('Done')}
           </button>
         )}
         <button type="button" className="ml-auto inline-flex items-center gap-1 text-ae-muted hover:text-ae-danger" onClick={() => remove.mutate(r.id)}>
-          <TrashIcon size={12} /> Delete
+          <TrashIcon size={12} /> {t('Delete')}
         </button>
       </div>
     </li>
@@ -106,7 +107,7 @@ export function RemindersList() {
     return (
       <div className="p-8 text-center text-sm text-ae-muted">
         <ClockIcon size={28} className="mx-auto mb-2 opacity-60" />
-        No reminders. Right-click a message (or press and hold it) and choose <b>Remind me…</b>
+        No reminders. Right-click a message (or press and hold it) and choose <b>{t('Remind me…')}</b>
       </div>
     );
   return (
@@ -120,7 +121,7 @@ export function RemindersList() {
       )}
       {past.length > 0 && (
         <section>
-          <h3 className="mb-2 px-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Earlier</h3>
+          <h3 className="mb-2 px-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">{t('Earlier')}</h3>
           <ul className="space-y-2">
             {past.map((r) => (
               <Row key={r.id} r={r} />

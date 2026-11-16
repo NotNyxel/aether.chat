@@ -6,9 +6,36 @@ import { organizeChats, useChatFilter, useChatFolders, useChatPrefs, useFolderAc
 import type { ButtonHTMLAttributes } from 'react';
 import type { Conversation } from '../types/db';
 import { ask, promptText } from './ConfirmDialog';
-import { openContextMenu, type MenuEntry } from './ContextMenu';
-import { ArchiveIcon, CheckIcon, EditIcon, FolderIcon, PinIcon, PinOffIcon, PlusIcon, TrashIcon, UnarchiveIcon } from './icons';
+import { openContextMenu, type MenuEntry, type MenuItem } from './ContextMenu';
+import { ArchiveIcon, CheckIcon, EditIcon, FolderIcon, MusicIcon, PinIcon, PinOffIcon, PlusIcon, TrashIcon, UnarchiveIcon } from './icons';
 import { toast } from './Toaster';
+import { MESSAGE_TONES, playSound, playTone } from '../lib/sounds';
+
+/** "Notification sound…" for any chat or channel: its own tone, the default, or silent. */
+export function useSoundMenu() {
+  const prefs = useChatPrefs();
+  const setPref = useSetChatPref();
+  return (scopeId: string, at: { x: number; y: number }, isDm: boolean): MenuItem => {
+    const cur = prefs.get(scopeId)?.sound ?? null;
+    const pick = (sound: string | null) => {
+      setPref.mutate({ scopeId, patch: { sound } });
+      if (sound && sound !== 'none') playTone(sound, true);
+      else if (!sound) playSound(isDm ? 'message' : 'mention', true);
+    };
+    return {
+      label: 'Notification sound…',
+      icon: <MusicIcon size={15} />,
+      hint: cur === 'none' ? 'Silent' : MESSAGE_TONES.find((t) => t.id === cur)?.label,
+      onClick: () =>
+        openContextMenu(new MouseEvent('contextmenu', { clientX: at.x, clientY: at.y }), [
+          { label: 'Default', icon: !cur ? <CheckIcon size={15} /> : undefined, onClick: () => pick(null) },
+          ...MESSAGE_TONES.map((t) => ({ label: t.label, icon: cur === t.id ? <CheckIcon size={15} /> : undefined, onClick: () => pick(t.id) })),
+          'divider',
+          { label: 'Silent (still notifies)', icon: cur === 'none' ? <CheckIcon size={15} /> : undefined, onClick: () => pick('none') },
+        ]),
+    };
+  };
+}
 
 /** The chats to show right now (current folder / archive, pinned first) and the archive size. */
 export function useOrganizedChats(convs: Conversation[]) {
@@ -38,6 +65,7 @@ export function useChatOrgItems(conv: Conversation) {
   const folders = useChatFolders();
   const setPref = useSetChatPref();
   const { create } = useFolderActions();
+  const soundItem = useSoundMenu();
   const p = prefs.get(conv.id);
   return (at: { x: number; y: number }): MenuEntry[] => [
     p?.pinned_at
@@ -77,6 +105,7 @@ export function useChatOrgItems(conv: Conversation) {
           },
         ]),
     },
+    soundItem(conv.id, at, true),
   ];
 }
 

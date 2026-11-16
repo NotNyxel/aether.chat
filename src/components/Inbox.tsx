@@ -17,6 +17,7 @@ import { CheckIcon, CloseIcon, HashIcon, InboxIcon, SparklesIcon, BookmarkIcon }
 import { Avatar } from './ProfileCard';
 import { useEscape } from '../lib/escape';
 import { useSavedMessages } from '../hooks/useSaved';
+import { RemindersList } from './Reminders';
 
 type ChannelInfo = Pick<Channel, 'id' | 'name' | 'server_id'>;
 
@@ -103,7 +104,7 @@ export function InboxButton({ userId, servers }: { userId: string; servers: Serv
 
 export function InboxPanel({ userId, servers, onClose, inline = false }: { userId: string; servers: Server[]; onClose: () => void; inline?: boolean }) {
   const sb = useSupabase();
-  const [tab, setTab] = useState<'mentions' | 'unreads' | 'saved'>('mentions');
+  const [tab, setTab] = useState<'mentions' | 'unreads' | 'saved' | 'reminders'>('mentions');
   const saved = useSavedMessages(tab === 'saved');
   const goTo = useUiStore((s) => s.goTo);
   const markRead = useMarkRead();
@@ -188,19 +189,26 @@ export function InboxPanel({ userId, servers, onClose, inline = false }: { userI
       role="dialog"
       aria-label="Inbox"
     >
-      <header className="flex items-center gap-2 border-b border-ae-border p-3">
-        <InboxIcon size={18} />
-        <h2 className="mr-2 font-bold">Inbox</h2>
+      <header className="flex items-center gap-1 overflow-x-auto border-b sm:gap-2 border-ae-border p-3 [scrollbar-width:none] [&>button]:shrink-0">
+        {!inline && (
+          <>
+            <InboxIcon size={18} />
+            <h2 className="mr-2 font-bold">Inbox</h2>
+          </>
+        )}
         {tabBtn('mentions', 'Mentions')}
         {tabBtn('unreads', 'Unreads', unreadRows.length)}
         {tabBtn('saved', 'Saved')}
+        {tabBtn('reminders', 'Reminders')}
         <button type="button" title="Close" className="ml-auto text-ae-muted hover:text-ae-text" onClick={onClose}>
           <CloseIcon size={16} />
         </button>
       </header>
 
       <div className="ae-scroll min-h-0 flex-1 overflow-y-auto p-3">
-        {tab === 'saved' ? (
+        {tab === 'reminders' ? (
+          <RemindersList />
+        ) : tab === 'saved' ? (
           saved.isLoading ? (
             <p className="p-6 text-center text-sm text-ae-muted">Loading…</p>
           ) : (saved.data ?? []).filter((r) => r.messages).length === 0 ? (

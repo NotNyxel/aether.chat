@@ -9,7 +9,8 @@
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { notify } from '../lib/desktop';
-import { playSound } from '../lib/sounds';
+import { playSound, playTone } from '../lib/sounds';
+import type { ChatPref } from './useChatPrefs';
 import { useSupabase } from '../lib/supabase';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
@@ -122,7 +123,12 @@ export function useActivityFeed(userId: string, viewingScopeId: string | null, s
         const wanted = isDm || rule.level === 'all' || mentioned;
         if (!wanted) return;
 
-        if (isDm) playSound('message');
+        // A chat's own sound (chat menu → Notification sound) wins; "none" keeps it silent.
+        const tone = qc.getQueryData<ChatPref[]>(['chat-prefs'])?.find((p) => p.scope_id === scopeId)?.sound;
+        if (tone === 'none') {
+          /* silent for this chat, but still notified */
+        } else if (tone && (isDm || rule.level === 'all' || mentioned)) playTone(tone);
+        else if (isDm) playSound('message');
         else if (mentioned) playSound('mention');
 
         const prefs = useSettingsStore.getState().notifications;

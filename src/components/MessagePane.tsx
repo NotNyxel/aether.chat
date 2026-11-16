@@ -4,7 +4,7 @@
  * pins and search), jump to present, auto mark-as-read, pins and search panels, drag-and-drop
  * uploads, typing indicator and the composer.
  */
-import { ArrowDownIcon, LockIcon, MegaphoneIcon, PinIcon } from './icons';
+import { ArrowDownIcon, ImageIcon, LockIcon, MegaphoneIcon, PinIcon } from './icons';
 import { ask } from './ConfirmDialog';
 import { messageRenderKey, useServerMembers, useServers } from '../hooks/useChatData';
 import { NotificationBell } from './NotificationMenu';
@@ -28,7 +28,7 @@ import { useUiStore } from '../stores/uiStore';
 import type { Channel, Message, MessageScope, PollVote } from '../types/db';
 import { Composer } from './Composer';
 import { DisplayName, MessageItem } from './MessageItem';
-import { PinsPanel, SearchPanel } from './MessagePanels';
+import { MediaPanel, PinsPanel, SearchPanel } from './MessagePanels';
 import { MobileBack } from './MobileNav';
 import { SeenLine, type ReadState } from './ReadReceipts';
 import { WatchButton, WatchPanel } from './WatchTogether';
@@ -112,7 +112,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
 
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [panel, setPanel] = useState<'pins' | 'search' | null>(null);
+  const [panel, setPanel] = useState<'pins' | 'search' | 'media' | null>(null);
   const [searchSeed, setSearchSeed] = useState('');
   const [dropped, setDropped] = useState<File[] | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -294,6 +294,8 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
   const rightPanel =
     panel === 'pins' ? (
       <PinsPanel scope={scope} serverId={serverId} canPin={canPin} onUnpin={(id) => pin.mutate({ id, pinned: false })} onClose={() => setPanel(null)} />
+    ) : panel === 'media' ? (
+      <MediaPanel scope={scope} serverId={serverId} onClose={() => setPanel(null)} />
     ) : panel === 'search' ? (
       <SearchPanel key={searchSeed} scope={scope} serverId={serverId} channels={channels} initial={searchSeed} onClose={() => setPanel(null)} />
     ) : (
@@ -315,6 +317,15 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             onClick={() => setPanel(panel === 'pins' ? null : 'pins')}
           >
             <PinIcon size={15} className="ae-ico" />
+          </button>
+          <button
+            type="button"
+            title="Media & files"
+            aria-label="Media & files"
+            className={`leading-none ${panel === 'media' ? '' : 'opacity-60 hover:opacity-100'}`}
+            onClick={() => setPanel(panel === 'media' ? null : 'media')}
+          >
+            <ImageIcon size={16} className="ae-ico" />
           </button>
           <form
             className="ae-desktop-only"

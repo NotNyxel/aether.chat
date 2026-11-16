@@ -35,6 +35,31 @@ export function useTogglePin(scope: MessageScope) {
   });
 }
 
+// ── Media gallery (2.0) ──────────────────────────────────────────────────────────────────────
+
+export interface MediaItem {
+  messageId: string;
+  authorId: string | null;
+  createdAt: string;
+  a: Attachment;
+}
+
+/** Every photo, video, file and voice message shared in a chat, newest first. */
+export function useScopeMedia(scope: MessageScope, enabled: boolean) {
+  const sb = useSupabase();
+  return useQuery({
+    queryKey: ['media', scope.id],
+    enabled,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const rows = unwrap(
+        await sb.from('messages').select('id, author_id, created_at, attachments').eq(scopeColumn(scope), scope.id).neq('attachments', '[]').order('created_at', { ascending: false }).limit(400),
+      ) as Pick<Message, 'id' | 'author_id' | 'created_at' | 'attachments'>[];
+      return rows.flatMap((m) => (m.attachments ?? []).filter((a) => !a.sticker).map((a): MediaItem => ({ messageId: m.id, authorId: m.author_id, createdAt: m.created_at, a })));
+    },
+  });
+}
+
 // ── Polls ──────────────────────────────────────────────────────────────────────────────────
 
 /** Every poll vote in a scope, kept live. */

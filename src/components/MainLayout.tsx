@@ -29,6 +29,7 @@ import { ForwardDialog } from './ForwardDialog';
 import { FriendsView, MessageRequestsView } from './FriendsView';
 import { HomeSidebar } from './HomeSidebar';
 import { IncomingCall } from './IncomingCall';
+import { ReminderWatcher } from './Reminders';
 import { Lightbox } from './Lightbox';
 import { FullProfileModal } from './FullProfile';
 import { ServerRail } from './ServerRail';
@@ -236,6 +237,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <IncomingCall userId={userId} silent={me?.presence_status === 'dnd'} />
       <ForwardDialog me={userId} />
       <Lightbox />
+      <ReminderWatcher />
       <ProfilePeekLayer me={userId} server={server} />
       <ThemeStudio />
       <AndroidUpdate />

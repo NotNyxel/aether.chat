@@ -29,6 +29,7 @@ import { GifView } from './GifPicker';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToggleSaved } from '../hooks/useSaved';
 import { previewText, useMessageText } from './E2eChat';
+import { useRemindMenuItem } from './Reminders';
 
 export function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -200,6 +201,7 @@ function MessageItemImpl(props: MessageItemProps) {
   // Encrypted chats: the readable text (or a placeholder when this device can't decrypt it).
   const text = useMessageText(message.content);
   const toggleSaved = useToggleSaved();
+  const remindItem = useRemindMenuItem();
   const isSaved = !!qcR.getQueryData<{ message_id: string }[]>(['saved-messages'])?.some((r) => r.message_id === message.id);
   const rowRef = useRef<HTMLLIElement>(null);
   useEffect(() => {
@@ -230,6 +232,7 @@ function MessageItemImpl(props: MessageItemProps) {
                 { onSuccess: () => toast(isSaved ? 'Removed from saved' : 'Saved. Find it in Inbox → Saved.', <BookmarkIcon size={14} />), onError: (e) => toast.error(e.message) },
               ),
           },
+          !(message as { pending?: boolean }).pending && remindItem(message, props.serverId ?? null, { x: e.clientX, y: e.clientY }),
           props.canThread && message.channel_id
             ? {
                 label: message.thread_id ? 'Open thread' : 'Create thread',

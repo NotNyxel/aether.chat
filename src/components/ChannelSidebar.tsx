@@ -1,4 +1,5 @@
 /** Server sidebar: channels grouped by category, invites, channel creation, leave/delete server. */
+import { useSoundMenu } from './ChatOrganizer';
 import { InviteDialog } from './Invites';
 import { toast } from './Toaster';
 import { openContextMenu } from './ContextMenu';
@@ -71,6 +72,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
   const { resolve } = useNotifyResolver();
   const markRead = useMarkRead();
   const setNotify = useSetNotificationSetting();
+  const soundItem = useSoundMenu();
   const { data: unread = [] } = useUnreadSummary();
   const unreadById = useMemo(() => new Map(unread.map((r) => [r.scope_id, r])), [unread]);
 
@@ -397,6 +399,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
                               (muted
                                 ? { label: 'Unmute channel', icon: <BellIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: ch.id, kind: 'channel', patch: { muted_until: null } }) }
                                 : { label: 'Mute channel for 1 hour', icon: <BellOffIcon size={15} />, onClick: () => setNotify.mutate({ scopeId: ch.id, kind: 'channel', patch: { muted_until: muteUntil(60) } }) }),
+                            ch.type === 'text' && soundItem(ch.id, { x: e.clientX, y: e.clientY }, false),
                             canOpenChannelSettings && { label: 'Edit channel', icon: <SettingsIcon size={15} />, onClick: () => openChannelSettings(ch.id) },
                             canManageChannels && { label: 'Reorder channels', icon: <GripIcon size={15} />, onClick: () => setReordering(true) },
                             ch.type === 'text' && canManageMessages && { label: 'Delete recent messages…', icon: <TrashIcon size={15} />, danger: true, onClick: () => void purge(ch) },

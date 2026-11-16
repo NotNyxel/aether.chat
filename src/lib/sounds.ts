@@ -140,10 +140,75 @@ function getContext(): AudioContext | null {
   return ctx;
 }
 
+/** Per-chat message tones (2.0): pick one for a chat so you know who it is without looking. */
+export const MESSAGE_TONES: { id: string; label: string; notes: Note[] }[] = [
+  { id: 'chime', label: 'Chime', notes: SOUNDS.message },
+  {
+    id: 'pop',
+    label: 'Pop',
+    notes: [{ f: 600, t: 0, d: 0.07, g: 0.8, to: 1100 }],
+  },
+  {
+    id: 'ding',
+    label: 'Ding',
+    notes: [
+      { f: C6, t: 0, d: 0.5, g: 0.6 },
+      { f: G6, t: 0, d: 0.35, g: 0.15 },
+    ],
+  },
+  {
+    id: 'bubble',
+    label: 'Bubble',
+    notes: [
+      { f: 500, t: 0, d: 0.06, g: 0.6, to: 900 },
+      { f: 700, t: 0.08, d: 0.07, g: 0.6, to: 1300 },
+    ],
+  },
+  {
+    id: 'bell',
+    label: 'Bell',
+    notes: [
+      { f: E5, t: 0, d: 0.12, type: 'triangle' },
+      { f: B5, t: 0.1, d: 0.12, type: 'triangle' },
+      { f: E6, t: 0.2, d: 0.35, type: 'triangle', g: 0.7 },
+    ],
+  },
+  {
+    id: 'knock',
+    label: 'Knock',
+    notes: [
+      { f: 180, t: 0, d: 0.06, type: 'triangle', g: 1 },
+      { f: 160, t: 0.14, d: 0.06, type: 'triangle', g: 1 },
+    ],
+  },
+  {
+    id: 'sparkle',
+    label: 'Sparkle',
+    notes: [
+      { f: E6, t: 0, d: 0.06, g: 0.4 },
+      { f: G6, t: 0.05, d: 0.06, g: 0.4 },
+      { f: 2093, t: 0.1, d: 0.14, g: 0.35 },
+    ],
+  },
+];
+
+/** Plays a chat's own message tone. Honors the master sound switch and volume. */
+export function playTone(toneId: string, force = false): void {
+  const tone = MESSAGE_TONES.find((t) => t.id === toneId);
+  if (!tone) return;
+  if (!force && !useSettingsStore.getState().sounds.enabled) return;
+  playNotes(tone.notes);
+}
+
 /** Plays a sound now, honoring the user's sound settings. `force` ignores per-sound toggles (used by previews). */
 export function playSound(id: SoundId, force = false): void {
   const { sounds } = useSettingsStore.getState();
   if (!force && (!sounds.enabled || sounds.disabled.includes(id))) return;
+  playNotes(SOUNDS[id]);
+}
+
+function playNotes(notes: Note[]): void {
+  const { sounds } = useSettingsStore.getState();
   const ac = getContext();
   if (!ac) return;
   const master = ac.createGain();
@@ -151,7 +216,7 @@ export function playSound(id: SoundId, force = false): void {
   master.connect(ac.destination);
   const now = ac.currentTime + 0.01;
   let end = now;
-  for (const n of SOUNDS[id]) {
+  for (const n of notes) {
     const osc = ac.createOscillator();
     const env = ac.createGain();
     osc.type = n.type ?? 'sine';

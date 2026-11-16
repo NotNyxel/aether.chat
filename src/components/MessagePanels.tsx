@@ -1,12 +1,12 @@
 /** Right-hand panels for a chat: pinned messages and search results (with jump-to). */
 import { useState } from 'react';
-import { HAS_KINDS, parseSearch, useMessageSearch, usePinnedMessages, type SearchQuery } from '../hooks/useMessageExtras';
+import { HAS_KINDS, parseSearch, useMessageSearch, usePinnedMessages, useScopeMedia, type MediaItem, type SearchQuery } from '../hooks/useMessageExtras';
 import { decryptText } from '../lib/e2e';
 import { promptText } from './ConfirmDialog';
 import { Markdown } from '../lib/markdown';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, Message, MessageScope } from '../types/db';
-import { CloseIcon, PinIcon } from './icons';
+import { AudioFileIcon, CloseIcon, FileIcon, ImageIcon, PinIcon, VideoFileIcon } from './icons';
 import { DisplayName, formatTime } from './MessageItem';
 import { previewText, useE2e } from './E2eChat';
 
@@ -86,6 +86,98 @@ export function PinsPanel({ scope, serverId, canPin, onUnpin, onClose }: {
           <ResultCard key={m.id} m={m} serverId={serverId} onUnpin={canPin ? () => onUnpin(m.id) : undefined} />
         ))}
       </ul>
+    </PanelShell>
+  );
+}
+
+const isVisual = (a: MediaItem['a']) => !a.voice && (a.content_type.startsWith('image/') || a.content_type.startsWith('video/'));
+const sizeText = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
+
+/** Media & files (2.0): a grid of every photo and video in the chat, and a list of files and voice messages. */
+export function MediaPanel({ scope, serverId, onClose }: { scope: MessageScope; serverId: string | null; onClose: () => void }) {
+  const { data = [], isLoading } = useScopeMedia(scope, true);
+  const [tab, setTab] = useState<'media' | 'files'>('media');
+  const openLightbox = useUiStore((s) => s.openLightbox);
+  const goTo = useUiStore((s) => s.goTo);
+  const media = data.filter((i) => isVisual(i.a) && !i.a.spoiler);
+  const files = data.filter((i) => !isVisual(i.a) || i.a.spoiler);
+  const jump = (i: MediaItem) => goTo({ serverId, scopeId: scope.id, messageId: i.messageId });
+  const empty = !isLoading && (tab === 'media' ? media : files).length === 0;
+  return (
+    <PanelShell title="Media & files" onClose={onClose}>
+      <div role="tablist" className="mb-3 grid grid-cols-2 gap-1 rounded-full bg-ae-sunken p-1 text-xs font-semibold">
+        {(['media', 'files'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            className={`rounded-full py-1.5 transition-colors ${tab === t ? 'bg-ae-surface text-ae-text' : 'text-ae-muted hover:text-ae-text'}`}
+          >
+            {t === 'media' ? `Photos & videos · ${media.length}` : `Files · ${files.length}`}
+          </button>
+        ))}
+      </div>
+      {isLoading && (
+        <div className="grid grid-cols-3 gap-1">
+          {Array.from({ length: 9 }, (_, i) => (
+            <div key={i} className="ae-skeleton aspect-square rounded" />
+          ))}
+        </div>
+      )}
+      {empty && (
+        <div className="py-10 text-center text-sm text-ae-muted">
+          {tab === 'media' ? <ImageIcon size={28} className="mx-auto opacity-60" /> : <FileIcon size={28} className="mx-auto opacity-60" />}
+          <p className="mt-2">{tab === 'media' ? 'No photos or videos yet.' : 'No files yet.'}</p>
+        </div>
+      )}
+      {tab === 'media' ? (
+        <ul className="grid grid-cols-3 gap-1">
+          {media.map((i, n) => (
+            <li key={`${i.messageId}${n}`} className="ae-pop relative aspect-square overflow-hidden rounded bg-ae-sunken" style={{ animationDelay: `${Math.min(n, 18) * 15}ms` }}>
+              <button
+                type="button"
+                title={i.a.alt || i.a.name}
+                className="block h-full w-full"
+                onClick={() =>
+                  i.a.content_type.startsWith('video/')
+                    ? jump(i)
+                    : openLightbox({ url: i.a.url, alt: i.a.alt, name: i.a.name, messageId: i.messageId, scopeId: scope.id, contentType: i.a.content_type, width: i.a.width, height: i.a.height })
+                }
+              >
+                {i.a.content_type.startsWith('video/') ? (
+                  <>
+                    <video src={`${i.a.url}#t=0.1`} preload="metadata" muted playsInline className="pointer-events-none h-full w-full object-cover" />
+                    <VideoFileIcon size={16} className="absolute right-1 bottom-1 text-white drop-shadow" />
+                  </>
+                ) : (
+                  <img src={i.a.url} alt={i.a.alt ?? ''} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform hover:scale-105" draggable={false} />
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="space-y-1">
+          {files.map((i, n) => (
+            <li key={`${i.messageId}${n}`}>
+              <button type="button" onClick={() => jump(i)} className="flex w-full items-center gap-2.5 rounded-ae p-2 text-left hover:bg-ae-hover">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-ae bg-ae-surface text-ae-muted">
+                  {i.a.voice || i.a.content_type.startsWith('audio/') ? <AudioFileIcon size={17} /> : <FileIcon size={17} />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm">{i.a.voice ? 'Voice message' : i.a.name}</span>
+                  <span className="block truncate text-xs text-ae-muted">
+                    {i.authorId && <><DisplayName userId={i.authorId} /> · </>}{formatTime(i.createdAt)}
+                    {i.a.voice && i.a.duration ? ` · ${Math.round(i.a.duration)}s` : ` · ${sizeText(i.a.size)}`}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </PanelShell>
   );
 }

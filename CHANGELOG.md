@@ -3,6 +3,33 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [1.10.0] - 2026-11-16
+
+**A tablet layout for iPads and Android tablets**
+
+Tablets used to get the desktop layout as-is, with mouse-sized controls and buttons that only appeared on hover.
+They now get their own layout: everything you have on a computer, arranged and sized for touch.
+
+- **Its own look:** the server rail, your chats list and the chat are separate floating rounded panels with space
+  between them, and the message box is rounder and sits off the bottom edge. It's the same in the iPad and Android
+  apps and on the web, and your theme still decides the colors.
+- **Everything easier to read and tap.**
+  - Text and controls are a little larger.
+  - Chat and channel rows are full-size touch targets.
+  - The channel and DM list is wider.
+  - Content stays clear of rounded corners and the home bar.
+- **Held upright:**
+  - the list is slightly narrower so conversations keep their room;
+  - members, profiles, search, pins and threads slide in over the chat from the right instead of squashing it.
+- **Held sideways:** servers, list, chat and side panels all side by side.
+- **Built for touch.**
+  - Press and hold opens touch menus with quick reactions.
+  - Emoji and reaction pickers rise from the bottom, centered.
+  - Typing doesn't make the page zoom in.
+- **On every touch screen** (phones too), buttons that used to appear only on mouse hover are always visible:
+  channel settings, "Jump" in search results, emoji and sticker actions, and more.
+- Phones keep the phone layout. The small iPad mini held upright counts as a phone.
+
 ## [1.9.5] - 2026-11-16
 
 **Reactions work on phones, and phones held sideways get the phone layout**

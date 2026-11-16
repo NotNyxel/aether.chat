@@ -318,7 +318,12 @@ function MessageItemImpl(props: MessageItemProps) {
             <BotIcon size={20} />
           </span>
         ) : showHeader ? (
-          <button type="button" onClick={(e) => message.author_id && peekProfile(message.author_id, e.currentTarget)} className={message.reply_to_id ? 'mt-5' : ''}>
+          <button
+            type="button"
+            aria-label={`Open ${name}'s profile`}
+            onClick={(e) => message.author_id && peekProfile(message.author_id, e.currentTarget)}
+            className={message.reply_to_id ? 'mt-5' : ''}
+          >
             <Avatar profile={avatarProfile} size={40} showFrame={false} />
           </button>
         ) : (

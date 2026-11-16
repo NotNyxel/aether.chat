@@ -3,7 +3,7 @@
  *   - FloatingPanel: the box itself (a pop-up on computers, a bottom sheet on phones and tablets).
  *   - EmojiPanel: what's inside, also used as the Emoji tab of the expressions menu.
  */
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { isPhoneLayout, isTouchUi } from '../lib/phone';
 import { EMOJI_GROUPS, getRecentEmoji, pushRecentEmoji, searchEmoji, useEmojiData } from '../lib/emoji';
@@ -22,7 +22,36 @@ const SOLID = 'bg-[var(--ae-bg-solid,var(--ae-bg-elevated))]';
 /** The floating box: a pop-up on computers, a bottom sheet over everything on phones and tablets. */
 export function FloatingPanel({ onClose, className = 'bottom-full right-0 mb-2', width = 'w-[min(372px,calc(100vw-16px))]', height = 'h-[420px]', children }: { onClose: () => void; className?: string; width?: string; height?: string; children: ReactNode }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLSpanElement>(null);
   const [phone] = useState(isTouchUi);
+  // Computers: drawn over the whole app (a portal) next to its button, so scrolling or clipped
+  // containers (Profile Studio's settings column, side panels) can never cut it off or cover it.
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const preferBelow = className.includes('top-full');
+  useLayoutEffect(() => {
+    if (phone) return;
+    const place = () => {
+      const host = anchorRef.current?.parentElement;
+      const panel = panelRef.current;
+      if (!host || !panel) return;
+      const r = host.getBoundingClientRect();
+      const w = panel.offsetWidth;
+      const h = panel.offsetHeight;
+      const above = r.top - h - 8;
+      const below = r.bottom + 8;
+      let top = preferBelow ? (below + h > innerHeight - 8 && above >= 8 ? above : below) : above >= 8 ? above : below;
+      top = Math.max(8, Math.min(top, innerHeight - h - 8));
+      const left = Math.max(8, Math.min(className.includes('left-0') ? r.left : r.right - w, innerWidth - w - 8));
+      setPos({ top, left });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [phone, preferBelow, className]);
   useEscape(onClose);
   useEffect(() => {
     const onDown = (e: MouseEvent | TouchEvent) => {
@@ -58,9 +87,21 @@ export function FloatingPanel({ onClose, className = 'bottom-full right-0 mb-2',
       document.body,
     );
   return (
-    <div ref={panelRef} role="dialog" className={`absolute z-40 flex flex-col overflow-hidden rounded-ae border border-ae-border shadow-2xl ${SOLID} ${width} ${height} ${className}`} onMouseDown={(e) => e.stopPropagation()}>
-      {children}
-    </div>
+    <>
+      <span ref={anchorRef} hidden />
+      {createPortal(
+        <div
+          ref={panelRef}
+          role="dialog"
+          className={`ae-pop fixed z-[89] flex flex-col overflow-hidden rounded-ae border border-ae-border shadow-2xl ${SOLID} ${width} ${height}`}
+          style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, visibility: pos ? 'visible' : 'hidden' }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {children}
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 

@@ -21,6 +21,7 @@ import { isTauri } from './lib/platform';
 import { resolveBackendConfig, SupabaseProvider, useSupabase } from './lib/supabase';
 import { installTouchControls } from './lib/touch';
 import { clearCache, hydrateCache, persistCache } from './lib/persistCache';
+import { warmEmojiCache } from './lib/emojiWarm';
 
 /** A failed change never fails silently: if an action has no error handling of its own, say so. */
 export function friendlyError(err: unknown): string {
@@ -133,6 +134,12 @@ function AuthGate() {
     hydrated.current = userId;
   }
   useEffect(() => (userId ? persistCache(qc, userId) : undefined), [qc, userId]);
+  // First run on a device: download the emoji images in the background so they're instant later.
+  useEffect(() => {
+    if (!userId) return;
+    const t = setTimeout(warmEmojiCache, 10_000);
+    return () => clearTimeout(t);
+  }, [userId]);
 
   const signOut = () => {
     clearCache(userId);

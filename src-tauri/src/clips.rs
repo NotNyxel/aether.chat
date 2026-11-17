@@ -157,7 +157,7 @@ fn encoder_args(enc: &str, quality: &str, fps: u32) -> Vec<String> {
         _ => 23,
     };
     let mut a: Vec<String> = match enc {
-        "h264_nvenc" => vec!["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", &q.to_string(), "-b:v", "0", "-bf", "0"].iter().map(s).collect(),
+        "h264_nvenc" => vec!["-c:v", "h264_nvenc", "-preset", "p2", "-rc", "vbr", "-cq", &q.to_string(), "-b:v", "0", "-bf", "0"].iter().map(s).collect(),
         "h264_amf" => vec!["-c:v", "h264_amf", "-quality", "balanced", "-rc", "cqp", "-qp_i", &q.to_string(), "-qp_p", &q.to_string(), "-bf", "0"].iter().map(s).collect(),
         "h264_qsv" => vec!["-c:v", "h264_qsv", "-global_quality", &q.to_string(), "-bf", "0"].iter().map(s).collect(),
         _ => vec!["-c:v", "libx264", "-preset", "veryfast", "-crf", &q.to_string(), "-pix_fmt", "yuv420p", "-bf", "0"].iter().map(s).collect(),
@@ -182,10 +182,26 @@ impl Ring {
     fn written(&self) -> u64 {
         self.dropped + (self.data.len() / 2) as u64
     }
-    /// Pad with silence up to "now" (minus a little slack for audio still in flight).
+    /// Put a packet where it was actually captured (wall-clock ms): a gap before it is silence,
+    /// overlap with what's already there is skipped. This keeps sound smooth and in sync even when
+    /// the PC is busy and packets are read late.
+    fn place(&mut self, at_ms: f64, samples: &[f32]) {
+        let pos = ((at_ms - self.start_ms as f64).max(0.0) * RATE as f64 / 1000.0) as u64;
+        let w = self.written();
+        let tolerance = RATE / 200; // 5 ms
+        let mut skip = 0usize;
+        if pos > w + tolerance {
+            self.data.extend(std::iter::repeat(0.0).take(((pos - w) * 2) as usize));
+        } else if pos + tolerance < w {
+            skip = (((w - pos) * 2) as usize).min(samples.len());
+        }
+        self.data.extend(samples[skip..].iter().copied());
+        self.trim();
+    }
+    /// Pad with silence up to "now" when nothing is playing (loopback sends no packets then).
     fn catch_up(&mut self) {
         let expected = (now_ms().saturating_sub(self.start_ms)) * RATE / 1000;
-        let slack = RATE / 10;
+        let slack = RATE * 3 / 10; // 300 ms: never pad over packets that are merely late
         if self.written() + slack < expected {
             let missing = (expected - slack - self.written()) as usize;
             self.data.extend(std::iter::repeat(0.0).take(missing * 2));
@@ -242,22 +258,38 @@ fn audio_thread(kind: &'static str, include_calls: bool, ring: Arc<Mutex<Ring>>,
             let event = client.set_get_eventhandle()?;
             let capture = client.get_audiocaptureclient()?;
             client.start_stream()?;
+            // Packet timestamps are on Windows' performance clock (100 ns units); map them to ms.
+            let qpc_to_wall = {
+                use windows::Win32::System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency};
+                let (mut c, mut f) = (0i64, 0i64);
+                unsafe {
+                    let _ = QueryPerformanceCounter(&mut c);
+                    let _ = QueryPerformanceFrequency(&mut f);
+                }
+                let qpc_ms = c as f64 * 1000.0 / f.max(1) as f64;
+                now_ms() as f64 - qpc_ms
+            };
             let mut queue = VecDeque::<u8>::new();
             while !stop.load(Ordering::Relaxed) {
-                if capture.get_next_packet_size()?.unwrap_or(0) > 0 {
-                    capture.read_from_device_to_deque(&mut queue)?;
-                }
-                let n = queue.len() / 4 * 4;
-                if n > 0 {
+                // Read every packet that's waiting (not just one), so a busy PC never falls behind.
+                let mut got = false;
+                while capture.get_next_packet_size()?.unwrap_or(0) > 0 {
+                    let info = capture.read_from_device_to_deque(&mut queue)?;
+                    let n = queue.len() / 4 * 4;
                     let bytes: Vec<u8> = queue.drain(..n).collect();
                     let samples: Vec<f32> = bytes.chunks_exact(4).map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]])).collect();
                     let mut g = ring.lock().unwrap();
-                    g.catch_up();
-                    g.push(&samples);
-                } else {
+                    if info.timestamp > 0 && !info.flags.timestamp_error {
+                        g.place(info.timestamp as f64 / 10_000.0 + qpc_to_wall, &samples);
+                    } else {
+                        g.push(&samples);
+                    }
+                    got = true;
+                }
+                if !got {
                     ring.lock().unwrap().catch_up();
                 }
-                let _ = event.wait_for_event(100);
+                let _ = event.wait_for_event(50);
             }
             let _ = client.stop_stream();
             Ok(())
@@ -369,17 +401,11 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
     fs::create_dir_all(&dir).map_err(e)?;
     let fps = settings.fps.clamp(10, 240);
     let hw = enc == "h264_nvenc" || enc == "h264_amf";
+    // Frames never leave the GPU while recording (NVENC/AMF read them straight from the capture),
+    // so the buffer costs almost no CPU. The chosen resolution is applied when a clip is saved.
     let mut filters: Vec<String> = Vec::new();
-    // GPU frames go straight to NVENC/AMF at native size; anything else is downloaded and scaled.
-    if !hw || settings.resolution != "native" {
-        filters.push("hwdownload".into());
-        filters.push("format=bgra".into());
-    }
-    if settings.resolution != "native" {
-        filters.push(format!("scale=-2:{}:flags=bicubic", settings.resolution.parse::<u32>().unwrap_or(1080)));
-    }
-    if !filters.is_empty() && enc != "h264_amf" && enc != "h264_nvenc" {
-        filters.push("format=yuv420p".into());
+    if !hw {
+        filters.extend(["hwdownload".into(), "format=bgra".into(), "format=yuv420p".into()]);
     }
     let mut args: Vec<String> = vec!["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i"].iter().map(s).collect();
     args.push(format!("ddagrab=output_idx={}:framerate={}:draw_mouse={}", settings.monitor, fps, if settings.cursor { 1 } else { 0 }));
@@ -392,7 +418,7 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
     args.push(dir.join("seg%06d.ts").to_string_lossy().to_string());
     let child = Command::new(&bin).args(&args).creation_flags(NO_WINDOW).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().map_err(e)?;
 
-    let keep = settings.seconds as u64 + 15;
+    let keep = settings.seconds as u64 + 6;
     let stop = Arc::new(AtomicBool::new(false));
     let game = Arc::new(Mutex::new(Ring::new(keep)));
     audio_thread("game", settings.include_calls, game.clone(), stop.clone());
@@ -448,6 +474,14 @@ pub fn clips_stop() {
             let _ = fs::remove_dir_all(&r.dir);
         });
     }
+}
+
+/// Height of a recorded segment (0 if unknown).
+fn probe_height(ffprobe: &Path, file: &Path) -> u32 {
+    run(ffprobe, &["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=height", "-of", "csv=p=0", &file.to_string_lossy()].iter().map(s).collect::<Vec<_>>())
+        .ok()
+        .and_then(|o| String::from_utf8_lossy(&o.stdout).trim().parse().ok())
+        .unwrap_or(0)
 }
 
 struct Seg {
@@ -573,7 +607,18 @@ fn save_with(bin: &Path, dir: &Path, settings: &ClipSettings, game_ring: &Arc<Mu
             "squad": input.squad,
             "squad_by": input.squad_by,
         });
-        let mut args: Vec<String> = ["-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i"].iter().map(s).collect();
+        // Your chosen resolution: only when the screen is bigger (recording is always native).
+        let want_h: u32 = settings.resolution.parse().unwrap_or(0);
+        let native_h = probe_height(&bin.with_file_name("ffprobe.exe"), &chosen[0].path);
+        let scale = want_h > 0 && native_h > want_h;
+        let enc = *ENCODER.lock().unwrap();
+        let gpu_scale = scale && enc == Some("h264_nvenc");
+        let mut args: Vec<String> = ["-hide_banner", "-loglevel", "error", "-y"].iter().map(s).collect();
+        if gpu_scale {
+            // Decode and resize on the NVIDIA GPU: a few seconds, once, instead of every frame.
+            args.extend(["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"].iter().map(s));
+        }
+        args.extend(["-f", "concat", "-safe", "0", "-i"].iter().map(s));
         args.push(list.to_string_lossy().into());
         args.extend(["-i".into(), game_wav.to_string_lossy().into()]);
         let mut next_input = 2;
@@ -590,22 +635,54 @@ fn save_with(bin: &Path, dir: &Path, settings: &ClipSettings, game_ring: &Arc<Mu
         } else {
             None
         };
-        args.extend(["-map", "0:v:0", "-map", "1:a"].iter().map(s));
+        // Audio: the first track is what every player plays, so it's game + mic together. The
+        // separate tracks are kept so the editor can turn either one off.
+        let mut fc: Vec<String> = Vec::new();
+        if let Some(m) = mic_idx {
+            fc.push(format!("[1:a][{m}:a]amix=inputs=2:duration=longest:normalize=0[mix]"));
+        }
+        if scale {
+            fc.push(if gpu_scale { format!("[0:v]scale_cuda=-2:{want_h}[v]") } else { format!("[0:v]scale=-2:{want_h}:flags=bicubic,format=yuv420p[v]") });
+        }
+        if !fc.is_empty() {
+            args.extend(["-filter_complex".into(), fc.join(";")]);
+        }
+        args.extend(["-map".into(), if scale { "[v]".into() } else { "0:v:0".into() }]);
+        if mic_idx.is_some() {
+            args.extend(["-map", "[mix]"].iter().map(s));
+        }
+        args.extend(["-map", "1:a"].iter().map(s));
         if let Some(i) = mic_idx {
             args.extend(["-map".into(), format!("{i}:a")]);
         }
         if let Some(i) = thumb_idx {
             args.extend(["-map".into(), format!("{i}:v")]);
         }
-        args.extend(["-c:v", "copy", "-c:a", "aac", "-b:a", "192k"].iter().map(s));
+        if scale {
+            let e = if gpu_scale { "h264_nvenc" } else { enc.filter(|x| *x != "h264_nvenc").unwrap_or("libx264") };
+            let mut ea = encoder_args(e, &settings.quality, settings.fps.clamp(10, 240));
+            // These go to the main video only (the cover is copied).
+            for a in ea.iter_mut() {
+                if a == "-c:v" {
+                    *a = "-c:v:0".into();
+                }
+            }
+            args.extend(ea);
+        } else {
+            args.extend(["-c:v:0", "copy"].iter().map(s));
+        }
+        args.extend(["-c:a", "aac", "-b:a", "192k"].iter().map(s));
         if thumb_idx.is_some() {
             args.extend(["-c:v:1", "mjpeg", "-disposition:v:1", "attached_pic"].iter().map(s));
         }
         args.extend(["-metadata".into(), format!("title={title}"), "-metadata".into(), format!("comment={meta}")]);
         // MP4 keeps track names as handler_name.
-        args.extend(["-metadata:s:a:0".into(), "handler_name=Game audio".into()]);
         if mic_idx.is_some() {
-            args.extend(["-metadata:s:a:1".into(), "handler_name=Microphone".into()]);
+            for (k, v) in [("a:0", "Game + mic"), ("a:1", "Game audio"), ("a:2", "Microphone")] {
+                args.extend([format!("-metadata:s:{k}"), format!("handler_name={v}")]);
+            }
+        } else {
+            args.extend(["-metadata:s:a:0".into(), "handler_name=Game audio".into()]);
         }
         args.extend(["-movflags", "+faststart"].iter().map(s));
         args.push(out.to_string_lossy().into());
@@ -798,7 +875,7 @@ pub async fn clips_export(app: AppHandle, input: ExportInput) -> Res<String> {
         }
         if let Some(obj) = meta.as_object_mut() {
             obj.insert("duration".into(), serde_json::json!(input.end - input.start));
-            obj.insert("mic".into(), serde_json::json!(input.mic && info.audio_tracks.len() > 1));
+            obj.insert("mic".into(), serde_json::json!(input.mic && info.audio_tracks.iter().any(|t| t == "Microphone" || info.audio_tracks.len() == 2)));
         }
         let title = input.title.clone().unwrap_or(info.title.clone());
         let mut args: Vec<String> = ["-hide_banner", "-loglevel", "error", "-y"].iter().map(s).collect();
@@ -810,14 +887,47 @@ pub async fn clips_export(app: AppHandle, input: ExportInput) -> Res<String> {
         if info.has_cover {
             args.extend(["-map", "0:v:1"].iter().map(s));
         }
+        // Tracks: new clips have "Game + mic", "Game audio", "Microphone"; older ones game then mic.
+        let named = |n: &str| info.audio_tracks.iter().position(|t| t == n);
+        let mix = named("Game + mic");
+        let game = named("Game audio").or((!info.audio_tracks.is_empty()).then_some(0));
+        let mic = named("Microphone").or((info.audio_tracks.len() == 2).then_some(1));
+        // The first track is what players play: your choice of game, mic or both.
         let mut audio_out = 0;
-        if input.game_audio && !info.audio_tracks.is_empty() {
-            args.extend(["-map", "0:a:0"].iter().map(s));
-            audio_out += 1;
+        let mut mixed_here = false;
+        let mut names: Vec<&str> = Vec::new();
+        match (input.game_audio, input.mic && mic.is_some()) {
+            (true, true) => {
+                if let Some(m) = mix {
+                    args.extend(["-map".into(), format!("0:a:{m}")]);
+                } else if let (Some(g), Some(m)) = (game, mic) {
+                    args.extend(["-filter_complex".into(), format!("[0:a:{g}][0:a:{m}]amix=inputs=2:duration=longest:normalize=0[mixout]"), "-map".into(), "[mixout]".into()]);
+                    mixed_here = true;
+                }
+                names.push("Game + mic");
+                audio_out += 1;
+            }
+            (true, false) => {
+                if let Some(g) = game {
+                    args.extend(["-map".into(), format!("0:a:{g}")]);
+                    names.push("Game audio");
+                    audio_out += 1;
+                }
+            }
+            (false, true) => {
+                args.extend(["-map".into(), format!("0:a:{}", mic.unwrap())]);
+                names.push("Microphone");
+                audio_out += 1;
+            }
+            (false, false) => {}
         }
-        if input.mic && info.audio_tracks.len() > 1 {
-            args.extend(["-map", "0:a:1"].iter().map(s));
-            audio_out += 1;
+        // Edits you keep (not shares) keep the separate tracks, so you can change your mind later.
+        if input.out != "temp" && audio_out > 0 {
+            if let (Some(g), Some(m)) = (game, mic) {
+                args.extend(["-map".into(), format!("0:a:{g}"), "-map".into(), format!("0:a:{m}")]);
+                names.extend(["Game audio", "Microphone"]);
+                audio_out += 2;
+            }
         }
         if reencode {
             let enc = pick_encoder(&app)?;
@@ -854,21 +964,17 @@ pub async fn clips_export(app: AppHandle, input: ExportInput) -> Res<String> {
             args.extend(["-c:v:1", "copy", "-disposition:v:1", "attached_pic"].iter().map(s));
         }
         if audio_out > 0 {
-            args.extend(["-c:a", if reencode { "aac" } else { "copy" }].iter().map(s));
-            if reencode {
+            let re = reencode || mixed_here;
+            args.extend(["-c:a", if re { "aac" } else { "copy" }].iter().map(s));
+            if re {
                 args.extend(["-b:a", "160k"].iter().map(s));
             }
         } else {
             args.push("-an".into());
         }
         args.extend(["-metadata".into(), format!("title={title}"), "-metadata".into(), format!("comment={meta}")]);
-        let mut a = 0;
-        if input.game_audio && !info.audio_tracks.is_empty() {
-            args.extend([format!("-metadata:s:a:{a}"), "handler_name=Game audio".into()]);
-            a += 1;
-        }
-        if input.mic && info.audio_tracks.len() > 1 {
-            args.extend([format!("-metadata:s:a:{a}"), "handler_name=Microphone".into()]);
+        for (i, n) in names.iter().enumerate() {
+            args.extend([format!("-metadata:s:a:{i}"), format!("handler_name={n}")]);
         }
         args.extend(["-movflags", "+faststart"].iter().map(s));
         args.push(target.to_string_lossy().into());
@@ -1093,6 +1199,28 @@ pub async fn clips_pick_folder(app: AppHandle) -> Option<String> {
 mod tests {
     use super::*;
 
+    // Captures the default mic and game sound for 3 s and prints their levels:
+    //   cargo test audio_levels -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn audio_levels() {
+        let stop = Arc::new(AtomicBool::new(false));
+        let mic = Arc::new(Mutex::new(Ring::new(20)));
+        let game = Arc::new(Mutex::new(Ring::new(20)));
+        audio_thread("mic", false, mic.clone(), stop.clone());
+        audio_thread("game", false, game.clone(), stop.clone());
+        let t0 = now_ms();
+        std::thread::sleep(Duration::from_secs(3));
+        stop.store(true, Ordering::Relaxed);
+        for (name, r) in [("mic", &mic), ("game", &game)] {
+            let g = r.lock().unwrap();
+            let v = g.slice(t0, t0 + 2900);
+            let rms = (v.iter().map(|x| x * x).sum::<f32>() / v.len().max(1) as f32).sqrt();
+            let peak = v.iter().fold(0f32, |a, b| a.max(b.abs()));
+            println!("{name}: {} frames written, rms {rms:.5}, peak {peak:.4}", g.written());
+        }
+    }
+
     // Reads the Roblox log of whatever is open now: cargo test roblox -- --ignored --nocapture
     #[test]
     #[ignore]
@@ -1114,7 +1242,7 @@ mod tests {
         let work = std::env::temp_dir().join(format!("aether-clip-test-{}", now_ms()));
         let buf = work.join("buffer");
         let out = work.join("out");
-        let settings = ClipSettings { fps: 60, resolution: "1080".into(), quality: "high".into(), seconds: 6, mic: true, include_calls: false, monitor: 0, cursor: true, folder: out.to_string_lossy().into() };
+        let settings = ClipSettings { fps: 144, resolution: "720".into(), quality: "high".into(), seconds: 6, mic: true, include_calls: false, monitor: 0, cursor: true, folder: out.to_string_lossy().into() };
         println!("encoder: {:?}", pick_encoder_with(&bin));
         start_with(bin.clone(), buf.clone(), settings.clone()).expect("start");
         std::thread::sleep(Duration::from_secs(9));
@@ -1132,7 +1260,7 @@ mod tests {
         println!("{}", serde_json::to_string_pretty(&j).unwrap());
         let streams = j["streams"].as_array().unwrap();
         assert!(streams.iter().any(|s| s["codec_type"] == "video" && s["disposition"]["attached_pic"] == 0), "video track");
-        assert_eq!(streams.iter().filter(|s| s["codec_type"] == "audio").count(), 2, "game + mic tracks");
+        assert_eq!(streams.iter().filter(|s| s["codec_type"] == "audio").count(), 3, "mix + game + mic tracks");
         assert!(streams.iter().any(|s| s["disposition"]["attached_pic"] == 1), "cover thumbnail");
         let d: f64 = j["format"]["duration"].as_str().unwrap().parse().unwrap();
         assert!((5.0..9.5).contains(&d), "duration {d}");

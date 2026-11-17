@@ -3,6 +3,18 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.4.2] - 2026-11-17
+
+### Clips: much lighter, better sound
+
+- **Clipping barely uses your CPU now** (measured: from about 30% down to under 1%). Recording stays entirely on
+  your graphics card; if you pick a lower resolution than your screen, it's applied when the clip saves.
+- **No more choppy or glitchy audio**, at any frame rate: sound is placed by its real capture time, so a busy PC
+  can't scramble it.
+- **Your mic is in your clips.** The first audio track (the one every player plays) is now game and mic together;
+  separate game and mic tracks stay in the file so the editor can turn either off.
+- Smaller files by default (Balanced quality) and a smaller temporary buffer on disk.
+
 ## [2.4.1] - 2026-11-17
 
 ### Game detection and clips

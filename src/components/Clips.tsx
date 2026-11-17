@@ -351,7 +351,7 @@ function Editor({ item, onClose, onShare }: { item: Item; onClose: () => void; o
   const [title, setTitle] = useState(item.title);
   const [busy, setBusy] = useState<string | null>(null);
   const video = useRef<HTMLVideoElement>(null);
-  const hasMic = (item.pc?.audio_tracks.length ?? 0) > 1;
+  const hasMic = !!item.pc && (item.pc.audio_tracks.includes('Microphone') || item.pc.audio_tracks.length === 2);
 
   useEffect(() => {
     let url: string | null = null;
@@ -846,7 +846,7 @@ export function ClipsSettings() {
                   ))}
                 </Field>
                 <p className="text-xs text-ae-muted">
-                  {t('Uses about {mb} MB of memory and disk while recording.', { mb: Math.round((s.seconds * (s.mic ? 0.77 : 0.38)) + s.seconds * (s.resolution === 'native' || s.resolution === '2160' ? 6 : s.resolution === '1440' ? 3.5 : 2.5) * (s.fps / 60)) })}
+                  {t('Recording runs on your graphics card, so it barely touches your CPU. A lower resolution than your screen is applied when a clip saves. Uses about {mb} MB of disk while recording.', { mb: Math.round(s.seconds * (s.quality === 'high' ? 4 : s.quality === 'medium' ? 2.5 : 1.4) * (s.fps / 60)) })}
                 </p>
                 <Toggle label={t('Record my microphone')} hint={t('Saved as its own track, so you can mute it later in the editor.')} checked={s.mic} onChange={(v) => set({ mic: v })} />
                 <Toggle label={t('Include Aether calls')} hint={t('Off: only your game and other apps. On: friends’ voices from Aether calls too.')} checked={s.includeCalls} onChange={(v) => set({ includeCalls: v })} />

@@ -35,7 +35,7 @@ export const DEFAULT_CLIP_SETTINGS: ClipSettings = {
   mode: 'always',
   fps: 60,
   resolution: '1080',
-  quality: 'high',
+  quality: 'medium',
   seconds: 30,
   mic: true,
   includeCalls: false,

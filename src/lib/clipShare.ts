@@ -145,7 +145,7 @@ export async function shareClip(
   const tmpId = `share:${clip.path}`;
   progress(tmpId, { phase: 'preparing', progress: 0 });
   try {
-    const untouched = opts.quality === 'original' && opts.start <= 0.05 && opts.end >= clip.duration - 0.05 && opts.gameAudio && (opts.mic || clip.audio_tracks.length < 2);
+    const untouched = opts.quality === 'original' && opts.start <= 0.05 && opts.end >= clip.duration - 0.05 && opts.gameAudio && (opts.mic || !(clip.audio_tracks.includes('Microphone') || clip.audio_tracks.length === 2));
     const path = untouched
       ? clip.path
       : await exportClip({ path: clip.path, start: opts.start, end: opts.end, gameAudio: opts.gameAudio, mic: opts.mic, title: opts.title, quality: opts.quality, out: 'temp' });

@@ -267,6 +267,7 @@ function MessageItemImpl(props: MessageItemProps) {
     <li
       ref={rowRef}
       id={`msg-${message.id}`}
+      data-mine={mine || undefined}
       className={`ae-msg group relative flex gap-4 pr-12 pl-4 transition-colors duration-100 hover:bg-ae-hover/30 ${showHeader ? 'mt-4 pt-0.5 pb-px' : 'py-px'} ${mentioned && !mine ? 'ae-mentioned' : ''} ${(message as { pending?: boolean }).pending ? 'ae-msg-pending pointer-events-none' : ''} ${(message as { queued?: boolean }).queued ? 'opacity-70' : ''}`}
       onContextMenu={(e) => {
         if (editing) return;

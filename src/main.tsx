@@ -12,6 +12,8 @@ import '@fontsource/playfair-display/700.css';
 import '@fontsource/press-start-2p/400.css';
 // Orbit layout (2.1) themes.
 import '@fontsource-variable/plus-jakarta-sans/wght.css';
+// Lounge layout (2.1) themes.
+import '@fontsource-variable/outfit/wght.css';
 import { isTauri } from './lib/platform';
 import { installPhoneLayout } from './lib/phone';
 import { loadLanguage } from './lib/i18n';

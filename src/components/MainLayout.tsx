@@ -1,4 +1,5 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { LoungeCalls, LoungeHome, LoungeNav } from './Lounge';
 import { OrbitHome } from './OrbitHome';
 import { isPhoneLayout, isTabletLayout } from '../lib/phone';
 import { useOutboxFlusher } from '../hooks/useChatData';
@@ -99,6 +100,8 @@ function PopoverForUser({ me, userId, server, onClose }: { me: string; userId: s
 
 function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
   const layout = useSettingsStore((s) => s.theme.layout ?? 'classic');
+  // The desktop layouts (Orbit, Lounge…) only apply when the window shows the desktop shell.
+  const desktopShell = !isPhoneLayout() && !isTabletLayout();
   const { voice } = useCall();
   useKeybinds(voice);
 
@@ -171,7 +174,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
     <WindowFrame
       bar={
         <TitleBar
-          title={server ? server.name : conversation ? 'Direct messages' : homeTarget === 'requests' ? 'Message requests' : homeTarget === 'now' && layout === 'orbit' ? 'Now' : 'Friends'}
+          title={server ? server.name : conversation ? 'Direct messages' : homeTarget === 'requests' ? 'Message requests' : homeTarget === 'now' && layout !== 'classic' ? (layout === 'lounge' ? 'Home' : 'Now') : homeTarget === 'calls' && layout === 'lounge' ? 'Calls' : 'Friends'}
           lead={
             mobilePane === 'main' && (
               <button type="button" aria-label="Back" className="ae-mobile-only -ml-1 grid h-9 w-9 place-items-center rounded-full text-ae-muted hover:bg-ae-hover" onClick={() => setMobilePane('nav')}>
@@ -187,7 +190,15 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
     >
     <div className="flex h-full flex-col text-ae-text">
     <AnnouncementBar />
-    <div className="ae-shell flex min-h-0 flex-1" data-pane={mobilePane} data-tab={mobileTab} data-view={server ? 'server' : 'home'}>
+    {layout === 'lounge' && desktopShell && <LoungeNav userId={userId} servers={servers.data ?? []} lastServerId={storedServerId} unreadChats={homeBadge} />}
+    <div
+      className="ae-shell flex min-h-0 flex-1"
+      data-pane={mobilePane}
+      data-tab={mobileTab}
+      data-view={server ? 'server' : 'home'}
+      // Lounge's Home and Calls are full-width screens without the chat list.
+      data-screen={!server && !conversation && (homeTarget === 'now' || homeTarget === 'calls') ? homeTarget : undefined}
+    >
       <ServerRail userId={userId} servers={servers.data ?? []} activeId={server?.id ?? null} homeBadge={homeBadge} />
 
       {server ? (
@@ -209,8 +220,12 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
           <ConversationView key={conversation.id} conv={conversation} userId={userId} />
         ) : homeTarget === 'requests' ? (
           <MessageRequestsView userId={userId} />
-        ) : homeTarget === 'now' && layout === 'orbit' && !isPhoneLayout() && !isTabletLayout() ? (
+        ) : homeTarget === 'now' && layout === 'orbit' && desktopShell ? (
           <OrbitHome userId={userId} />
+        ) : homeTarget === 'now' && layout === 'lounge' && desktopShell ? (
+          <LoungeHome userId={userId} />
+        ) : homeTarget === 'calls' && layout === 'lounge' && desktopShell ? (
+          <LoungeCalls userId={userId} />
         ) : (
           <FriendsView userId={userId} />
         )}

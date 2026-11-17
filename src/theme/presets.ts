@@ -50,6 +50,10 @@ export type ThemePresetId =
   | 'orbit-violet'
   | 'orbit-dusk'
   | 'orbit-dawn'
+  // Made for the Lounge layout (2.1).
+  | 'lounge-night'
+  | 'lounge-ember'
+  | 'lounge-day'
   // Secret themes (2.1): hidden until unlocked with a code (lib/secrets.ts).
   | 'secret-goblin'
   | 'secret-arcade'
@@ -90,6 +94,7 @@ export interface ThemePreset {
   tokens: ThemeTokens;
 }
 
+const FONT_OUTFIT = `'Outfit Variable', 'Outfit', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif`;
 const SYSTEM_FONT = `'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Inter', sans-serif`;
 
 /** Fills in the tokens most presets share, so each new preset only lists what makes it distinct. */
@@ -396,6 +401,19 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
     text: '#1d1830', textMuted: '#625a7a', accent: '#6a4cf0', accentContrast: '#ffffff', radius: '14px',
     font: `'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif`,
   }, true),
+  // ── Lounge layout themes: big, round and friendly. ──
+  'lounge-night': preset('lounge-night', 'Lounge Night', 'Deep navy with fresh mint. Made for Lounge.', {
+    backdrop: '#101225', bg: '#1a1d36', bgElevated: '#1f2340', bgSunken: '#101225', surface: '#24284a', surfaceHover: '#2f3560', border: '#2b2f52',
+    text: '#f1f2fb', textMuted: '#a9acd0', accent: '#3ee0b0', accentContrast: '#08221a', radius: '18px', font: FONT_OUTFIT,
+  }),
+  'lounge-ember': preset('lounge-ember', 'Lounge Ember', 'Warm plum with a coral glow. Made for Lounge.', {
+    backdrop: '#1a0f1c', bg: '#241626', bgElevated: '#2b1b2e', bgSunken: '#1a0f1c', surface: '#33213a', surfaceHover: '#402a48', border: '#3f2a45',
+    text: '#fbeff4', textMuted: '#cfa9bd', accent: '#ff8a73', accentContrast: '#2a0f08', radius: '18px', font: FONT_OUTFIT,
+  }),
+  'lounge-day': preset('lounge-day', 'Lounge Day', 'Bright and soft, like a sunny room. Made for Lounge.', {
+    backdrop: '#eef1fb', bg: '#ffffff', bgElevated: '#ffffff', bgSunken: '#eef1fb', surface: '#f1f3fb', surfaceHover: '#e6e9f6', border: '#e0e4f2',
+    text: '#161a33', textMuted: '#5a6085', accent: '#0f9f7a', accentContrast: '#ffffff', radius: '18px', font: FONT_OUTFIT,
+  }, true),
   // ── Secret themes: never listed until unlocked. Each also has its own touches in index.css. ──
   'secret-goblin': preset('secret-goblin', 'Goblin Mode', 'Feral. Mossy. Slightly crooked. Unlocked with a secret code.', {
     bg: '#141a0d', bgElevated: '#1b2312', bgSunken: '#0f140a', surface: '#232d17', surfaceHover: '#2c391d', border: '#3a4a25',
@@ -487,5 +505,5 @@ export const LAYOUT_THEMES: Record<'classic' | 'orbit' | 'workspace' | 'lounge',
   classic: ['oled-dark', 'midnight', 'aether-glass', 'daylight'],
   orbit: ['orbit-violet', 'orbit-dusk', 'orbit-dawn'],
   workspace: [],
-  lounge: [],
+  lounge: ['lounge-night', 'lounge-ember', 'lounge-day'],
 };

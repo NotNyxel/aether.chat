@@ -155,7 +155,7 @@ const LAYOUTS: { id: LayoutId; name: string; blurb: string; ready: boolean }[] =
   { id: 'classic', name: 'Classic', blurb: 'Server bar, channel list, chat. The layout you know.', ready: true },
   { id: 'orbit', name: 'Orbit', blurb: 'Floating panels and a “Now” home with what your friends are up to.', ready: true },
   { id: 'workspace', name: 'Workspace', blurb: 'Tabs for open chats, one list for everything, keyboard-first.', ready: false },
-  { id: 'lounge', name: 'Lounge', blurb: 'Social-first: top navigation, a feed home, rooms as live cards.', ready: false },
+  { id: 'lounge', name: 'Lounge', blurb: 'Social-first: top navigation, a feed home, rooms as live cards.', ready: true },
 ];
 
 /** A tiny sketch of each layout, drawn with the current theme's colours. */
@@ -205,8 +205,9 @@ function LayoutSection() {
     const first = LAYOUT_THEMES[id][0];
     setTheme({ layout: id, ...(first && !theme.custom?.enabled ? { presetId: first } : {}) });
     const ui = useUiStore.getState();
-    if (id === 'orbit' && ui.homeTarget === 'friends') ui.openHome('now');
-    if (id !== 'orbit' && ui.homeTarget === 'now') ui.openHome('friends');
+    const nowHome = id === 'orbit' || id === 'lounge';
+    if (nowHome && ui.homeTarget === 'friends') ui.openHome('now');
+    if (!nowHome && (ui.homeTarget === 'now' || ui.homeTarget === 'calls')) ui.openHome('friends');
     toast.success(`Layout: ${LAYOUTS.find((l) => l.id === id)!.name}`);
   };
   return (
@@ -375,6 +376,7 @@ function AppearanceTab() {
                     {preset.light && <span className="ml-2 rounded bg-ae-surface px-1.5 text-[10px] text-ae-muted">LIGHT</span>}
                     {SECRET_PRESETS.includes(id) && <span className="ml-2 rounded bg-ae-accent/20 px-1.5 text-[10px] text-ae-accent">SECRET</span>}
                     {id.startsWith('orbit-') && <span className="ml-2 rounded bg-ae-accent/20 px-1.5 text-[10px] text-ae-accent">ORBIT</span>}
+                    {id.startsWith('lounge-') && <span className="ml-2 rounded bg-ae-accent/20 px-1.5 text-[10px] text-ae-accent">LOUNGE</span>}
                   </p>
                   <p className="text-xs text-ae-muted">{preset.description}</p>
                 </div>

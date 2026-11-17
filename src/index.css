@@ -1262,3 +1262,97 @@ select,
     height: 56px;
   }
 }
+
+/* ── 2.1 Lounge layout (desktop and wide browser windows): a top bar instead of the server
+   column, big round panels, full-width Home and Calls, chat bubbles. ──────────────────────── */
+:root[data-ae-layout='lounge']:not([data-ae-phone='true']):not([data-ae-tablet='true']) {
+  & .ae-lounge-nav {
+    background: var(--ae-backdrop, var(--ae-bg-sunken));
+  }
+  & .ae-shell {
+    gap: 18px;
+    padding: 2px 24px 24px;
+    background: var(--ae-backdrop, var(--ae-bg-sunken));
+  }
+  /* The column of spaces only appears inside Spaces; Home lives in the top bar. */
+  & .ae-shell[data-view='home'] > nav {
+    display: none;
+  }
+  & .ae-shell > nav {
+    width: 56px;
+    background: transparent;
+    padding-top: 6px;
+    gap: 10px;
+  }
+  & .ae-shell > nav > button[aria-label='Home'],
+  & .ae-shell > nav > button[aria-label='Home'] + div {
+    display: none;
+  }
+  & .ae-shell > nav :is(button, a).h-12 {
+    border-radius: 18px !important;
+  }
+  & .ae-shell > nav [data-rail-pill] {
+    display: none;
+  }
+  & .ae-shell > nav [aria-current='page'] {
+    box-shadow: 0 0 0 3px var(--ae-bg-sunken), 0 0 0 5px var(--ae-accent);
+  }
+  & .ae-shell > aside,
+  & .ae-shell > main {
+    border: 1px solid var(--ae-border);
+    border-radius: 26px;
+    overflow: hidden;
+    background: var(--ae-bg);
+  }
+  & .ae-shell > aside {
+    width: 300px;
+  }
+  & .ae-shell > aside > header {
+    border-bottom: 0;
+    height: auto;
+    padding: 14px 14px 4px;
+  }
+  & .ae-shell > aside > header > button {
+    height: 42px;
+    border-radius: 999px;
+    background: var(--ae-surface);
+  }
+  & .ae-shell > aside li > button {
+    border-radius: 16px;
+  }
+  & .ae-userpanel {
+    margin: 10px;
+    border-radius: 999px;
+    background: var(--ae-surface);
+  }
+  /* Home and Calls: full width, their own cards, no chat list. */
+  & .ae-shell[data-screen] > aside {
+    display: none;
+  }
+  & .ae-shell[data-screen] > main {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+    box-shadow: none;
+  }
+  & .ae-chat-header {
+    height: 60px;
+  }
+  /* Chat bubbles: yours tinted with the accent. */
+  & .ae-msg .ae-md:not(:empty):not([data-jumbo='true']) {
+    width: fit-content;
+    max-width: min(640px, 100%);
+    box-sizing: border-box;
+    padding: 8px 14px;
+    border-radius: 18px;
+    background: var(--ae-surface);
+  }
+  & .ae-msg[data-mine] .ae-md:not(:empty):not([data-jumbo='true']) {
+    background: color-mix(in srgb, var(--ae-accent) 22%, var(--ae-surface));
+  }
+  & .ae-msg {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+}

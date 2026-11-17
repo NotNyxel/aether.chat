@@ -46,7 +46,7 @@ function FriendBubble({ userId }: { userId: string }) {
 }
 
 /** One "Active now" card, or nothing when this friend isn't playing or listening. */
-function ActiveCard({ userId }: { userId: string }) {
+export function ActiveCard({ userId }: { userId: string }) {
   const { data: p } = useProfile(userId);
   const game = useActivityOf(userId);
   const track = useListeningOf(userId);
@@ -71,7 +71,7 @@ function ActiveCard({ userId }: { userId: string }) {
 }
 
 /** A call happening in one of your chats. */
-function CallCard({ conv, me }: { conv: Conversation; me: string }) {
+export function CallCard({ conv, me }: { conv: Conversation; me: string }) {
   const title = useConversationTitle(conv, me);
   const openHome = useUiStore((s) => s.openHome);
   return (
@@ -89,7 +89,7 @@ function CallCard({ conv, me }: { conv: Conversation; me: string }) {
 }
 
 /** A chat with unread messages. */
-function CatchUpRow({ row, conv, me, channelName }: { row: UnreadRow; conv?: Conversation; me: string; channelName?: string }) {
+export function CatchUpRow({ row, conv, me, channelName }: { row: UnreadRow; conv?: Conversation; me: string; channelName?: string }) {
   const goTo = useUiStore((s) => s.goTo);
   const title = useConversationTitle(conv ?? ({ id: row.scope_id, type: 'dm', name: null, conversation_members: [] } as unknown as Conversation), me);
   const when = row.last_message_at ? new Date(row.last_message_at) : null;

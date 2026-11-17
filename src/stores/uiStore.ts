@@ -3,9 +3,10 @@ import { isPhoneLayout, isTabletLayout } from '../lib/phone';
 import { useSettingsStore } from './settingsStore';
 import { create } from 'zustand';
 
-/** True when the Orbit layout is on and the window shows the desktop layout (not phone/tablet). */
-export function orbitOnDesktop(): boolean {
-  return useSettingsStore.getState().theme.layout === 'orbit' && !isPhoneLayout() && !isTabletLayout();
+/** True when a layout with a "Now" home (Orbit, Lounge) is on and the window shows the desktop layout. */
+export function nowHomeOnDesktop(): boolean {
+  const layout = useSettingsStore.getState().theme.layout;
+  return (layout === 'orbit' || layout === 'lounge') && !isPhoneLayout() && !isTabletLayout();
 }
 
 export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows' | 'standing' | 'admin';
@@ -96,8 +97,8 @@ interface UiState {
 
 export const useUiStore = create<UiState>()((set) => ({
   view: 'home',
-  // Orbit's home is "Now" (desktop); everything else starts on Friends.
-  homeTarget: orbitOnDesktop() ? 'now' : 'friends',
+  // Orbit and Lounge open on their "Now" home (desktop); Classic starts on Friends.
+  homeTarget: nowHomeOnDesktop() ? 'now' : 'friends',
   serverId: null,
   channelByServer: {},
   memberListOpen: true,

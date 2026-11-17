@@ -17,6 +17,11 @@ import {
   ImageIcon,
   LockIcon,
   MessageIcon,
+  BotIcon,
+  CakeIcon,
+  GameIcon,
+  GlobeIcon,
+  LayersIcon,
   MicIcon,
   MoonIcon,
   PaletteIcon,
@@ -38,6 +43,19 @@ interface Highlight {
 
 /** Highlights per release, newest first. Only the current version's list is shown after updating. */
 export const RELEASE_NOTES: Record<string, { title: string; items: Highlight[] }> = {
+  '2.1.0': {
+    title: 'Aether 2.1: Together',
+    items: [
+      { icon: <LayersIcon size={18} />, title: 'Layouts', text: 'Orbit, Lounge, Workspace or your own: Settings → Appearance → Layout. Drag, resize and hide every panel in Custom.' },
+      { icon: <SparklesIcon size={18} />, title: 'Moments', text: 'Photos, videos and notes that last 24 hours, for everyone, friends or close friends. Pick your ring colour in Privacy.' },
+      { icon: <GameIcon size={18} />, title: 'Games and play time', text: 'Your game and how long you’ve played show automatically, with Playing, Locked in and AFK modes. Play tic-tac-toe or Connect Four in any chat.' },
+      { icon: <MicIcon size={18} />, title: 'Spotify mini-player', text: 'Pause and skip from the bottom-left panel, with the right album cover.' },
+      { icon: <GlobeIcon size={18} />, title: 'Translate and transcribe', text: 'Translate messages and read voice messages as text, on your device. 7 more languages, too.' },
+      { icon: <CakeIcon size={18} />, title: 'Birthdays and lists', text: 'Friends see your birthday (never the year). Make checklists everyone in a chat can tick off.' },
+      { icon: <PaletteIcon size={18} />, title: 'Photo editor', text: 'Crop, filter, draw and add text before you send a photo.' },
+      { icon: <BotIcon size={18} />, title: 'Apps and bots', text: 'Build your own bot in Settings → Developer and add it to your servers.' },
+    ],
+  },
   '2.0.0': {
     title: 'Aether 2.0: out of beta',
     items: [

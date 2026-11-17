@@ -3,6 +3,63 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.1.0] - 2026-11-17
+
+**Aether 2.1: Together**
+
+New layouts that move Aether past the classic look, Moments, games, and a lot more to do with your friends.
+
+### Layouts
+
+- **Pick how Aether looks on desktop:** Classic, **Orbit** (a home of friends and chats), **Lounge** (big friend
+  cards, calls up front) or **Workspace** (tabs and a tree, for busy servers). Each comes with its own themes.
+  Settings → Appearance → Layout.
+- **Custom layouts.** Start from any layout, then drag panels into a new order, resize each one, show or hide it,
+  float them, and tune spacing and roundness, with a live preview.
+- **Secret themes.** Five hidden themes unlock with secret codes. Good luck.
+
+### Moments
+
+- **Photos, videos and notes that last 24 hours,** shown as a ring around your avatar in Messages, Friends and the
+  new layouts. Choose who sees each one: everyone you know, friends, or your close friends list.
+- See who viewed yours, reply to a friend's straight from it, and pick your ring colour (Settings → Privacy & Safety).
+
+### Games and activity
+
+- **Any installed game is detected** (Steam, Epic, GOG, Ubisoft, Xbox on Windows) and shows with how long you've
+  been playing. Set a mode, **Playing**, **Locked in** or **AFK**, from the bottom-left panel or a keybind.
+- **Play history:** "played this week" on your profile. Hide it or clear it any time.
+- **Ask to join:** one click on a friend's game card opens a DM asking to join.
+- **Mini-games in chats:** tic-tac-toe and Connect Four in any DM, group or channel, played live. Every move is
+  checked by the server.
+- **Spotify mini-player:** pause, skip and seek from the bottom-left panel, which is now bigger, with the right album
+  cover (no more missing or wrong art).
+
+### Together
+
+- **Birthdays.** Add yours (month and day, never the year) and friends see it on your profile and get a reminder on
+  the day. Keep it to yourself if you prefer.
+- **Shared lists.** Checklists in any chat that everyone there can add to and tick off, live.
+- **Photo editor.** Crop, rotate, filters, brightness and contrast, drawing and text, before you send a photo or
+  share a moment.
+
+### Understand each other
+
+- **Translate messages** (right-click → Translate) and **read voice messages as text** (Show transcript). Both run
+  on your device, so nothing is sent anywhere and they work in encrypted chats. The first use downloads the language
+  model once.
+- **7 more languages:** Korean, Chinese (Simplified), Vietnamese, Dutch, Ukrainian, Bengali and Urdu. 19 in all.
+
+### For developers
+
+- **Apps and bots.** Create an app in Settings → Developer, post messages through the bot API with its token, and
+  add slash commands that Aether sends to your server as signed requests. People who manage a server add apps from
+  Server settings → Bots & apps.
+
+### Fixes
+
+- Avatar decorations like halos and ears are no longer cut off at the top.
+
 ## [2.0.0] - 2026-11-16
 
 **Aether 2.0: out of beta**

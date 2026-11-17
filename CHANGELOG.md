@@ -3,6 +3,25 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.2.0] - 2026-11-17
+
+**Aether 2.2: a new home on the web**
+
+### A new website
+
+- **More than one page.** joinaether.vercel.app now has **Features** (everything Aether does), **Download**
+  (every platform, with install steps for each), **FAQ**, a plain-words **Privacy** page, and **What's new** with
+  every update.
+- **Contact us.** A form on the website sends your question, bug report or idea straight to the team, and we reply
+  by email. It's protected against spam bots.
+- A layout switcher on the home page shows Orbit, Lounge, Workspace and Classic, and the site works on phones.
+
+### Fixes
+
+- The **Your moment** bubble lines up with everyone else's, its **+** sits on the ring's edge instead of your face,
+  and its label isn't cut off.
+- Avatar decorations like halos and ears are no longer cut off at the top.
+
 ## [2.1.0] - 2026-11-17
 
 **Aether 2.1: Together**

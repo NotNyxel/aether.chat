@@ -22,6 +22,7 @@ import {
   GameIcon,
   GlobeIcon,
   LayersIcon,
+  MailIcon,
   MicIcon,
   MoonIcon,
   PaletteIcon,
@@ -43,6 +44,14 @@ interface Highlight {
 
 /** Highlights per release, newest first. Only the current version's list is shown after updating. */
 export const RELEASE_NOTES: Record<string, { title: string; items: Highlight[] }> = {
+  '2.2.0': {
+    title: 'Aether 2.2: a new home on the web',
+    items: [
+      { icon: <GlobeIcon size={18} />, title: 'A new website', text: 'Features, downloads with install steps, an FAQ, a plain-words privacy page and every update, at joinaether.vercel.app.' },
+      { icon: <MailIcon size={18} />, title: 'Contact us', text: 'Questions, bugs or ideas: send us a message from the website and we’ll reply by email.' },
+      { icon: <SparklesIcon size={18} />, title: 'Fixes', text: 'Your Moments bubble lines up with everyone else’s, and avatar decorations are no longer cut off.' },
+    ],
+  },
   '2.1.0': {
     title: 'Aether 2.1: Together',
     items: [

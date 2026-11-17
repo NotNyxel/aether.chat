@@ -1,4 +1,5 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { useSettingsSync } from '../lib/settingsSync';
 import { MomentsLayer } from './Moments';
 import { useRecordPlaySessions } from '../hooks/usePlayHistory';
 import { LayoutEditor } from './LayoutEditor';
@@ -326,6 +327,8 @@ export function MainLayout({ userId, onSignOut }: { userId: string; onSignOut: (
   const status = useAutoIdle(me?.presence_status ?? 'invisible');
   const activity = useGameActivity();
   useRecordPlaySessions(activity);
+  // Settings follow you to every device (2.3).
+  useSettingsSync(userId);
   const listening = useSpotifyListening();
   // Offline mode: messages written without a connection go out when it's back.
   useOutboxFlusher(userId);

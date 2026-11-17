@@ -1751,5 +1751,24 @@ await expectOk('contact messages: only app admins read them; nobody writes throu
   await db.query(`delete from public.contact_messages`);
 });
 
+await expectOk('settings sync: own row only, newer section wins, sections merge independently', async () => {
+  await as(A, `select public.save_settings($1::jsonb)`, [JSON.stringify({ theme: { v: { presetId: 'orbit-violet' }, at: 2000 }, sounds: { v: { volume: 0.5 }, at: 2000 } })]);
+  // An older copy of theme is ignored; a newer sounds replaces; another section is added.
+  const d = (await as(A, `select public.save_settings($1::jsonb) d`, [JSON.stringify({ theme: { v: { presetId: 'oled-dark' }, at: 1000 }, sounds: { v: { volume: 0.9 }, at: 3000 }, a11y: { v: { zoom: 110 }, at: 3000 } })])).rows[0].d;
+  if (d.theme.v.presetId !== 'orbit-violet' || d.sounds.v.volume !== 0.9 || d.a11y.v.zoom !== 110) throw new Error(JSON.stringify(d));
+  // Junk keys are skipped.
+  const j = (await as(A, `select public.save_settings($1::jsonb) d`, [JSON.stringify({ 'Bad Key': { v: 1, at: 9 }, noat: { v: 1 } })])).rows[0].d;
+  if ('Bad Key' in j || 'noat' in j) throw new Error('junk saved');
+  if ((await as(B, `select count(*)::int n from public.user_settings where user_id = $1`, [A])).rows[0].n !== 0) throw new Error('other user can read');
+  let denied = '';
+  try {
+    await as(B, `update public.user_settings set data = '{}' where user_id = $1`, [A]);
+  } catch (e) {
+    denied = e.message;
+  }
+  if (!denied && (await db.query(`select data->'theme' t from public.user_settings where user_id = $1`, [A])).rows[0].t === null) throw new Error('other user wrote');
+  await db.query(`delete from public.user_settings`);
+});
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

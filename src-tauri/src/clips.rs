@@ -490,6 +490,11 @@ pub struct SaveInput {
     game: Option<String>,
     /// e.g. the Roblox experience.
     detail: Option<String>,
+    /// Squad clips: the same moment saved by everyone in a call (shared id, who pressed it).
+    #[serde(default)]
+    squad: Option<String>,
+    #[serde(default)]
+    squad_by: Option<String>,
 }
 
 /// Saves the last N seconds. Returns the new clip's path. Emits "clip-saved".
@@ -565,6 +570,8 @@ fn save_with(bin: &Path, dir: &Path, settings: &ClipSettings, game_ring: &Arc<Mu
             "fps": settings.fps,
             "duration": dur,
             "mic": mic_ring.is_some(),
+            "squad": input.squad,
+            "squad_by": input.squad_by,
         });
         let mut args: Vec<String> = ["-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i"].iter().map(s).collect();
         args.push(list.to_string_lossy().into());
@@ -627,6 +634,7 @@ pub struct ClipInfo {
     audio_tracks: Vec<String>,
     thumb: Option<String>,
     received: bool,
+    has_cover: bool,
 }
 
 static INFO_CACHE: Mutex<Option<HashMap<String, (u64, u64, ClipInfo)>>> = Mutex::new(None);
@@ -687,6 +695,7 @@ fn probe(app: &AppHandle, path: &Path, received: bool) -> Res<ClipInfo> {
         audio_tracks,
         thumb: thumb.exists().then(|| thumb.to_string_lossy().to_string()),
         received,
+        has_cover: streams.iter().any(|s| s["disposition"]["attached_pic"] == 1),
     };
     INFO_CACHE.lock().unwrap().get_or_insert_with(HashMap::new).insert(key, (modified, md.len(), info.clone()));
     Ok(info)
@@ -797,6 +806,10 @@ pub async fn clips_export(app: AppHandle, input: ExportInput) -> Res<String> {
             args.extend(["-ss".into(), format!("{:.3}", input.start), "-to".into(), format!("{:.3}", input.end)]);
         }
         args.extend(["-i".into(), input.path.clone(), "-map".into(), "0:v:0".into()]);
+        // Keep the cover image (it's the second video stream).
+        if info.has_cover {
+            args.extend(["-map", "0:v:1"].iter().map(s));
+        }
         let mut audio_out = 0;
         if input.game_audio && !info.audio_tracks.is_empty() {
             args.extend(["-map", "0:a:0"].iter().map(s));
@@ -825,17 +838,20 @@ pub async fn clips_export(app: AppHandle, input: ExportInput) -> Res<String> {
                 }
             }
             if !vf.is_empty() {
-                args.extend(["-vf".into(), vf.join(",")]);
+                args.extend(["-filter:v:0".into(), vf.join(",")]);
             }
             let q = if input.quality == "saver" { "low" } else if input.quality == "high" { "medium" } else { "high" };
             args.extend(encoder_args(enc, q, fps.unwrap_or(info.fps.round().max(1.0) as u32)));
             if enc == "libx264" {
                 // already yuv420p
             } else {
-                args.extend(["-pix_fmt", "yuv420p"].iter().map(s));
+                args.extend(["-pix_fmt:v:0", "yuv420p"].iter().map(s));
             }
         } else {
             args.extend(["-c:v", "copy"].iter().map(s));
+        }
+        if info.has_cover {
+            args.extend(["-c:v:1", "copy", "-disposition:v:1", "attached_pic"].iter().map(s));
         }
         if audio_out > 0 {
             args.extend(["-c:a", if reencode { "aac" } else { "copy" }].iter().map(s));
@@ -985,6 +1001,33 @@ pub async fn clips_hash(path: String) -> Res<String> {
 
 // ── Roblox: which experience you're in ──────────────────────────────────────────────────────
 
+/// The place you joined, from a Roblox log. Newer clients log little; older ones say
+/// "Joining game '…' place 123 at …". Takes the last mention, strongest form first.
+fn place_in_log(text: &str) -> Option<u64> {
+    let num = |s: &str| s.split(|c: char| !c.is_ascii_digit()).next().and_then(|n| n.parse::<u64>().ok()).filter(|n| *n > 0);
+    let mut joining = None;
+    let mut place_id = None;
+    let mut place_ids = None;
+    for line in text.lines() {
+        if let Some(i) = line.find("Joining game") {
+            if let Some(p) = line[i..].split(" place ").nth(1).and_then(num) {
+                joining = Some(p);
+            }
+        }
+        let lower = line.to_ascii_lowercase();
+        if let Some(i) = lower.rfind("placeids=") {
+            if let Some(p) = num(&line[i + 9..]) {
+                place_ids = Some(p);
+            }
+        } else if let Some(i) = lower.rfind("placeid=") {
+            if let Some(p) = num(&line[i + 8..]) {
+                place_id = Some(p);
+            }
+        }
+    }
+    joining.or(place_id).or(place_ids)
+}
+
 #[derive(Serialize)]
 pub struct RobloxPlace {
     place_id: u64,
@@ -995,25 +1038,24 @@ pub struct RobloxPlace {
 #[tauri::command]
 pub async fn roblox_place() -> Option<RobloxPlace> {
     let logs = std::env::var("LOCALAPPDATA").ok().map(|d| PathBuf::from(d).join("Roblox").join("logs"))?;
-    let newest = fs::read_dir(&logs)
+    // The player's logs, newest first (not the crash handler's).
+    let mut files: Vec<(SystemTime, PathBuf)> = fs::read_dir(&logs)
         .ok()?
         .filter_map(|d| d.ok())
-        .filter(|d| d.path().extension().map(|x| x == "log").unwrap_or(false))
-        .max_by_key(|d| d.metadata().and_then(|m| m.modified()).unwrap_or(UNIX_EPOCH))?
-        .path();
-    let text = fs::read(&newest).ok()?;
-    let text = String::from_utf8_lossy(&text);
+        .map(|d| d.path())
+        .filter(|p| {
+            let n = p.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default();
+            n.ends_with(".log") && n.contains("Player") && !n.contains("CrashHandler")
+        })
+        .filter_map(|p| Some((fs::metadata(&p).ok()?.modified().ok()?, p)))
+        .collect();
+    files.sort_by(|a, b| b.0.cmp(&a.0));
     let mut place: Option<u64> = None;
-    for line in text.lines() {
-        // "! Joining game '<job>' place 920587237 at …" or "...placeId=920587237..."
-        if let Some(i) = line.find("Joining game") {
-            if let Some(p) = line[i..].split(" place ").nth(1).and_then(|r| r.split_whitespace().next()).and_then(|n| n.parse().ok()) {
-                place = Some(p);
-            }
-        } else if let Some(i) = line.find("placeId=") {
-            if let Some(p) = line[i + 8..].split(|c: char| !c.is_ascii_digit()).next().and_then(|n| n.parse().ok()) {
-                place = Some(p);
-            }
+    for (_, path) in files.iter().take(3) {
+        let text = fs::read(path).ok()?;
+        place = place_in_log(&String::from_utf8_lossy(&text));
+        if place.is_some() {
+            break;
         }
     }
     let place_id = place?;
@@ -1051,6 +1093,17 @@ pub async fn clips_pick_folder(app: AppHandle) -> Option<String> {
 mod tests {
     use super::*;
 
+    // Reads the Roblox log of whatever is open now: cargo test roblox -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn reads_the_roblox_experience() {
+        let place = tauri::async_runtime::block_on(roblox_place());
+        match place {
+            Some(p) => println!("place {} → {:?}", p.place_id, p.name),
+            None => println!("no Roblox log found"),
+        }
+    }
+
     // Records the real screen and sound for a few seconds. Needs FFmpeg:
     //   CLIPS_FFMPEG=<folder with ffmpeg.exe> cargo test clips -- --ignored --nocapture
     #[test]
@@ -1071,7 +1124,7 @@ mod tests {
             (r.game.clone(), r.mic.clone())
         };
         let started = std::time::Instant::now();
-        let path = save_with(&bin, &buf, &settings, &game, mic.as_ref(), &SaveInput { game: Some("Roblox".into()), detail: Some("Test Place".into()) }).expect("save");
+        let path = save_with(&bin, &buf, &settings, &game, mic.as_ref(), &SaveInput { game: Some("Roblox".into()), detail: Some("Test Place".into()), squad: None, squad_by: None }).expect("save");
         println!("saved in {:?}: {}", started.elapsed(), path.display());
         clips_stop();
         let probe = run(&tools.join("ffprobe.exe"), &["-v", "error", "-show_entries", "format=duration,size:format_tags=title,comment:stream=codec_name,codec_type,width,height,avg_frame_rate:stream_disposition=attached_pic:stream_tags=handler_name", "-of", "json", &path.to_string_lossy()].iter().map(s).collect::<Vec<_>>()).expect("probe");

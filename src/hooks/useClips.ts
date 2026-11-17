@@ -1,10 +1,10 @@
 /** Clips (2.4): the recorder controller, the background inbox, and library queries. */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useEffect, useRef, useState } from 'react';
 import { autoDownloadAllowed, pruneSeeds, receiveClip, startSeeding, type ClipShare } from '../lib/clipShare';
 import {
   canRecord,
-  currentGame,
   ffmpegReady,
   listClips,
   localCopies,
@@ -22,6 +22,8 @@ import {
 import { chatKey } from '../lib/e2e';
 import { liveChannel } from '../lib/live';
 import { isTauri } from '../lib/platform';
+import { notify } from '../lib/desktop';
+import { useDetectedGame } from './useDesktop';
 import { useSupabase } from '../lib/supabase';
 import { playSound } from '../lib/sounds';
 import { toast } from '../components/Toaster';
@@ -45,45 +47,73 @@ export function useRecorderStatus(): RecorderStatus | null {
 }
 
 let saving = false;
-/** Save a clip now (the hotkey and the "Clip it" buttons). */
-export async function clipNow(qc?: ReturnType<typeof useQueryClient>) {
+/** Tell the user, in the app or (when it's in the background, e.g. mid-game) as a Windows notification. */
+function tell(title: string, body: string, ok: boolean) {
+  if (document.hasFocus()) (ok ? toast.success : toast.error)(body ? `${title}: ${body}` : title);
+  else void notify(title, body || ' ');
+}
+
+// Squad clips: the call you're in, so a clip can ask everyone else to save the same moment.
+let squad: { channel: RealtimeChannel; me: string; name: string } | null = null;
+
+/** Save a clip now (the hotkey, the tray and the "Clip it" buttons). */
+export async function clipNow(qc?: ReturnType<typeof useQueryClient>, fromSquad?: { id: string; by: string }) {
   if (saving) return;
   saving = true;
   try {
-    await saveClip();
-    if (useClipSettings.getState().s.sound) playSound('messageSent');
-    toast.success(t('Clip saved'));
+    const cfg = useClipSettings.getState();
+    if (!(await ffmpegReady())) return tell(t('Clipping isn’t set up'), t('Open Aether → Settings → Clips.'), false);
+    const st = await recorderStatus().catch(() => null);
+    if (!st?.running) {
+      // Off (or stopped by itself): start it, so the next press has something to save.
+      if (!cfg.s.enabled) cfg.set({ enabled: true });
+      await startRecorder(cfg.s);
+      return tell(t('Clipping started'), t('Aether is recording now. Press the clip key again to save.'), true);
+    }
+    const id = fromSquad?.id ?? crypto.randomUUID();
+    if (!fromSquad && squad) void squad.channel.send({ type: 'broadcast', event: 'clip', payload: { id, by: squad.name, from: squad.me } });
+    await saveClip(fromSquad ?? (squad ? { id, by: squad.name } : undefined));
+    if (cfg.s.sound) playSound('messageSent', true);
+    tell(fromSquad ? t('Squad clip saved') : t('Clip saved'), fromSquad ? t('{name} clipped, so your side of it was saved too.', { name: fromSquad.by }) : '', true);
     void qc?.invalidateQueries({ queryKey: ['clips'] });
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : String(e));
+    tell(t('Couldn’t save the clip'), e instanceof Error ? e.message : String(e), false);
   } finally {
     saving = false;
   }
 }
 
+/** While you're in a call: when someone clips, save your side of the same moment too. */
+export function useSquadClips(roomId: string | null, me: string, name: string) {
+  const sb = useSupabase();
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!canRecord || !roomId) return;
+    const channel = sb.channel(`squadclip:${roomId}`);
+    channel.on('broadcast', { event: 'clip' }, ({ payload }) => {
+      const p = payload as { id: string; by: string; from: string };
+      if (p.from === me || !useClipSettings.getState().s.enabled) return;
+      void clipNow(qc, { id: p.id, by: p.by });
+    });
+    channel.subscribe();
+    squad = { channel, me, name };
+    return () => {
+      if (squad?.channel === channel) squad = null;
+      void sb.removeChannel(channel);
+    };
+  }, [sb, qc, roomId, me, name]);
+}
+
 /**
- * Runs the replay buffer: on while a game is running (or always, if chosen), off otherwise.
+ * Runs the replay buffer: all the time (default), or only while a game is running.
  * Lives in the main layout of the Windows app.
  */
 export function useClipRecorder() {
   const s = useClipSettings((x) => x.s);
   const qc = useQueryClient();
-  const [game, setGame] = useState<string | null>(null);
+  const game = useDetectedGame((x) => x.game?.name ?? null);
   const settingsKey = JSON.stringify([s.fps, s.resolution, s.quality, s.seconds, s.mic, s.includeCalls, s.monitor, s.cursor, s.folder]);
   const running = useRef<string | null>(null);
-
-  // Watch for games (independent of sharing your activity).
-  useEffect(() => {
-    if (!canRecord || !s.enabled || s.mode !== 'games') return;
-    let gone = false;
-    const poll = () => void currentGame().then((g) => !gone && setGame(g.game), () => undefined);
-    poll();
-    const id = setInterval(poll, 10_000);
-    return () => {
-      gone = true;
-      clearInterval(id);
-    };
-  }, [s.enabled, s.mode]);
 
   const want = canRecord && s.enabled && (s.mode === 'always' || !!game);
   useEffect(() => {
@@ -97,13 +127,14 @@ export function useClipRecorder() {
         }
         return;
       }
-      if (running.current === settingsKey) return;
+      const st = await recorderStatus().catch(() => null);
+      if (running.current === settingsKey && st?.running) return;
       if (!(await ffmpegReady())) return;
       try {
         await startRecorder(s);
         if (!cancelled) running.current = settingsKey;
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : String(e));
+        tell(t('Clipping couldn’t start'), e instanceof Error ? e.message : String(e), false);
       }
     })();
     return () => {
@@ -111,14 +142,40 @@ export function useClipRecorder() {
     };
   }, [want, settingsKey]);
 
+  // If recording stops on its own (a display change, a driver hiccup), start it again.
+  useEffect(() => {
+    if (!canRecord || !want) return;
+    const id = setInterval(() => {
+      void recorderStatus().then((st) => {
+        if (!st.running && running.current) {
+          running.current = null;
+          void startRecorder(useClipSettings.getState().s).then(() => (running.current = settingsKey), () => undefined);
+        }
+      }, () => undefined);
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [want, settingsKey]);
+
   useEffect(() => () => void (running.current && stopRecorder()), []);
 
-  // New clips refresh the gallery.
+  // New clips refresh the gallery; the tray can save a clip or switch clipping on and off.
   useEffect(() => {
     if (!canRecord) return;
-    let un: (() => void) | undefined;
-    void import('@tauri-apps/api/event').then(({ listen }) => listen('clip-saved', () => void qc.invalidateQueries({ queryKey: ['clips'] })).then((u) => (un = u)));
-    return () => un?.();
+    const uns: (() => void)[] = [];
+    void import('@tauri-apps/api/event').then(async ({ listen }) => {
+      uns.push(await listen('clip-saved', () => void qc.invalidateQueries({ queryKey: ['clips'] })));
+      uns.push(
+        await listen<string>('tray-action', (e) => {
+          if (e.payload === 'clip') void clipNow(qc);
+          if (e.payload === 'clips-toggle') {
+            const on = !useClipSettings.getState().s.enabled;
+            useClipSettings.getState().set({ enabled: on });
+            tell(on ? t('Clipping on') : t('Clipping off'), on ? t('Press the clip key to save the last moments.') : '', true);
+          }
+        }),
+      );
+    });
+    return () => uns.forEach((u) => u());
   }, [qc]);
 }
 

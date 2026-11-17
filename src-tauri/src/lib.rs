@@ -318,9 +318,12 @@ pub fn run() {
             let open = MenuItem::with_id(app, "open", "Open Aether", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Toggle mute", true, None::<&str>)?;
             let deafen = MenuItem::with_id(app, "deafen", "Toggle deafen", true, None::<&str>)?;
+            let clip = MenuItem::with_id(app, "clip", "Save a clip", true, None::<&str>)?;
+            let clips_toggle = MenuItem::with_id(app, "clips-toggle", "Turn clipping on/off", true, None::<&str>)?;
             let sep = PredefinedMenuItem::separator(app)?;
+            let sep2 = PredefinedMenuItem::separator(app)?;
             let quit = MenuItem::with_id(app, "quit", "Quit Aether", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &mute, &deafen, &sep, &quit])?;
+            let menu = Menu::with_items(app, &[&open, &mute, &deafen, &sep2, &clip, &clips_toggle, &sep, &quit])?;
 
             let mut tray = TrayIconBuilder::with_id("main")
                 .tooltip("Aether")
@@ -333,6 +336,9 @@ pub fn run() {
                     }
                     "deafen" => {
                         let _ = app.emit("tray-action", "deafen");
+                    }
+                    "clip" | "clips-toggle" => {
+                        let _ = app.emit("tray-action", event.id.as_ref());
                     }
                     "quit" => app.exit(0),
                     _ => {}

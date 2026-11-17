@@ -10,6 +10,9 @@
  * disconnect (row deleted) makes us leave. Other participants also stop playing audio from anyone
  * the database says is muted, in the audience, or no longer in the channel.
  */
+import { t } from '../lib/i18n';
+import { useProfile } from '../hooks/useChatData';
+import { useSquadClips } from '../hooks/useClips';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { unwrap } from '../hooks/useChatData';
@@ -57,6 +60,9 @@ export function CallProvider({ userId, children }: { userId: string; children: R
   const voice = useVoiceEngine({ supabase: sb, userId, initialSettings: audio });
   const { join, leave: leaveEngine, updateSettings, startCamera, stopCamera, startScreenShare, stopScreenShare } = voice;
   const calls = useCallActions();
+  // Squad clips (2.4.1): in a call, one person's clip saves everyone's side of the moment.
+  const { data: meProfile } = useProfile(userId);
+  useSquadClips(voice.status === 'connected' ? voice.channelId : null, userId, meProfile?.display_name || meProfile?.username || t('A friend'));
   const [room, setRoom] = useState<VoiceRoomRef | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const wantCameraRef = useRef(false);

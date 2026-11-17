@@ -26,7 +26,7 @@ import { useChannels, useProfile, useServerMembers, useServers } from '../hooks/
 import { useActivityFeed } from '../hooks/useActivityFeed';
 import { useEventReminders } from '../hooks/useEvents';
 import { useChannelById } from '../hooks/useThreads';
-import { useAutoIdle, useCustomStatusExpiry, useGameActivity, useSpotifyListening, useTaskbarBadge, useTraySync } from '../hooks/useDesktop';
+import { useAutoIdle, useCustomStatusExpiry, useGameActivity, useSpotifyListening, useTaskbarBadge, useTraySync, useGameDetector } from '../hooks/useDesktop';
 import { useNotifyResolver } from '../hooks/useNotifications';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { useUnreadSummary } from '../hooks/useMessageExtras';
@@ -333,6 +333,7 @@ export function MainLayout({ userId, onSignOut }: { userId: string; onSignOut: (
   // Settings follow you to every device (2.3).
   useSettingsSync(userId);
   // Clips (2.4): the replay buffer (Windows app) and clips shared with you.
+  useGameDetector();
   useClipRecorder();
   useClipInbox(userId);
   const listening = useSpotifyListening();

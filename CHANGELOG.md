@@ -3,6 +3,23 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.4.1] - 2026-11-17
+
+### Game detection and clips
+
+- **Roblox (and other games that install themselves) are detected now.** Game detection runs all the time and
+  checks your own games, known game programs (Roblox, Minecraft, Riot games and more) and anything installed by
+  Steam, Epic, GOG, Ubisoft or Xbox. Game activity and clips both use it.
+- **Which Roblox experience** is read correctly from newer Roblox versions too.
+- **Clipping records all the time by default**, so the clip key always has something to save. Recording restarts
+  by itself if it stops.
+- **The clip key always answers:** a Windows notification says when a clip saved (or why it couldn't), even mid-game.
+  If clipping was off, the key turns it on.
+- **Squad clips:** in a call, when one person clips, everyone with clipping on saves their side of the same moment.
+- The tray menu can **save a clip** or **turn clipping on and off**.
+- Editing a clip keeps its cover image.
+- **Game activity is on by default** (turn it off in Settings → Activity Privacy).
+
 ## [2.4.0] - 2026-11-17
 
 **Aether 2.4: Clips**

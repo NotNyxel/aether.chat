@@ -46,32 +46,58 @@ export function useAutoIdle(status: PresenceStatus): PresenceStatus {
  * any game installed by Steam, Epic, GOG, Ubisoft or Xbox, then a list of well-known games.
  * Carries when you started and your playing mode (Playing / Locked in / AFK).
  */
-export function useGameActivity(): GameActivity | null {
-  const { shareActivity, customGames, mode } = useSettingsStore((s) => s.activity);
-  const [game, setGame] = useState<{ name: string; since: number; detail: string | null } | null>(null);
+export interface DetectedGame {
+  name: string;
+  since: number;
+  /** e.g. the Roblox experience. */
+  detail: string | null;
+}
+
+/**
+ * The game running on this PC right now, always kept up to date (2.4.1): game activity and clips
+ * both read it. Detection order: your own games, then known game programs (Roblox, Minecraft,
+ * Riot games…), then anything installed by Steam, Epic, GOG, Ubisoft or Xbox.
+ */
+export const useDetectedGame = create<{ game: DetectedGame | null }>(() => ({ game: null }));
+
+export async function detectRunningGame(custom = useSettingsStore.getState().activity.customGames): Promise<{ name: string; detail: string | null } | null> {
+  if (!isTauri) return null;
+  const procs = await runningProcesses().catch(() => [] as string[]);
+  const name = detectGame(procs, custom.filter(Boolean)) ?? (await runningGame());
+  if (!name) return null;
+  // Roblox: which experience (read from Roblox's own log, name looked up once).
+  const detail = /roblox/i.test(name) ? ((await invoke<{ place_id: number; name: string | null } | null>('roblox_place').catch(() => null))?.name ?? null) : null;
+  return { name, detail };
+}
+
+/** Keeps useDetectedGame current. Mounted once in the main layout of the desktop app. */
+export function useGameDetector() {
+  const customGames = useSettingsStore((s) => s.activity.customGames);
   useEffect(() => {
-    if (!shareActivity || !isTauri) {
-      setGame(null);
-      return;
-    }
+    if (!isTauri) return;
     let stopped = false;
     const scan = async () => {
-      const procs = await runningProcesses().catch(() => []);
-      const name = (customGames.length ? detectGame(procs, customGames.filter(Boolean)) : null) ?? (await runningGame()) ?? detectGame(procs, []);
-      // Roblox: which experience (read from Roblox's own log, name looked up once).
-      const detail = name && /roblox/i.test(name) ? ((await invoke<{ place_id: number; name: string | null } | null>('roblox_place').catch(() => null))?.name ?? null) : null;
+      const found = await detectRunningGame(customGames).catch(() => null);
       if (stopped) return;
+      const cur = useDetectedGame.getState().game;
       // Same game as before: keep its start time (switching Roblox experiences keeps your play time).
-      setGame((cur) => (name ? (cur?.name === name && cur.detail === detail ? cur : { name, since: cur?.name === name ? cur.since : Date.now(), detail }) : null));
+      const next = found ? (cur?.name === found.name ? (cur.detail === found.detail ? cur : { ...cur, detail: found.detail }) : { ...found, since: Date.now() }) : null;
+      if (next !== cur) useDetectedGame.setState({ game: next });
     };
     void scan();
-    const t = setInterval(() => void scan(), 15_000);
+    const t = setInterval(() => void scan(), 10_000);
     return () => {
       stopped = true;
       clearInterval(t);
     };
-  }, [shareActivity, customGames]);
-  return useMemo(() => (game ? { ...game, mode } : null), [game, mode]);
+  }, [customGames]);
+}
+
+/** Your game, as shared with friends (when sharing game activity is on). */
+export function useGameActivity(): GameActivity | null {
+  const { shareActivity, mode } = useSettingsStore((s) => s.activity);
+  const game = useDetectedGame((s) => s.game);
+  return useMemo(() => (game && shareActivity ? { ...game, mode } : null), [game, shareActivity, mode]);
 }
 
 /** Your Spotify track, paused or playing, for your own mini-player (only playing ones are shared). */

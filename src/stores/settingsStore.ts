@@ -251,7 +251,7 @@ export interface A11yPrefs {
   alwaysShowTimes: boolean;
 }
 export const DEFAULT_A11Y: A11yPrefs = { chatSize: 15, zoom: 100, highContrast: false, underlineLinks: false, alwaysShowTimes: false };
-export const DEFAULT_ACTIVITY: ActivityPrefs = { shareActivity: false, shareSpotify: false, customGames: [], mode: 'playing' };
+export const DEFAULT_ACTIVITY: ActivityPrefs = { shareActivity: true, shareSpotify: false, customGames: [], mode: 'playing' };
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -283,7 +283,13 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'aether.settings',
-      version: 1,
+      version: 2,
+      // 2.4.1: game activity is on by default (Settings → Activity Privacy turns it off).
+      migrate: (persisted, from) => {
+        const p = (persisted ?? {}) as { activity?: Partial<ActivityPrefs> };
+        if (from < 2) p.activity = { ...p.activity, shareActivity: true };
+        return p as never;
+      },
       storage: createJSONStorage(() => localStorage),
       // Merge stored values over defaults so settings added in later versions get their defaults.
       merge: (persisted, current) => {

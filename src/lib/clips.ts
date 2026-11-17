@@ -7,7 +7,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { isTauri } from './platform';
-import { runningGame } from './desktop';
 
 export const canRecord = isTauri && /Windows/i.test(navigator.userAgent);
 
@@ -33,7 +32,7 @@ export interface ClipSettings {
 
 export const DEFAULT_CLIP_SETTINGS: ClipSettings = {
   enabled: false,
-  mode: 'games',
+  mode: 'always',
   fps: 60,
   resolution: '1080',
   quality: 'high',
@@ -52,7 +51,17 @@ export const DEFAULT_CLIP_SETTINGS: ClipSettings = {
 export const useClipSettings = create<{ s: ClipSettings; set: (p: Partial<ClipSettings>) => void }>()(
   persist(
     (set) => ({ s: DEFAULT_CLIP_SETTINGS, set: (p) => set((st) => ({ s: { ...st.s, ...p } })) }),
-    { name: 'aether.clips', storage: createJSONStorage(() => localStorage), merge: (p, c) => ({ ...c, s: { ...DEFAULT_CLIP_SETTINGS, ...((p as { s?: ClipSettings })?.s ?? {}) } }) },
+    {
+      name: 'aether.clips',
+      version: 2,
+      // 2.4.1: record all the time by default (game detection can miss games).
+      migrate: (p, from) => {
+        const st = (p ?? {}) as { s?: Partial<ClipSettings> };
+        if (from < 2 && st.s) st.s.mode = 'always';
+        return st as never;
+      },
+      storage: createJSONStorage(() => localStorage),
+      merge: (p, c) => ({ ...c, s: { ...DEFAULT_CLIP_SETTINGS, ...((p as { s?: ClipSettings })?.s ?? {}) } }) },
   ),
 );
 
@@ -111,20 +120,18 @@ export async function startRecorder(s: ClipSettings) {
 }
 export const stopRecorder = () => invoke<void>('clips_stop');
 
-/** The game being played, and for Roblox, which experience. */
+/** The game being played, and for Roblox, which experience (the always-on detector, else a fresh look). */
 export async function currentGame(): Promise<{ game: string | null; detail: string | null }> {
-  const game = await runningGame().catch(() => null);
-  let detail: string | null = null;
-  if (game && /roblox/i.test(game)) {
-    const place = await invoke<{ place_id: number; name: string | null } | null>('roblox_place').catch(() => null);
-    detail = place?.name ?? (place ? `Place ${place.place_id}` : null);
-  }
-  return { game, detail };
+  const { useDetectedGame, detectRunningGame } = await import('../hooks/useDesktop');
+  const known = useDetectedGame.getState().game;
+  if (known) return { game: known.name, detail: known.detail };
+  const found = await detectRunningGame().catch(() => null);
+  return { game: found?.name ?? null, detail: found?.detail ?? null };
 }
 
-export async function saveClip(): Promise<string> {
+export async function saveClip(squad?: { id: string; by: string }): Promise<string> {
   const { game, detail } = await currentGame();
-  return invoke<string>('clips_save', { input: { game, detail } });
+  return invoke<string>('clips_save', { input: { game, detail, squad: squad?.id ?? null, squad_by: squad?.by ?? null } });
 }
 
 // ── Library (PC) ──────────────────────────────────────────────────────────────────────────────

@@ -3,6 +3,46 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.3.0] - 2026-11-17
+
+**Aether 2.3: make it yours**
+
+### Moments studio
+
+- **A full-screen creator** with a tool rail, like you're used to on phones. Start from the **camera**, your
+  **gallery** or a colour.
+- **Text in 8 styles** (Classic, Big, Outline, Neon, Label, Marker, Script, Poster) and 10 colours: tap **Aa** to switch.
+- **Stickers:** any emoji, plus stickers from your servers. **Pictures:** add a photo on top, square or round.
+- **Draw:** pen, highlighter and arrows, in any colour and size.
+- **Templates:** Day, Today, Date, Time and Mood designs with their own fonts. They get a **new look every day**, and
+  you can try other looks too.
+- **Photo filters:** swipe left or right on your photo (Vivid, Golden hour, Cool, Fade, Mono, Noir, Retro, Dream).
+- **Everything moves:** drag it anywhere, pinch to resize and rotate (or use the corner handle with a mouse), and
+  drag it to the bin to remove it. Undo is one tap away.
+- Videos keep everything you add on top of them.
+
+### Settings that follow you
+
+- Your **theme, layout and custom layout, accessibility, sounds, notifications, keybinds, game activity settings,
+  language, call volumes** and unlocked secret themes now sync to every device you sign in on, live. Microphone,
+  camera and window settings stay per device.
+
+### Better on iPhone and iPad
+
+- Dropdowns, colour and date fields open **Aether's own pickers** instead of the system ones.
+- The **eyedropper** works everywhere: where the browser can't pick from the screen, pick a colour from a photo.
+- The photo editor's filters and adjustments now save correctly on iPhone and iPad.
+
+### Fixes
+
+- The Moments row lines up: online friends and Moments bubbles share one size, and the **+** stays on top.
+- On phones, a chat's name stays visible in the header; Pinned, Media, Lists, Games and Watch together moved into a
+  **⋮** menu.
+
+### Website
+
+- A redesign with motion, a layout switcher and sharper screenshots.
+
 ## [2.2.0] - 2026-11-17
 
 **Aether 2.2: a new home on the web**

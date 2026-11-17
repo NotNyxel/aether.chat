@@ -44,6 +44,15 @@ interface Highlight {
 
 /** Highlights per release, newest first. Only the current version's list is shown after updating. */
 export const RELEASE_NOTES: Record<string, { title: string; items: Highlight[] }> = {
+  '2.3.0': {
+    title: 'Aether 2.3: make it yours',
+    items: [
+      { icon: <SparklesIcon size={18} />, title: 'Moments studio', text: 'Text in 8 styles, stickers, pictures, drawing and arrows, photo filters, and date templates with a new look every day. Drag, pinch and rotate anything.' },
+      { icon: <GlobeIcon size={18} />, title: 'Settings that follow you', text: 'Your theme, layout, sounds, keybinds, language and more are the same on every device you sign in on.' },
+      { icon: <PaletteIcon size={18} />, title: 'Better on iPhone and iPad', text: 'Aether’s own menus and colour picker everywhere, plus an eyedropper that picks colours from a photo.' },
+      { icon: <MailIcon size={18} />, title: 'A fresh website', text: 'A new look with sharper screenshots at joinaether.vercel.app.' },
+    ],
+  },
   '2.2.0': {
     title: 'Aether 2.2: a new home on the web',
     items: [

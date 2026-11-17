@@ -46,7 +46,7 @@ function useDismiss(ref: React.RefObject<HTMLElement | null>, onClose: () => voi
 
 export function SelectPopover({ el, onClose }: { el: HTMLSelectElement; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const options = useMemo(() => [...el.options].map((o) => ({ value: o.value, label: o.textContent ?? o.value, disabled: o.disabled })), [el]);
+  const options = useMemo(() => [...el.options].map((o) => ({ value: o.value, label: o.textContent ?? o.value, disabled: o.disabled, icon: o.dataset.icon ?? null, badge: o.dataset.badge ?? null })), [el]);
   const [active, setActive] = useState(() => Math.max(0, options.findIndex((o) => o.value === el.value)));
   const rect = el.getBoundingClientRect();
   const width = Math.max(rect.width, 180);
@@ -95,6 +95,12 @@ export function SelectPopover({ el, onClose }: { el: HTMLSelectElement; onClose:
           onClick={() => pick(i)}
           className={`flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-sm disabled:opacity-40 ${i === active ? 'bg-ae-accent text-ae-on-accent' : ''}`}
         >
+          {/* Optional picture per option (<option data-icon="url">, or data-badge="AB" for letters). */}
+          {(o.icon || o.badge) && (
+            <span className="grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-lg bg-ae-surface text-[10px] font-bold text-ae-text">
+              {o.icon ? <img src={o.icon} alt="" className="h-full w-full object-cover" /> : o.badge}
+            </span>
+          )}
           <span className="flex-1 truncate">{o.label}</span>
           {o.value === el.value && <CheckIcon size={14} />}
         </button>

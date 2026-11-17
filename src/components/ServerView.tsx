@@ -266,7 +266,7 @@ export function ServerView({ server, channel, channels, userId }: { server: Serv
             <button
               type="button"
               title={memberListOpen ? 'Hide member list' : 'Show member list'}
-              className={`shrink-0 ${memberListOpen ? 'text-ae-text' : 'text-ae-muted hover:text-ae-text'}`}
+              className={`ae-desktop-only shrink-0 ${memberListOpen ? 'text-ae-text' : 'text-ae-muted hover:text-ae-text'}`}
               onClick={toggleMemberList}
             >
               <UsersIcon size={18} />

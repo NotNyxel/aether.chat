@@ -3,6 +3,18 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.4.5] - 2026-11-17
+
+### Fixes
+
+- **See who reacted on phones.** Press and hold a reaction to see who added it, or press and hold the message and
+  tap Who reacted to see everyone.
+- **Threads on phones.** The threads list now opens across the screen instead of running off the left edge, and
+  tells you to press and hold a message to start a thread (there's no hovering on a phone).
+- The member list button is gone from channel headers on phones, where the list can't open.
+- **Server icons in per-server profiles.** The server picker in Settings → Profiles → Per-server profiles shows each
+  server's icon (or its initials), next to the picker and in the list.
+
 ## [2.4.4] - 2026-11-17
 
 ### Fixes

@@ -14,6 +14,7 @@ import { ArchiveIcon, CloseIcon, EditIcon, ForumIcon, LockIcon, ShieldIcon, Thre
 import { MessagePane } from './MessagePane';
 import { inputCls, Toggle } from './SettingsPanel';
 import { useEscape } from '../lib/escape';
+import { isPhoneLayout, isTouchUi } from '../lib/phone';
 
 export function timeAgo(iso: string | null): string {
   if (!iso) return '';
@@ -298,6 +299,7 @@ export function CreateThreadDialog() {
 /** 🧵 button in a text channel header: lists active and archived threads. */
 export function ThreadsButton({ channel, userId }: { channel: Channel; userId: string }) {
   const [open, setOpen] = useState(false);
+  const [phoneTop, setPhoneTop] = useState<number | null>(null);
   const { data: threads = [] } = useThreads(channel.id);
   const { data: perms = 0n } = useChannelPermissions(channel.id);
   const { data: memberships } = useMyThreadMemberships(userId);
@@ -340,13 +342,20 @@ export function ThreadsButton({ channel, userId }: { channel: Channel; userId: s
         type="button"
         title="Threads"
         className={`relative grid h-7 w-7 place-items-center rounded-ae text-base ${open ? 'bg-ae-hover' : 'opacity-70 hover:opacity-100'}`}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          // Phones: a full-width panel under the header (anchored to the button it ran off screen).
+          const r = ref.current?.getBoundingClientRect();
+          setPhoneTop(isPhoneLayout() && r ? r.bottom + 8 : null);
+          setOpen((v) => !v);
+        }}
       >
         <ThreadIcon size={15} className="ae-ico" />
         {active.length > 0 && <span className="absolute -top-1 -right-1 rounded-full bg-ae-accent px-1 text-[9px] font-bold text-ae-on-accent">{active.length}</span>}
       </button>
       {open && (
-        <div className="ae-pop absolute top-full right-0 z-40 mt-2 w-80 rounded-ae border border-ae-border bg-ae-elevated p-2 shadow-2xl">
+        <div
+          style={phoneTop !== null ? { position: 'fixed', top: phoneTop, left: 8, right: 8, width: 'auto', marginTop: 0 } : undefined}
+          className="ae-pop absolute top-full right-0 z-40 mt-2 w-80 rounded-ae border border-ae-border bg-ae-elevated p-2 shadow-2xl">
           <div className="mb-1 flex items-center justify-between px-1">
             <p className="text-xs font-bold tracking-wide text-ae-muted uppercase">Threads</p>
             {canCreate && (
@@ -362,7 +371,7 @@ export function ThreadsButton({ channel, userId }: { channel: Channel; userId: s
               </button>
             )}
           </div>
-          {threads.length === 0 && <p className="px-2 py-4 text-center text-sm text-ae-muted">No threads yet. Hover a message and click <ThreadIcon size={15} className="ae-ico" /> to start one.</p>}
+          {threads.length === 0 && <p className="px-2 py-4 text-center text-sm text-ae-muted">{isTouchUi() ? <>No threads yet. Press and hold a message and tap Create thread to start one.</> : <>No threads yet. Hover a message and click <ThreadIcon size={15} className="ae-ico" /> to start one.</>}</p>}
           <ul className="ae-scroll max-h-80 overflow-y-auto">
             {active.map(row)}
             {archived.length > 0 && <li className="px-2 pt-2 text-[10px] font-bold tracking-wide text-ae-muted uppercase">Archived — {archived.length}</li>}

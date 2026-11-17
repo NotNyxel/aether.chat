@@ -12,7 +12,7 @@ import { closeContextMenu, openContextMenu } from './ContextMenu';
 import { openReport } from './ReportDialog';
 import { toast } from './Toaster';
 import { isArchived, useAnnouncementActions, useThreads } from '../hooks/useThreads';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { buildMessageLink, extractEmbedUrls } from '../lib/messageLinks';
 import { Markdown } from '../lib/markdown';
@@ -246,6 +246,17 @@ function MessageItemImpl(props: MessageItemProps) {
   // Touch screens (also phones held sideways): the picker opens as its own sheet, since the hover
   // toolbar it would otherwise open in is never shown without a mouse.
   const openPicker = () => (isTouchUi() ? openReactionPicker(react) : setPicker(true));
+  const nameOf = (id: string) =>
+    id === me ? t('You') : qcR.getQueryData<{ display_name?: string; username?: string } | null>(['profile', id])?.display_name || qcR.getQueryData<{ username?: string } | null>(['profile', id])?.username || t('Someone');
+  /** Who reacted (all reactions, or one): a sheet on phones, where there's no hover tooltip. */
+  const showReactors = (e: MouseEvent | ReactMouseEvent, only?: string) => {
+    const list = [...(props.reactions ?? new Map<string, string[]>())].filter(([emoji]) => !only || emoji === only);
+    openContextMenu(
+      e,
+      list.flatMap(([emoji, users]) => users.map((id) => ({ label: nameOf(id), icon: <span className="text-[17px] leading-none"><EmojiText text={emoji} /></span> }))),
+      <p className="px-2 text-sm font-semibold">{only ? <><EmojiText text={only} /> {t('Reactions')}</> : t('Reactions')}</p>,
+    );
+  };
   const qcR = useQueryClient();
   // Encrypted chats: the readable text (or a placeholder when this device can't decrypt it).
   const text = useMessageText(message.content);
@@ -284,6 +295,7 @@ function MessageItemImpl(props: MessageItemProps) {
         }
         openContextMenu(e, [
           { label: t('Add reaction'), icon: <ReactIcon size={15} />, onClick: openPicker },
+          !!props.reactions?.size && isTouchUi() && { label: t('Who reacted'), icon: <ReactIcon size={15} />, onClick: () => setTimeout(() => showReactors(new MouseEvent('contextmenu')), 0) },
           { label: t('Reply'), icon: <ReplyIcon size={15} />, onClick: () => props.onReply(message) },
           { label: t('Forward'), icon: <ForwardIcon size={15} />, onClick: () => openForward(message.id) },
           {
@@ -513,7 +525,7 @@ function MessageItemImpl(props: MessageItemProps) {
               const added = !!before && !before.has(emoji);
               const bumped = !!before && before.has(emoji) && before.get(emoji) !== users.length;
               // Who reacted, shown when you hover the reaction.
-              const names = users.map((id) => (id === me ? 'You' : (qcR.getQueryData<{ display_name?: string; username?: string } | null>(['profile', id])?.display_name || qcR.getQueryData<{ username?: string } | null>(['profile', id])?.username || 'Someone')));
+              const names = users.map(nameOf);
               const who = names.length > 6 ? `${names.slice(0, 6).join(', ')} and ${names.length - 6} more` : names.join(', ');
               return (
                 <button
@@ -522,6 +534,8 @@ function MessageItemImpl(props: MessageItemProps) {
                   data-tip-side="top"
                   type="button"
                   onClick={() => props.onReact(message.id, emoji, active)}
+                  // Press and hold (phones) or right-click: the list of who reacted.
+                  onContextMenu={(e) => showReactors(e, emoji)}
                   data-active={active || undefined}
                   data-new={added || undefined}
                   data-bump={bumped || undefined}

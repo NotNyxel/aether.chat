@@ -687,6 +687,7 @@ function ServerProfiles({ userId }: { userId: string }) {
   const { data: servers = [] } = useServers(userId);
   const [serverId, setServerId] = useState<string>('');
   const sid = serverId || servers[0]?.id || null;
+  const picked = servers.find((s) => s.id === sid) ?? null;
   const { data: members = [], refetch } = useServerMembers(sid);
   const me = members.find((m) => m.user_id === userId);
   const [nick, setNick] = useState('');
@@ -735,13 +736,20 @@ function ServerProfiles({ userId }: { userId: string }) {
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0 space-y-5">
         <Field label="Server">
-          <select className={inputCls} value={sid ?? ''} onChange={(e) => setServerId(e.target.value)}>
-            {servers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            {picked && (
+              <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-ae-surface text-xs font-bold">
+                {picked.icon_url ? <img src={picked.icon_url} alt="" className="h-full w-full object-cover" /> : serverInitials(picked.name)}
+              </span>
+            )}
+            <select className={inputCls} value={sid ?? ''} onChange={(e) => setServerId(e.target.value)}>
+              {servers.map((s) => (
+                <option key={s.id} value={s.id} data-icon={s.icon_url ?? undefined} data-badge={serverInitials(s.name)}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </Field>
         <p className="text-sm text-ae-muted">Anything you leave empty uses your main profile.</p>
         <Field label="Server nickname">
@@ -1026,4 +1034,14 @@ function MemberListMock({ profile }: { profile: UserProfile }) {
       ))}
     </div>
   );
+}
+
+/** A server without an icon: its initials, like the server rail. */
+function serverInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((w) => w[0]!.toUpperCase())
+    .join('');
 }

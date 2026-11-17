@@ -2,9 +2,8 @@
  * Clips (2.4): the gallery (your clips and clips shared with you), the editor (trim, audio tracks,
  * rename, keep), sharing into any chat, the card shown in chats, and the settings.
  */
-import { formatCombo } from '../lib/keybinds';
+import { comboHasModifier, formatCombo } from '../lib/keybinds';
 import { useSettingsStore } from '../stores/settingsStore';
-import { isSafeGlobal, useFailedGlobalShortcuts } from '../hooks/useKeybinds';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { create } from 'zustand';
@@ -763,7 +762,6 @@ const FPS = [30, 60, 120, 144];
 export function ClipsSettings() {
   const { s, set } = useClipSettings();
   const clipKey = useSettingsStore((x) => x.keybinds.saveClip ?? null);
-  const failed = useFailedGlobalShortcuts();
   const [ready, setReady] = useState<boolean | null>(null);
   const [setup, setSetup] = useState<{ loaded: number; total: number } | null>(null);
   const [folder, setFolder] = useState(s.folder);
@@ -810,8 +808,7 @@ export function ClipsSettings() {
             ) : (
               <div className="space-y-2">
               <Toggle label={t('Clip my games')} hint={t('Press {key} (change it in Keybinds) to save the last moments.', { key: formatCombo(clipKey) || t('the clip key') })} checked={s.enabled} onChange={(v) => set({ enabled: v })} />
-              {clipKey && !isSafeGlobal(clipKey) && <p className="text-xs text-ae-warning">{t('{key} only works while Aether is open in front. Pick a key with Ctrl, Alt or Shift, or an F-key, to clip during games.', { key: formatCombo(clipKey) })}</p>}
-              {clipKey && failed.includes(clipKey) && <p className="text-xs text-ae-warning">{t('Another app is already using {key}. Pick a different clip key in Keybinds.', { key: formatCombo(clipKey) })}</p>}
+              {clipKey && !comboHasModifier(clipKey) && /^(Key|Digit)|^(Space|Enter|Tab|Backspace)$/.test(clipKey) && <p className="text-xs text-ae-warning">{t('{key} also saves a clip whenever you type it, in any app. A key with Ctrl, Alt or Shift, or an F-key, is safer.', { key: formatCombo(clipKey) })}</p>}
               </div>
             )}
           </Section>

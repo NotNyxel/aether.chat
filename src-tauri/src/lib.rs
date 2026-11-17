@@ -9,6 +9,16 @@ mod media;
 mod capture;
 #[cfg(windows)]
 mod clips;
+#[cfg(windows)]
+mod hotkey;
+/// The clip key hook is Windows-only (clipping is too).
+#[cfg(not(windows))]
+mod hotkey {
+    #[tauri::command]
+    pub fn clips_set_hotkey() -> bool {
+        false
+    }
+}
 
 /// Clips (2.4) record with Windows-only APIs; elsewhere the gallery still shows received clips.
 #[cfg(not(windows))]
@@ -313,7 +323,7 @@ pub fn run() {
                 _ => PermissionResponse::Default,
             }
         })
-        .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, splash_finish, splash_busy, set_close_to_tray, idle_seconds, running_processes, save_export, now_playing, games::running_game, media::media_action, media::now_playing_cover, clips::clips_ready, clips::clips_install_ffmpeg, clips::clips_status, clips::clips_start, clips::clips_stop, clips::clips_save, clips::clips_default_folder, clips::clips_list, clips::clips_delete, clips::clips_export, clips::clips_set_meta, clips::clips_sweep, clips::clips_file_size, clips::clips_read, clips::clips_write, clips::clips_hash, clips::roblox_place, clips::clips_pick_folder])
+        .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, splash_finish, splash_busy, set_close_to_tray, idle_seconds, running_processes, save_export, now_playing, games::running_game, media::media_action, media::now_playing_cover, clips::clips_ready, clips::clips_install_ffmpeg, clips::clips_status, clips::clips_start, clips::clips_stop, clips::clips_save, clips::clips_default_folder, clips::clips_list, clips::clips_delete, clips::clips_export, clips::clips_set_meta, clips::clips_sweep, clips::clips_file_size, clips::clips_read, clips::clips_write, clips::clips_hash, clips::roblox_place, clips::clips_pick_folder, hotkey::clips_set_hotkey])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open Aether", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Toggle mute", true, None::<&str>)?;

@@ -393,8 +393,71 @@ pub async fn clips_start(app: AppHandle, settings: ClipSettings) -> Res<()> {
     tauri::async_runtime::spawn_blocking(move || start_with(bin, dir, settings)).await.map_err(e)?
 }
 
+/// FFmpeg must never outlive the app: each recorder joins a job that Windows kills when Aether
+/// exits or crashes. (Before 2.4.4 a restarted app left the old FFmpeg recording forever, with
+/// nothing deleting its segments, which filled the disk.)
+fn tie_to_app(child: &Child) {
+    use std::os::windows::io::AsRawHandle;
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::JobObjects::{AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation, SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE};
+    static JOB: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+    let job = *JOB.get_or_init(|| unsafe {
+        let Ok(job) = CreateJobObjectW(None, None) else { return 0 };
+        let mut info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        let _ = SetInformationJobObject(job, JobObjectExtendedLimitInformation, &info as *const _ as *const std::ffi::c_void, std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32);
+        job.0 as usize // kept open for the app's lifetime; closing it (on exit) kills the recorder
+    });
+    if job != 0 {
+        unsafe {
+            let _ = AssignProcessToJobObject(HANDLE(job as *mut std::ffi::c_void), HANDLE(child.as_raw_handle()));
+        }
+    }
+}
+
+/// Recorders left running by an earlier Aether (crash, restart, update): our FFmpeg, not started
+/// by this app. Stopped once, before the first recording.
+fn kill_leftover_recorders(bin: &Path) {
+    use windows::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS};
+    use windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, TerminateProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE};
+    let ours = bin.to_string_lossy().to_lowercase();
+    let me = std::process::id();
+    unsafe {
+        let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return };
+        let mut entry = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+        if Process32FirstW(snap, &mut entry).is_ok() {
+            loop {
+                let name = String::from_utf16_lossy(&entry.szExeFile[..entry.szExeFile.iter().position(|c| *c == 0).unwrap_or(0)]).to_lowercase();
+                if name == "ffmpeg.exe" && entry.th32ParentProcessID != me {
+                    if let Ok(h) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_TERMINATE, false, entry.th32ProcessID) {
+                        let mut buf = [0u16; 1024];
+                        let mut len = buf.len() as u32;
+                        if QueryFullProcessImageNameW(h, PROCESS_NAME_WIN32, windows::core::PWSTR(buf.as_mut_ptr()), &mut len).is_ok() && String::from_utf16_lossy(&buf[..len as usize]).to_lowercase() == ours {
+                            let _ = TerminateProcess(h, 1);
+                        }
+                        let _ = CloseHandle(h);
+                    }
+                }
+                if Process32NextW(snap, &mut entry).is_err() {
+                    break;
+                }
+            }
+        }
+        let _ = CloseHandle(HANDLE(snap.0));
+    }
+}
+
+/// One start or stop at a time: two overlapping starts used to leave an FFmpeg nobody controlled.
+static STARTING: Mutex<()> = Mutex::new(());
+
 fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
-    clips_stop();
+    let _one = STARTING.lock().unwrap_or_else(|p| p.into_inner());
+    static SWEPT: AtomicBool = AtomicBool::new(false);
+    if !SWEPT.swap(true, Ordering::Relaxed) {
+        kill_leftover_recorders(&bin);
+    }
+    stop_now();
     let enc = pick_encoder_with(&bin)?;
     *ENCODER.lock().unwrap() = Some(enc);
     let _ = fs::remove_dir_all(&dir);
@@ -417,6 +480,7 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
     args.extend(["-an", "-f", "segment", "-segment_time", "1", "-reset_timestamps", "1", "-segment_format", "mpegts"].iter().map(s));
     args.push(dir.join("seg%06d.ts").to_string_lossy().to_string());
     let child = Command::new(&bin).args(&args).creation_flags(NO_WINDOW).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().map_err(e)?;
+    tie_to_app(&child);
 
     let keep = settings.seconds as u64 + 6;
     let stop = Arc::new(AtomicBool::new(false));
@@ -429,7 +493,8 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
     } else {
         None
     };
-    // Old segments go as new ones arrive.
+    // Old segments go as new ones arrive: anything older than the buffer, and never more files
+    // than the buffer needs (so a stray writer can't fill the disk either).
     {
         let dir = dir.clone();
         let stop = stop.clone();
@@ -437,8 +502,11 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
             while !stop.load(Ordering::Relaxed) {
                 if let Ok(list) = segments(&dir) {
                     let cutoff = now_ms().saturating_sub(keep * 1000);
-                    for s in list.iter().filter(|s| s.start_ms < cutoff) {
-                        let _ = fs::remove_file(&s.path);
+                    let extra = list.len().saturating_sub(keep as usize * 2);
+                    for (i, s) in list.iter().enumerate() {
+                        if i < extra || s.start_ms < cutoff {
+                            let _ = fs::remove_file(&s.path);
+                        }
                     }
                 }
                 std::thread::sleep(Duration::from_millis(1000));
@@ -450,6 +518,7 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
     let mut rec = Recorder { child, dir, settings, stop, game, mic, started_ms: now_ms() };
     if let Ok(Some(status)) = rec.child.try_wait() {
         rec.stop.store(true, Ordering::Relaxed);
+        let _ = fs::remove_dir_all(&rec.dir);
         return Err(format!("Recording couldn't start (FFmpeg exited with {status}). Try another resolution or update your graphics driver."));
     }
     *RECORDER.lock().unwrap() = Some(rec);
@@ -457,23 +526,23 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
 }
 
 #[tauri::command]
-pub fn clips_stop() {
-    if let Some(mut r) = RECORDER.lock().unwrap().take() {
-        r.stop.store(true, Ordering::Relaxed);
-        if let Some(stdin) = r.child.stdin.as_mut() {
-            let _ = stdin.write_all(b"q");
-        }
-        std::thread::spawn(move || {
-            for _ in 0..30 {
-                if let Ok(Some(_)) = r.child.try_wait() {
-                    break;
-                }
-                std::thread::sleep(Duration::from_millis(100));
-            }
-            let _ = r.child.kill();
-            let _ = fs::remove_dir_all(&r.dir);
-        });
-    }
+pub async fn clips_stop() {
+    let _ = tauri::async_runtime::spawn_blocking(|| {
+        let _one = STARTING.lock().unwrap_or_else(|p| p.into_inner());
+        stop_now();
+    })
+    .await;
+}
+
+/// Stops the recorder and deletes its buffer, before returning (so a new recorder starting next
+/// never has its fresh buffer deleted from under it).
+fn stop_now() {
+    let Some(mut r) = RECORDER.lock().unwrap().take() else { return };
+    r.stop.store(true, Ordering::Relaxed);
+    // The buffer is thrown away, so there's nothing to finish writing: just end it.
+    let _ = r.child.kill();
+    let _ = r.child.wait();
+    let _ = fs::remove_dir_all(&r.dir);
 }
 
 /// Height of a recorded segment (0 if unknown).
@@ -1270,7 +1339,7 @@ mod tests {
         let started = std::time::Instant::now();
         let path = save_with(&bin, &buf, &settings, &game, mic.as_ref(), &SaveInput { game: Some("Roblox".into()), detail: Some("Test Place".into()), squad: None, squad_by: None }).expect("save");
         println!("saved in {:?}: {}", started.elapsed(), path.display());
-        clips_stop();
+        stop_now();
         let probe = run(&tools.join("ffprobe.exe"), &["-v", "error", "-show_entries", "format=duration,size:format_tags=title,comment:stream=codec_name,codec_type,width,height,avg_frame_rate:stream_disposition=attached_pic:stream_tags=handler_name", "-of", "json", &path.to_string_lossy()].iter().map(s).collect::<Vec<_>>()).expect("probe");
         let j: serde_json::Value = serde_json::from_slice(&probe.stdout).unwrap();
         println!("{}", serde_json::to_string_pretty(&j).unwrap());

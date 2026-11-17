@@ -3,6 +3,19 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.4.4] - 2026-11-17
+
+### Fixes
+
+- **Any clip key works in games.** Aether now watches the keyboard for your clip key the way game clippers do,
+  instead of registering a system shortcut. Keys like Page Down, Home, ` or the numpad now save clips mid-game,
+  a changed key works straight away, and another app using the same combo can't block it. The key still reaches
+  your game as normal.
+- **Clipping no longer fills your disk.** If Aether was restarted or closed unexpectedly, its recorder could keep
+  running in the background with nothing deleting old footage (gigabytes over time). The recorder now always stops
+  with Aether, leftovers from earlier versions are stopped and cleaned up, and the buffer can never grow past what
+  your clip length needs.
+
 ## [2.4.3] - 2026-11-17
 
 ### Fixes

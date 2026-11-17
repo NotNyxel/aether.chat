@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { onTrayAction, registerGlobalShortcuts } from '../lib/desktop';
 import { comboHasModifier, isEditableTarget, matchesCombo, matchesMainKey } from '../lib/keybinds';
 import { isTauri } from '../lib/platform';
+import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../stores/settingsStore';
 import type { VoiceEngine } from './useVoiceEngine';
 
@@ -48,6 +49,36 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
   const ptt = keybinds.pushToTalkEnabled ? keybinds.pushToTalk : null;
   const clipsOn = useClipSettings((x) => x.s.enabled) && canRecord;
 
+  // The clip key (Windows app): watched by a keyboard hook (src-tauri/src/hotkey.rs), so any key
+  // works in any game without being taken from other apps. Registered shortcuts are only the
+  // fallback for a key the hook can't watch.
+  const clipKey = clipsOn ? (keybinds.saveClip ?? null) : null;
+  const [clipHooked, setClipHooked] = useState(false);
+  useEffect(() => {
+    if (!canRecord) return;
+    let gone = false;
+    void invoke<boolean>('clips_set_hotkey', { combo: clipKey }).then(
+      (ok) => !gone && setClipHooked(ok && !!clipKey),
+      () => !gone && setClipHooked(false),
+    );
+    return () => {
+      gone = true;
+    };
+  }, [clipKey]);
+  useEffect(() => {
+    if (!canRecord) return;
+    let gone = false;
+    let un: (() => void) | undefined;
+    void import('@tauri-apps/api/event')
+      .then(({ listen }) => listen('clip-hotkey', () => void clipNow()))
+      .then((u) => (gone ? u() : (un = u)));
+    return () => {
+      gone = true;
+      un?.();
+      void invoke('clips_set_hotkey', { combo: null }).catch(() => undefined);
+    };
+  }, []);
+
   // System-wide shortcuts.
   useEffect(() => {
     if (!globalOn) {
@@ -60,7 +91,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
       keybinds.toggleMute && { combo: keybinds.toggleMute, onPress: () => actions.current.toggleMute() },
       keybinds.toggleDeafen && { combo: keybinds.toggleDeafen, onPress: () => actions.current.toggleDeafen() },
       keybinds.cyclePlayMode && { combo: keybinds.cyclePlayMode, onPress: () => cyclePlayMode() },
-      clipsOn && keybinds.saveClip && { combo: keybinds.saveClip, onPress: () => void clipNow() },
+      clipKey && !clipHooked && { combo: clipKey, onPress: () => void clipNow() },
       ptt && { combo: ptt, onPress: () => actions.current.setMuted(false), onRelease: () => actions.current.setMuted(true) },
     ].filter((b): b is { combo: string; onPress: () => void; onRelease?: () => void } => !!b);
     // Unique combos only (the same combo bound twice would fail the second registration), and only
@@ -86,7 +117,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
       setGlobalCombos(new Set());
       regChain = regChain.then(() => dispose?.());
     };
-  }, [globalOn, keybinds.toggleMute, keybinds.toggleDeafen, keybinds.cyclePlayMode, keybinds.saveClip, clipsOn, ptt]);
+  }, [globalOn, keybinds.toggleMute, keybinds.toggleDeafen, keybinds.cyclePlayMode, keybinds.saveClip, clipKey, clipHooked, ptt]);
 
   // In-window shortcuts (skipping combos already handled globally, so they don't fire twice).
   useEffect(() => {
@@ -96,7 +127,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
     const lMute = local(keybinds.toggleMute);
     const lDeafen = local(keybinds.toggleDeafen);
     const lMode = local(keybinds.cyclePlayMode ?? null);
-    const lClip = clipsOn ? local(keybinds.saveClip ?? null) : null;
+    const lClip = clipHooked ? null : local(clipKey);
 
     const onDown = (e: KeyboardEvent) => {
       if (lPtt && matchesCombo(e, lPtt) && allowed(e, lPtt)) {
@@ -136,7 +167,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
       window.removeEventListener('keyup', onUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [keybinds, ptt, globalCombos, setMuted, toggleDeafen, toggleMute, clipsOn]);
+  }, [keybinds, ptt, globalCombos, setMuted, toggleDeafen, toggleMute, clipKey, clipHooked]);
 
   // Tray menu.
   useEffect(() => onTrayAction((a) => (a === 'mute' ? actions.current.toggleMute() : actions.current.toggleDeafen())), []);

@@ -24,7 +24,11 @@ export interface Listening {
   duration_ms: number;
   started_at: number;
   playing: boolean;
+  /** 2.1: album cover URL found by the listener (Apple's image servers only). */
+  art?: string | null;
 }
+
+const ART_URL = /^https:\/\/is\d-ssl\.mzstatic\.com\/[\w./%-]+$/;
 
 /** A game someone is playing (2.1): when they started and how they're playing. */
 export interface GameActivity {
@@ -56,6 +60,7 @@ function asListening(v: unknown): Listening | null {
     duration_ms: Number(l.duration_ms) || 0,
     started_at: Number(l.started_at) || Date.now(),
     playing: !!l.playing,
+    art: typeof l.art === 'string' && l.art.length < 400 && ART_URL.test(l.art) ? l.art : null,
   };
 }
 

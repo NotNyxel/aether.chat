@@ -1,4 +1,5 @@
 /** Bottom-of-sidebar area: voice connection dock and the user panel with status picker and controls. */
+import { PanelDock } from './PanelDock';
 import { useState } from 'react';
 import { useProfile, useUpdateProfile } from '../hooks/useChatData';
 import { activeCustomStatus } from '../hooks/useDesktop';
@@ -170,8 +171,10 @@ export function UserPanel({ userId }: { userId: string }) {
 
   return (
     <>
+      {/* 2.1: what you're playing and your Spotify player sit above voice and your profile. */}
+      <PanelDock userId={userId} />
       <VoiceDock />
-      <footer className="ae-userpanel relative flex items-center gap-1 bg-ae-sunken/60 px-2 py-2">
+      <footer className="ae-userpanel relative flex items-center gap-1 bg-ae-sunken/60 px-2 py-2.5">
         <button
           type="button"
           data-user-panel
@@ -180,11 +183,11 @@ export function UserPanel({ userId }: { userId: string }) {
           onClick={() => setMenu((m) => !m)}
         >
           <span className="relative inline-block shrink-0 leading-none">
-            <Avatar profile={me} size={32} speaking={voice.isSpeaking} />
+            <Avatar profile={me} size={38} speaking={voice.isSpeaking} />
             <PresenceDot status={shownStatus} className="absolute -right-0.5 -bottom-0.5 z-10" />
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold">{me?.display_name || me?.username || '…'}</span>
+            <span className="block truncate text-[15px] leading-tight font-semibold">{me?.display_name || me?.username || '…'}</span>
             <span className="block truncate text-xs text-ae-muted">
               <ActivityLine userId={userId} fallback={(me?.status_emoji && activeCustomStatus(me) ? `${me.status_emoji} ` : '') + (activeCustomStatus(me) || STATUS_LABELS[status])} />
             </span>

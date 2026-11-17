@@ -898,6 +898,7 @@ function KeybindsTab() {
       >
         <KeybindRow label="Toggle mute" hint="Mute or unmute your microphone." combo={keybinds.toggleMute} onChange={bind('toggleMute')} />
         <KeybindRow label="Toggle deafen" hint="Silence all incoming audio (also mutes you)." combo={keybinds.toggleDeafen} onChange={bind('toggleDeafen')} />
+        <KeybindRow label="Switch playing mode" hint="Playing → Locked in → AFK, shown next to your game. Works while you're in a game." combo={keybinds.cyclePlayMode ?? null} onChange={bind('cyclePlayMode')} />
       </Section>
       <Section title="Push to talk">
         <Toggle

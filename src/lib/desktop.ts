@@ -254,6 +254,23 @@ export async function nowPlaying(): Promise<NowPlaying | null> {
 }
 
 /** Lower-cased executable names currently running (desktop only). */
+/** Spotify mini-player (2.1): play/pause, next, previous, seek. False when Spotify isn't open. */
+export async function mediaAction(action: 'toggle' | 'next' | 'previous' | 'seek', positionMs?: number): Promise<boolean> {
+  if (!isTauri) return false;
+  const { invoke } = await import('@tauri-apps/api/core');
+  const ok = await invoke<boolean>('media_action', { action, positionMs: positionMs ?? null }).catch(() => false);
+  // Ask the now-playing poller to look again straight away, so the player updates at once.
+  window.dispatchEvent(new Event('aether-np-refresh'));
+  return ok;
+}
+
+/** The album cover Spotify is showing, as a data: URL (only for your own player). */
+export async function nowPlayingCover(): Promise<string | null> {
+  if (!isTauri) return null;
+  const { invoke } = await import('@tauri-apps/api/core');
+  return invoke<string | null>('now_playing_cover').catch(() => null);
+}
+
 /** The game you're playing, found from where launchers installed it (2.1, Windows). */
 export async function runningGame(): Promise<string | null> {
   if (!isTauri) return null;

@@ -116,6 +116,8 @@ export function effectiveLayout(theme: Pick<ThemeSettings, 'layout' | 'customLay
 export interface Keybinds {
   toggleMute: string | null;
   toggleDeafen: string | null;
+  /** 2.1: Playing → Locked in → AFK. */
+  cyclePlayMode?: string | null;
   pushToTalk: string | null;
   pushToTalkEnabled: boolean;
 }
@@ -160,6 +162,13 @@ export interface ActivityPrefs {
 }
 
 export type PlayMode = 'playing' | 'locked' | 'afk';
+/** Playing → Locked in → AFK → Playing (the keybind and the panel's quick switch). */
+export function cyclePlayMode() {
+  const s = useSettingsStore.getState();
+  const order: PlayMode[] = ['playing', 'locked', 'afk'];
+  s.setActivity({ mode: order[(order.indexOf(s.activity.mode ?? 'playing') + 1) % order.length]! });
+}
+
 export const PLAY_MODES: { id: PlayMode; label: string; hint: string }[] = [
   { id: 'playing', label: 'Playing', hint: 'Happy to chat' },
   { id: 'locked', label: 'Locked in', hint: 'Focused, maybe later' },
@@ -212,6 +221,7 @@ export const DEFAULT_THEME: ThemeSettings = {
 export const DEFAULT_KEYBINDS: Keybinds = {
   toggleMute: 'Ctrl+Shift+KeyM',
   toggleDeafen: 'Ctrl+Shift+KeyD',
+  cyclePlayMode: 'Ctrl+Shift+KeyL',
   pushToTalk: null,
   pushToTalkEnabled: false,
 };

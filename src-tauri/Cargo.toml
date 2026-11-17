@@ -38,7 +38,9 @@ strip = true
 
 # Now-playing detection (Spotify) through Windows' media session API.
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.62", features = ["Media_Control", "Foundation", "Foundation_Collections", "Win32_Foundation", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Threading"] }
+windows = { version = "0.62", features = ["Media_Control", "Foundation", "Foundation_Collections", "Win32_Foundation", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Threading", "Storage_Streams"] }
+# Spotify mini-player cover (2.1).
+base64 = "0.22"
 # Game detection (2.1): reads where Steam, GOG and Ubisoft installed games.
 winreg = "0.56"
 # Native screen/window capture (Windows Graphics Capture), frame scaling and JPEG for the in-app

@@ -98,26 +98,47 @@ export function GameBanner({ name, className = '' }: { name: string; className?:
   );
 }
 
-export function useAlbumArt(title: string | null | undefined, artist: string | null | undefined) {
+/** "Song (feat. X) - 2011 Remaster" → "Song". */
+export function cleanTrackTitle(title: string): string {
+  return title
+    .replace(/\s*[([](feat|ft|with|prod)\.?[^)\]]*[)\]]/gi, '')
+    .replace(/\s+-\s+.*(remaster|version|edit|mix|live|mono|stereo|acoustic|bonus|deluxe).*$/i, '')
+    .replace(/\s*[([][^)\]]*(remaster|version|edit|live|mono|deluxe)[^)\]]*[)\]]/gi, '')
+    .trim();
+}
+
+const firstArtist = (artist: string) => artist.split(/,|&| x | feat\.? | ft\.? /i)[0]!.trim().toLowerCase();
+
+/** Finds a song's album cover (iTunes search, no key): cleaned title + artist, checking the artist matches. */
+export async function lookupAlbumArt(title: string, artist: string): Promise<string | null> {
+  const clean = cleanTrackTitle(title);
+  const who = firstArtist(artist);
+  const search = async (term: string) => {
+    const res = await fetch(`https://itunes.apple.com/search?media=music&entity=song&limit=8&term=${encodeURIComponent(term)}`).catch(() => null);
+    if (!res?.ok) return [];
+    return ((await res.json()) as { results?: { artworkUrl100?: string; artistName?: string; trackName?: string }[] }).results ?? [];
+  };
+  const pick = (rows: { artworkUrl100?: string; artistName?: string; trackName?: string }[]) =>
+    rows.find((r) => r.artworkUrl100 && who && r.artistName?.toLowerCase().includes(who)) ?? null;
+  const hit = pick(await search(`${who} ${clean}`)) ?? pick(await search(clean));
+  return hit?.artworkUrl100 ? hit.artworkUrl100.replace('100x100bb', '300x300bb') : null;
+}
+
+export function useAlbumArt(title: string | null | undefined, artist: string | null | undefined, known?: string | null) {
   return useQuery({
     queryKey: ['album-art', title, artist],
-    enabled: !!title,
+    enabled: !!title && !known,
     staleTime: Infinity,
     gcTime: 24 * 3600_000,
     retry: false,
-    queryFn: async () => {
-      const term = `${artist ?? ''} ${title ?? ''}`.trim();
-      const res = await fetch(`https://itunes.apple.com/search?media=music&entity=song&limit=1&term=${encodeURIComponent(term)}`);
-      if (!res.ok) return null;
-      const data = (await res.json()) as { results?: { artworkUrl100?: string; trackViewUrl?: string }[] };
-      const art = data.results?.[0]?.artworkUrl100;
-      return art ? art.replace('100x100bb', '300x300bb') : null;
-    },
+    queryFn: () => lookupAlbumArt(title!, artist ?? ''),
   });
 }
 
-export function AlbumArt({ title, artist, size = 56 }: { title: string; artist: string; size?: number }) {
-  const { data: url } = useAlbumArt(title, artist);
+/** Album cover: the one the listener shared if there is one, else a lookup, else a music note. */
+export function AlbumArt({ title, artist, size = 56, art }: { title: string; artist: string; size?: number; art?: string | null }) {
+  const { data: found } = useAlbumArt(title, artist, art);
+  const url = art || found;
   return (
     <span className="grid shrink-0 place-items-center overflow-hidden rounded-md bg-ae-surface" style={{ width: size, height: size }}>
       {url ? <img src={url} alt="" className="h-full w-full object-cover" draggable={false} /> : <MusicIcon size={size * 0.45} className="text-ae-muted" />}

@@ -1,7 +1,12 @@
 /** App-level desktop behaviour: auto-idle, game activity, taskbar badge, tray, custom status expiry. */
 import { useEffect, useMemo, useState } from 'react';
+import { create } from 'zustand';
 import { idleSeconds, nowPlaying, runningGame, runningProcesses, setBadge, setCloseToTray } from '../lib/desktop';
 import { detectGame } from '../lib/games';
+import { lookupAlbumArt } from '../lib/activityArt';
+
+/** Covers found this session, per song. */
+const artCache = new Map<string, string | null>();
 import { isTauri } from '../lib/platform';
 import { useSettingsStore } from '../stores/settingsStore';
 import type { PresenceStatus, UserProfile } from '../types/db';
@@ -66,6 +71,9 @@ export function useGameActivity(): GameActivity | null {
   return useMemo(() => (game ? { ...game, mode } : null), [game, mode]);
 }
 
+/** Your Spotify track, paused or playing, for your own mini-player (only playing ones are shared). */
+export const useNowPlaying = create<{ track: Listening | null }>()(() => ({ track: null }));
+
 /** Opt-in Listening to Spotify: polls the media session every 5 s and publishes the track. */
 export function useSpotifyListening(): Listening | null {
   const share = useSettingsStore((s) => s.activity.shareSpotify);
@@ -79,23 +87,37 @@ export function useSpotifyListening(): Listening | null {
     const poll = async () => {
       const np = await nowPlaying().catch(() => null);
       if (stopped) return;
-      if (!np || !np.playing) return setTrack(null);
+      if (!np) return setTrack(null);
       const started = Date.now() - np.position_ms;
+      const key = `${np.title}\u0000${np.artist}`;
       setTrack((cur) =>
-        // Only republish when the track changes or someone seeks (drift over 3 s), to keep presence quiet.
-        cur && cur.title === np.title && cur.artist === np.artist && Math.abs(cur.started_at - started) < 3000
+        // Only republish when the track changes, it's paused/resumed, or someone seeks (drift over
+        // 3 s), to keep presence quiet.
+        cur && cur.title === np.title && cur.artist === np.artist && cur.playing === np.playing && Math.abs(cur.started_at - started) < 3000
           ? cur
-          : { title: np.title, artist: np.artist, album: np.album, duration_ms: np.duration_ms, started_at: started, playing: true },
+          : { title: np.title, artist: np.artist, album: np.album, duration_ms: np.duration_ms, started_at: started, playing: np.playing, art: artCache.get(key) ?? cur?.art ?? null },
       );
+      // New song: find its cover once and share it with the track.
+      if (!artCache.has(key)) {
+        artCache.set(key, null);
+        const art = await lookupAlbumArt(np.title, np.artist).catch(() => null);
+        artCache.set(key, art);
+        if (!stopped && art) setTrack((cur) => (cur && cur.title === np.title && cur.artist === np.artist ? { ...cur, art } : cur));
+      }
     };
     void poll();
     const t = setInterval(() => void poll(), 5_000);
+    const now = () => void poll();
+    window.addEventListener('aether-np-refresh', now);
     return () => {
       stopped = true;
       clearInterval(t);
+      window.removeEventListener('aether-np-refresh', now);
     };
   }, [share]);
-  return track;
+  useEffect(() => useNowPlaying.setState({ track }), [track]);
+  // Friends only see a song while it's actually playing.
+  return track?.playing ? track : null;
 }
 
 export function useTaskbarBadge(count: number): void {

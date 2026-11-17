@@ -5,7 +5,8 @@
  * system-wide shortcuts so they work while you're in a game or another app. Any combo that can't
  * be registered (another app owns it) falls back to working only while Aether is focused.
  * The tray menu's Toggle mute / Toggle deafen are handled here too.
- */
+ */
+import { cyclePlayMode } from '../stores/settingsStore';
 import { useEffect, useRef, useState } from 'react';
 import { onTrayAction, registerGlobalShortcuts } from '../lib/desktop';
 import { comboHasModifier, isEditableTarget, matchesCombo, matchesMainKey } from '../lib/keybinds';
@@ -53,6 +54,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
     const bindings = [
       keybinds.toggleMute && { combo: keybinds.toggleMute, onPress: () => actions.current.toggleMute() },
       keybinds.toggleDeafen && { combo: keybinds.toggleDeafen, onPress: () => actions.current.toggleDeafen() },
+      keybinds.cyclePlayMode && { combo: keybinds.cyclePlayMode, onPress: () => cyclePlayMode() },
       ptt && { combo: ptt, onPress: () => actions.current.setMuted(false), onRelease: () => actions.current.setMuted(true) },
     ].filter((b): b is { combo: string; onPress: () => void; onRelease?: () => void } => !!b);
     // Unique combos only (the same combo bound twice would fail the second registration), and only
@@ -74,7 +76,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
       setGlobalCombos(new Set());
       void dispose?.();
     };
-  }, [globalOn, keybinds.toggleMute, keybinds.toggleDeafen, ptt]);
+  }, [globalOn, keybinds.toggleMute, keybinds.toggleDeafen, keybinds.cyclePlayMode, ptt]);
 
   // In-window shortcuts (skipping combos already handled globally, so they don't fire twice).
   useEffect(() => {
@@ -83,6 +85,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
     const lPtt = local(ptt);
     const lMute = local(keybinds.toggleMute);
     const lDeafen = local(keybinds.toggleDeafen);
+    const lMode = local(keybinds.cyclePlayMode ?? null);
 
     const onDown = (e: KeyboardEvent) => {
       if (lPtt && matchesCombo(e, lPtt) && allowed(e, lPtt)) {
@@ -97,6 +100,9 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
       } else if (lDeafen && matchesCombo(e, lDeafen) && allowed(e, lDeafen)) {
         e.preventDefault();
         toggleDeafen();
+      } else if (lMode && matchesCombo(e, lMode) && allowed(e, lMode)) {
+        e.preventDefault();
+        cyclePlayMode();
       }
     };
     const onUp = (e: KeyboardEvent) => {

@@ -44,7 +44,7 @@ export function ListeningCard({ track, compact = false }: { track: Listening; co
         <SpotifyMark size={12} /> Listening to Spotify
       </SectionTitle>
       <div className="flex gap-3">
-        <AlbumArt title={track.title} artist={track.artist} size={compact ? 48 : 64} />
+        <AlbumArt title={track.title} artist={track.artist} art={track.art} size={compact ? 48 : 64} />
         <div className="min-w-0 flex-1 self-center">
           <p className="truncate text-sm font-semibold" title={track.title}>
             {track.title}

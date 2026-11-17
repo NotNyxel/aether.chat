@@ -17,6 +17,8 @@ export {
   X as CloseIcon,
   Play as PlayIcon,
   Pause as PauseIcon,
+  SkipBack as SkipBackIcon,
+  SkipForward as SkipForwardIcon,
   Trash2 as TrashIcon,
   Video as CameraIcon,
   VideoOff as CameraOffIcon,

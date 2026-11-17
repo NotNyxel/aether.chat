@@ -60,7 +60,7 @@ export function ActiveCard({ userId }: { userId: string }) {
     <article className={`${card} ae-enter flex flex-col gap-3 p-4`}>
       <span className={label}>{game ? t('Playing') : t('Listening')}</span>
       <div className="flex items-center gap-3">
-        {game ? <GameArtIcon name={game} size={52} rounded="rounded-[14px]" /> : <AlbumArt title={track!.title} artist={track!.artist} size={52} />}
+        {game ? <GameArtIcon name={game} size={52} rounded="rounded-[14px]" /> : <AlbumArt title={track!.title} artist={track!.artist} art={track!.art} size={52} />}
         <span className="min-w-0">
           <span className="block truncate font-bold">{game ?? track!.title}</span>
           <span className="block truncate text-[13px] text-ae-muted">

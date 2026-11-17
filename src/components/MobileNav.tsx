@@ -76,10 +76,11 @@ function OnlineFriend({ userId }: { userId: string }) {
   // Friends with moments are already in the row, with their ring.
   if (status === 'offline' || hasMoments) return null;
   return (
-    <button type="button" className="flex w-16 shrink-0 flex-col items-center gap-1" onClick={(e) => peek(userId, e.currentTarget)}>
-      <span className="relative">
+    // Same footprint as a Moments bubble (avatar + 8px ring space), so the row lines up.
+    <button type="button" className="flex w-[68px] shrink-0 flex-col items-center gap-1.5" onClick={(e) => peek(userId, e.currentTarget)}>
+      <span className="relative grid place-items-center" style={{ width: 60, height: 60 }}>
         <Avatar profile={p} size={52} showFrame={false} />
-        <PresenceDot status={status} size={14} className="absolute right-0 bottom-0 ring-[3px] ring-ae-bg" />
+        <PresenceDot status={status} size={14} className="absolute right-0.5 bottom-0.5 z-[3] ring-[3px] ring-ae-bg" />
       </span>
       <span className="w-full truncate text-center text-[11px] text-ae-muted">{p?.display_name || p?.username}</span>
     </button>

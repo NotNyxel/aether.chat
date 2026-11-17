@@ -93,7 +93,7 @@ export function MomentsStrip({ size = 52, className = '', children }: { size?: n
             type="button"
             aria-label={t('Add a moment')}
             onClick={openMomentComposer}
-            className="absolute -right-1 -bottom-1 grid h-6 w-6 place-items-center rounded-full bg-ae-accent text-ae-on-accent ring-[3px] ring-ae-bg"
+            className="absolute -right-1 -bottom-1 z-[5] grid h-6 w-6 place-items-center rounded-full bg-ae-accent text-ae-on-accent ring-[3px] ring-ae-bg"
           >
             <PlusIcon size={13} />
           </button>

@@ -39,12 +39,13 @@ function FriendBubble({ userId }: { userId: string }) {
   const online = status !== 'offline';
   if (useMomentFeed().byUser.has(userId)) return null; // shown in the moments part of the row
   return (
-    <button type="button" className="ae-press flex w-[72px] shrink-0 flex-col items-center gap-2" onClick={(e) => peek(userId, e.currentTarget)}>
-      <span className="relative rounded-full" style={{ boxShadow: online ? '0 0 0 3px var(--ae-bg), 0 0 0 5px var(--ae-accent)' : '0 0 0 3px var(--ae-bg), 0 0 0 5px var(--ae-border)' }}>
+    // Same footprint as a Moments bubble (avatar + 8px ring space), so the row lines up.
+    <button type="button" className="ae-press flex w-[72px] shrink-0 flex-col items-center gap-1.5" onClick={(e) => peek(userId, e.currentTarget)}>
+      <span className="relative grid place-items-center rounded-full" style={{ width: 64, height: 64, boxShadow: `inset 0 0 0 2px ${online ? 'var(--ae-accent)' : 'var(--ae-border)'}` }}>
         <Avatar profile={p} size={56} showFrame={false} />
-        <PresenceDot status={status} size={14} className="absolute right-0 bottom-0 ring-[3px] ring-ae-bg" />
+        <PresenceDot status={status} size={14} className="absolute right-0.5 bottom-0.5 z-[3] ring-[3px] ring-ae-bg" />
       </span>
-      <span className={`w-full truncate text-center text-xs ${online ? '' : 'text-ae-muted'}`}>{p?.display_name || p?.username}</span>
+      <span className={`w-full truncate text-center text-[11px] ${online ? '' : 'text-ae-muted'}`}>{p?.display_name || p?.username}</span>
     </button>
   );
 }

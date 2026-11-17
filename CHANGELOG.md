@@ -3,6 +3,46 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.4.0] - 2026-11-17
+
+**Aether 2.4: Clips**
+
+### Clip your games (Windows app)
+
+- **An always-on replay buffer** while you play: press **Ctrl+Shift+C** (change it in Keybinds) and the last
+  15 seconds to 5 minutes save in about two seconds. Nothing is kept until you clip.
+- Recorded on your **graphics card** (NVIDIA, AMD or Intel), at native resolution down to 720p, **30–144 fps or a
+  custom frame rate**, with a quality setting. Turn it on in **Settings → Clips** (a one-time 115 MB FFmpeg download,
+  checked before use).
+- **Game audio and your mic are separate tracks.** Choose whether to record the mic, and mute either one later.
+  Aether calls are left out unless you include them.
+- Each clip's details live **inside the MP4**: the game, **which Roblox experience**, the date and the frame rate,
+  plus a full-resolution cover image. Choose where clips are saved.
+
+### The Clips gallery
+
+- **Home → Clips** (or You → Clips on phones): all your clips and the ones shared with you, by game, with search
+  and favourites. Hover to preview.
+- The editor: **trim**, turn game audio or mic on and off, rename, save or save as a new clip, show in folder.
+
+### Sharing
+
+- **+ → Share a clip** in any chat (or Share from the gallery), at **Original, High (1080p) or Data saver (720p)**
+  quality, with no size limit.
+- Friends who are online get it **straight from your PC**; a temporary copy (encrypted in encrypted chats) covers
+  everyone else and is **deleted as soon as everyone has it, or after 72 hours**.
+- Clips save on the receiver's device too: **temporary for 7 days** (change it in Settings → Clips) or **Keep**
+  forever. Computers download them automatically; phones do on Wi-Fi, or when you tap.
+- Chat cards show a **full-resolution thumbnail**, the game and the length.
+
+### Game activity
+
+- Friends see **which Roblox experience** you're in, with your play time; Ask to join mentions it too.
+
+### Fixes
+
+- Moments wait for their photo or video to load before the timer starts, and deleting one asks inside the viewer.
+
 ## [2.3.0] - 2026-11-17
 
 **Aether 2.3: make it yours**

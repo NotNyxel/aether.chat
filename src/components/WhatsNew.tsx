@@ -23,6 +23,8 @@ import {
   GlobeIcon,
   LayersIcon,
   MailIcon,
+  SendIcon,
+  PlayIcon,
   MicIcon,
   MoonIcon,
   PaletteIcon,
@@ -44,6 +46,15 @@ interface Highlight {
 
 /** Highlights per release, newest first. Only the current version's list is shown after updating. */
 export const RELEASE_NOTES: Record<string, { title: string; items: Highlight[] }> = {
+  '2.4.0': {
+    title: 'Aether 2.4: Clips',
+    items: [
+      { icon: <PlayIcon size={18} />, title: 'Clip your games', text: 'Turn it on in Settings → Clips, then press Ctrl+Shift+C in a game to save the last moments, in high quality, with game and mic on separate tracks.' },
+      { icon: <SparklesIcon size={18} />, title: 'Your clips gallery', text: 'Trim, rename, mute your mic, favourite and find clips by game, even which Roblox experience. Home → Clips.' },
+      { icon: <SendIcon size={18} />, title: 'Share anywhere', text: 'Share a clip in any chat from the + menu. Friends get it straight from your PC, and it saves on their device.' },
+      { icon: <GameIcon size={18} />, title: 'Richer game activity', text: 'Friends now see which Roblox experience you’re in, with your play time.' },
+    ],
+  },
   '2.3.0': {
     title: 'Aether 2.3: make it yours',
     items: [

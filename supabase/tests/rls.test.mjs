@@ -1770,5 +1770,21 @@ await expectOk('settings sync: own row only, newer section wins, sections merge 
   await db.query(`delete from public.user_settings`);
 });
 
+await expectOk('moment overlays: own folder only, need media, readable with the moment', async () => {
+  const fails = async (sql, params) => {
+    try {
+      await as(A, sql, params);
+    } catch {
+      return true;
+    }
+    return false;
+  };
+  const ok = (await as(A, `insert into public.moments (kind, media_path, overlay_path, audience) values ('video', $1, $2, 'friends') returning id`, [`${A}/v.mp4`, `${A}/v-overlay.png`])).rows[0].id;
+  if (!ok) throw new Error('insert failed');
+  if (!(await fails(`insert into public.moments (kind, media_path, overlay_path, audience) values ('video', $1, $2, 'friends')`, [`${A}/v2.mp4`, `${B}/stolen.png`]))) throw new Error('overlay in someone else folder');
+  if (!(await fails(`insert into public.moments (kind, body, background, overlay_path, audience) values ('text', 'hi', '#123456', $1, 'friends')`, [`${A}/o.png`]))) throw new Error('overlay without media');
+  await as(A, `delete from public.moments where id = $1`, [ok]);
+});
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

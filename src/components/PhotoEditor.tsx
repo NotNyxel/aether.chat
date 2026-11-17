@@ -6,6 +6,7 @@
  * Coordinates: everything (crop, strokes, text) is stored normalised (0..1) against the rotated /
  * flipped image, so rotating moves your edits with the photo.
  */
+import { applyCssFilter, canvasFilterWorks } from '../lib/momentArt';
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { t } from '../lib/i18n';
 import { BrushIcon, CloseIcon, CutIcon, FontIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons';
@@ -98,7 +99,7 @@ export function PhotoEditor({ file, onDone, onCancel }: { file: Blob & { name?: 
   const filterCss = `${FILTERS.find((f) => f.id === filter)?.css ?? ''} brightness(${adj.brightness / 100}) contrast(${adj.contrast / 100}) saturate(${adj.saturation / 100})`.trim();
 
   /** Draw the edited photo at a given longest side. In crop mode, the whole photo with the crop box. */
-  const paint = (target: HTMLCanvasElement, maxSide: number, showWhole: boolean) => {
+  const paint = (target: HTMLCanvasElement, maxSide: number, showWhole: boolean, exporting = false) => {
     if (!oriented) return;
     const r = showWhole ? FULL : crop;
     const sw = oriented.width * r.w;
@@ -108,9 +109,13 @@ export function PhotoEditor({ file, onDone, onCancel }: { file: Blob & { name?: 
     target.height = Math.max(1, Math.round(sh * k));
     const ctx = target.getContext('2d')!;
     ctx.save();
-    ctx.filter = filterCss || 'none';
+    const native = canvasFilterWorks();
+    if (native) ctx.filter = filterCss || 'none';
     ctx.drawImage(oriented, oriented.width * r.x, oriented.height * r.y, sw, sh, 0, 0, target.width, target.height);
     ctx.restore();
+    // iPhone/iPad Safari ignores ctx.filter: apply the same colour change pixel by pixel.
+    // (The live preview uses a CSS filter on the canvas instead; this runs only when saving.)
+    if (!native && exporting && filterCss) applyCssFilter(ctx, filterCss, target.width, target.height);
     // Marks are in whole-photo coordinates; map them into this view.
     const map = (p: Pt) => ({ x: ((p.x - r.x) / r.w) * target.width, y: ((p.y - r.y) / r.h) * target.height });
     const unit = (oriented.width * k) / 400; // size 1 = 1/400 of the photo's width
@@ -239,7 +244,7 @@ export function PhotoEditor({ file, onDone, onCancel }: { file: Blob & { name?: 
     if (!oriented) return;
     setSaving(true);
     const out = document.createElement('canvas');
-    paint(out, 4096, false);
+    paint(out, 4096, false, true);
     const png = file.type === 'image/png';
     out.toBlob(
       (b) => {
@@ -295,6 +300,7 @@ export function PhotoEditor({ file, onDone, onCancel }: { file: Blob & { name?: 
             onPointerUp={onUp}
             onPointerCancel={onUp}
             className={`max-h-full max-w-full touch-none object-contain ${tool === 'adjust' ? '' : 'cursor-crosshair'}`}
+            style={canvasFilterWorks() ? undefined : { filter: filterCss || undefined }}
           />
         ) : (
           <span className="ae-skeleton h-40 w-60 rounded-xl" />

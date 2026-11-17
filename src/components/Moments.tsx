@@ -2,7 +2,7 @@
  * Moments UI (2.1): the ring around avatars, the "Your moment" + friends strip, the full-screen
  * viewer (tap or arrow keys to move, reply, see who viewed yours) and the composer.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { create } from 'zustand';
 import { useProfile } from '../hooks/useChatData';
 import { useMeId } from '../hooks/useMe';
@@ -13,9 +13,7 @@ import {
   useMomentFeed,
   useMomentMedia,
   useMomentViewers,
-  usePostMoment,
   type Moment,
-  type MomentAudience,
   type PersonMoments,
 } from '../hooks/useMoments';
 import { useConversationActions } from '../hooks/useSocialData';
@@ -23,18 +21,17 @@ import { useEscape } from '../lib/escape';
 import { t } from '../lib/i18n';
 import { useUiStore } from '../stores/uiStore';
 import { ask } from './ConfirmDialog';
-import { Dialog } from './Dialog';
-import { CloseIcon, ImageIcon, PlusIcon, TrashIcon, UsersIcon, BrushIcon } from './icons';
-import { PhotoEditor } from './PhotoEditor';
+import { CloseIcon, PlusIcon, TrashIcon, UsersIcon } from './icons';
 import { Avatar } from './ProfileCard';
 import { prefillDraft } from './ScheduledMessages';
-import { toast } from './Toaster';
 
 const useViewer = create<{ start: string | null; open: (userId: string) => void; close: () => void }>()((set) => ({
   start: null,
   open: (start) => set({ start }),
   close: () => set({ start: null }),
 }));
+// The studio (2.3) and its fonts load only when you make a moment.
+const MomentStudio = lazy(() => import('./MomentStudio'));
 const useComposer = create<{ open: boolean; set: (open: boolean) => void }>()((set) => ({ open: false, set: (open) => set({ open }) }));
 export const openMoments = (userId: string) => useViewer.getState().open(userId);
 export const openMomentComposer = () => useComposer.getState().set(true);
@@ -122,6 +119,7 @@ function PersonBubble({ person, size }: { person: PersonMoments; size: number })
 
 function MomentBody({ m, onVideoEnd, paused }: { m: Moment; onVideoEnd: () => void; paused: boolean }) {
   const { data: url } = useMomentMedia(m.media_path);
+  const { data: overlay } = useMomentMedia(m.overlay_path ?? null);
   const video = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     if (!video.current) return;
@@ -137,7 +135,13 @@ function MomentBody({ m, onVideoEnd, paused }: { m: Moment; onVideoEnd: () => vo
   if (!url) return <div className="ae-skeleton h-full w-full" />;
   return (
     <div className="relative grid h-full w-full place-items-center bg-black">
-      {m.kind === 'video' ? (
+      {m.kind === 'video' && m.overlay_path ? (
+        // Made in the studio: the video fills a 9:16 frame and its additions sit on top, as composed.
+        <div className="relative aspect-[9/16] max-h-full w-full max-w-full">
+          <video ref={video} src={url} className="absolute inset-0 h-full w-full object-cover" playsInline autoPlay onEnded={onVideoEnd} />
+          {overlay && <img src={overlay} alt="" className="pointer-events-none absolute inset-0 h-full w-full" draggable={false} />}
+        </div>
+      ) : m.kind === 'video' ? (
         <video ref={video} src={url} className="max-h-full max-w-full" playsInline autoPlay onEnded={onVideoEnd} />
       ) : (
         <img src={url} alt="" className="max-h-full max-w-full object-contain" draggable={false} />
@@ -347,113 +351,6 @@ function Viewer({ start, onClose }: { start: string; onClose: () => void }) {
   );
 }
 
-const BACKGROUNDS = ['#7658fb', '#e5484d', '#0f9f7a', '#f2a93b', '#2b6cff', '#1c1c1f'];
-
-function Composer({ onClose }: { onClose: () => void }) {
-  const post = usePostMoment();
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [text, setText] = useState('');
-  const [bg, setBg] = useState(BACKGROUNDS[0]!);
-  const [audience, setAudience] = useState<MomentAudience>('friends');
-  const [editPhoto, setEditPhoto] = useState(false);
-  useEffect(() => {
-    if (!file) return setPreview(null);
-    const u = URL.createObjectURL(file);
-    setPreview(u);
-    return () => URL.revokeObjectURL(u);
-  }, [file]);
-  const ready = !!file || !!text.trim();
-  const share = () =>
-    post.mutate(
-      { file: file ?? undefined, body: text, background: bg, audience },
-      {
-        onSuccess: () => {
-          toast.success(t('Moment shared. It disappears in 24 hours.'));
-          onClose();
-        },
-        onError: (e) => toast.error(e.message),
-      },
-    );
-  const chip = (on: boolean) => `ae-press rounded-full px-3 py-1.5 text-xs font-semibold ${on ? 'bg-ae-accent text-ae-on-accent' : 'bg-ae-surface text-ae-muted hover:text-ae-text'}`;
-  return (
-    <Dialog title={t('New moment')} onClose={onClose} z="z-[98]">
-      <div className="mx-auto aspect-[9/14] w-56 overflow-hidden rounded-2xl border border-ae-border" style={{ background: file ? '#000' : bg }}>
-        {preview && file?.type.startsWith('video/') ? (
-          <video src={preview} className="h-full w-full object-contain" muted autoPlay loop playsInline />
-        ) : preview ? (
-          <img src={preview} alt="" className="h-full w-full object-contain" />
-        ) : (
-          <p className="grid h-full place-items-center p-4 text-center text-lg font-bold whitespace-pre-wrap text-white">{text || t('Say something…')}</p>
-        )}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="ae-press inline-flex cursor-pointer items-center gap-2 rounded-ae bg-ae-surface px-3 py-2 text-sm hover:bg-ae-hover">
-          <ImageIcon size={15} /> {file ? t('Change photo or video') : t('Photo or video')}
-          <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-        </label>
-        {file && /^image\/(png|jpeg|webp)$/.test(file.type) && (
-          <button type="button" className="ae-press inline-flex items-center gap-2 rounded-ae bg-ae-surface px-3 py-2 text-sm hover:bg-ae-hover" onClick={() => setEditPhoto(true)}>
-            <BrushIcon size={15} /> {t('Edit')}
-          </button>
-        )}
-        {editPhoto && file && (
-          <PhotoEditor
-            file={file}
-            onCancel={() => setEditPhoto(false)}
-            onDone={(f) => {
-              setEditPhoto(false);
-              setFile(f);
-            }}
-          />
-        )}
-        {file && (
-          <button type="button" className="rounded-ae px-3 py-2 text-sm text-ae-muted hover:bg-ae-hover" onClick={() => setFile(null)}>
-            {t('Text only')}
-          </button>
-        )}
-        {!file && (
-          <span className="flex gap-1.5" role="radiogroup" aria-label={t('Background')}>
-            {BACKGROUNDS.map((c) => (
-              <button key={c} type="button" role="radio" aria-checked={bg === c} aria-label={c} onClick={() => setBg(c)} className={`h-6 w-6 rounded-full ring-offset-2 ring-offset-ae-elevated ${bg === c ? 'ring-2 ring-ae-text' : ''}`} style={{ background: c }} />
-            ))}
-          </span>
-        )}
-      </div>
-      <label className="block">
-        <span className="text-[11px] font-bold tracking-wide text-ae-muted uppercase">{file ? t('Caption') : t('Text')}</span>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={300} rows={2} className="ae-input mt-1 w-full resize-none text-sm" />
-      </label>
-      <div>
-        <span className="text-[11px] font-bold tracking-wide text-ae-muted uppercase">{t('Who can see it')}</span>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          <button type="button" aria-pressed={audience === 'everyone'} className={chip(audience === 'everyone')} onClick={() => setAudience('everyone')}>
-            {t('Everyone you know')}
-          </button>
-          <button type="button" aria-pressed={audience === 'friends'} className={chip(audience === 'friends')} onClick={() => setAudience('friends')}>
-            {t('Friends')}
-          </button>
-          <button type="button" aria-pressed={audience === 'close'} className={chip(audience === 'close')} onClick={() => setAudience('close')}>
-            {t('Close friends')}
-          </button>
-        </div>
-        <p className="mt-1.5 text-xs text-ae-muted">
-          {audience === 'everyone' ? t('Friends and people in your spaces.') : audience === 'friends' ? t('Only your friends.') : t('Only the friends on your Close friends list (Settings → Privacy & Safety).')}
-        </p>
-      </div>
-      <div className="flex justify-end gap-2">
-        <button type="button" className="rounded-ae px-4 py-2 text-sm hover:bg-ae-hover" onClick={onClose}>
-          {t('Cancel')}
-        </button>
-        <button type="button" disabled={!ready || post.isPending} className="rounded-ae bg-ae-accent px-4 py-2 text-sm font-semibold text-ae-on-accent disabled:opacity-50" onClick={share}>
-          {post.isPending ? t('Sharing…') : t('Share')}
-        </button>
-      </div>
-    </Dialog>
-  );
-}
-
-/** Mounted once: the viewer and composer when open. */
 export function MomentsLayer() {
   const start = useViewer((s) => s.start);
   const close = useViewer((s) => s.close);
@@ -462,7 +359,11 @@ export function MomentsLayer() {
   return (
     <>
       {start && <Viewer start={start} onClose={close} />}
-      {composing && <Composer onClose={() => setComposing(false)} />}
+      {composing && (
+        <Suspense fallback={<div className="fixed inset-0 z-[98] bg-black" />}>
+          <MomentStudio onClose={() => setComposing(false)} />
+        </Suspense>
+      )}
     </>
   );
 }

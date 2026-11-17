@@ -15,6 +15,8 @@ export interface Moment {
   user_id: string;
   kind: 'image' | 'video' | 'text';
   media_path: string | null;
+  /** Videos: a transparent image of the text/stickers/drawings shown over the video (2.3). */
+  overlay_path?: string | null;
   body: string | null;
   background: string | null;
   audience: MomentAudience;
@@ -39,7 +41,7 @@ export function useMomentFeed() {
     queryFn: async () => {
       const { data, error } = await sb
         .from('moments')
-        .select('id, user_id, kind, media_path, body, background, audience, created_at, expires_at')
+        .select('id, user_id, kind, media_path, overlay_path, body, background, audience, created_at, expires_at')
         .gt('expires_at', new Date().toISOString())
         .order('created_at')
         .limit(500);
@@ -112,8 +114,9 @@ export function usePostMoment() {
   const qc = useQueryClient();
   const me = useMeId();
   return useMutation({
-    mutationFn: async (input: { file?: File; body?: string; background?: string; audience: MomentAudience }) => {
+    mutationFn: async (input: { file?: File; overlay?: Blob; body?: string; background?: string; audience: MomentAudience }) => {
       let media_path: string | null = null;
+      let overlay_path: string | null = null;
       let kind: Moment['kind'] = 'text';
       if (input.file) {
         if (input.file.size > 20 * 1024 * 1024) throw new Error('Moments can be up to 20 MB.');
@@ -122,16 +125,22 @@ export function usePostMoment() {
         media_path = `${me}/${crypto.randomUUID()}.${ext}`;
         const up = await sb.storage.from('moments').upload(media_path, input.file, { contentType: input.file.type });
         if (up.error) throw new Error(up.error.message);
+        if (input.overlay) {
+          overlay_path = `${me}/${crypto.randomUUID()}-overlay.png`;
+          const o = await sb.storage.from('moments').upload(overlay_path, input.overlay, { contentType: 'image/png' });
+          if (o.error) overlay_path = null; // the video still goes up, just without its additions
+        }
       }
       const { error } = await sb.from('moments').insert({
         kind,
         media_path,
+        ...(overlay_path ? { overlay_path } : {}),
         body: input.body?.trim().slice(0, 300) || null,
         background: kind === 'text' ? (input.background ?? '#7658fb') : null,
         audience: input.audience,
       });
       if (error) {
-        if (media_path) void sb.storage.from('moments').remove([media_path]);
+        if (media_path) void sb.storage.from('moments').remove([media_path, ...(overlay_path ? [overlay_path] : [])]);
         throw new Error(error.message.includes('row-level') ? 'You have a lot of moments up already. Wait for some to expire.' : error.message);
       }
     },
@@ -146,7 +155,7 @@ export function useDeleteMoment() {
     mutationFn: async (m: Moment) => {
       const { error } = await sb.from('moments').delete().eq('id', m.id);
       if (error) throw new Error(error.message);
-      if (m.media_path) await sb.storage.from('moments').remove([m.media_path]);
+      if (m.media_path) await sb.storage.from('moments').remove([m.media_path, ...(m.overlay_path ? [m.overlay_path] : [])]);
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['moments'] }),
   });

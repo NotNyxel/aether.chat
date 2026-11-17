@@ -1437,3 +1437,22 @@ select,
     box-shadow: none;
   }
 }
+
+/* Custom layout, per panel: spaces bar size, chat list on/off, chat width (2.1). */
+:root[data-ae-cl='on']:not([data-ae-phone='true']):not([data-ae-tablet='true']) {
+  & .ae-shell > [data-panel='rail'] {
+    width: var(--ae-cl-rail-w, 72px) !important;
+  }
+  & .ae-shell > [data-panel='rail'] :is(button, a).h-12 {
+    width: calc(var(--ae-cl-rail-w, 72px) - 24px) !important;
+    height: calc(var(--ae-cl-rail-w, 72px) - 24px) !important;
+  }
+  &[data-ae-cl-list='hidden'] .ae-shell > [data-panel='list'] {
+    display: none !important;
+  }
+  & .ae-chat-column > * {
+    width: 100%;
+    max-width: var(--ae-cl-main-max, none);
+    margin-inline: auto;
+  }
+}

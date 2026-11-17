@@ -75,8 +75,13 @@ export interface CustomLayout {
   /** Left-to-right order of the spaces bar, the chat list and the chat. */
   order: LayoutPanel[];
   showRail: boolean;
+  /** Spaces bar width in px (icons scale with it). */
+  railWidth: number;
+  showList: boolean;
   /** Chat list width in px. */
   listWidth: number;
+  /** Widest the chat's messages get, in px (0 = no limit). */
+  mainMaxWidth: number;
   /** Profile / members panel: which side of the chat, and its width. */
   detailsSide: 'left' | 'right';
   detailsWidth: number;
@@ -91,7 +96,10 @@ export const DEFAULT_CUSTOM_LAYOUT: CustomLayout = {
   base: 'classic',
   order: ['rail', 'list', 'main'],
   showRail: true,
+  railWidth: 72,
+  showList: true,
   listWidth: 260,
+  mainMaxWidth: 0,
   detailsSide: 'right',
   detailsWidth: 300,
   floating: true,

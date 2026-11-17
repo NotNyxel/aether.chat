@@ -229,10 +229,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const cl = theme.layout === 'custom' ? { ...DEFAULT_CUSTOM_LAYOUT, ...theme.customLayout } : null;
     root.dataset.aeCl = cl ? 'on' : 'off';
     root.dataset.aeClRail = cl && !cl.showRail ? 'hidden' : 'shown';
+    root.dataset.aeClList = cl && !cl.showList ? 'hidden' : 'shown';
     root.dataset.aeClFloat = cl?.floating ? 'on' : 'off';
     if (cl) {
       cl.order.forEach((panel, i) => root.style.setProperty(`--ae-cl-${panel}`, String(i)));
       root.style.setProperty('--ae-cl-list-w', `${cl.listWidth}px`);
+      root.style.setProperty('--ae-cl-rail-w', `${cl.railWidth}px`);
+      root.style.setProperty('--ae-cl-main-max', cl.mainMaxWidth ? `${cl.mainMaxWidth}px` : 'none');
       root.style.setProperty('--ae-cl-details-w', `${cl.detailsWidth}px`);
       root.style.setProperty('--ae-cl-details', cl.detailsSide === 'left' ? '-1' : '1');
       root.style.setProperty('--ae-cl-radius', `${cl.radius}px`);

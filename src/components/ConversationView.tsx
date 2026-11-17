@@ -3,7 +3,7 @@ import { t } from '../lib/i18n';
 import { DisappearingBar, DisappearingButton } from './Disappearing';
 import { isTabletLayout } from '../lib/phone';
 import { ask, promptText } from './ConfirmDialog';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { PresenceDot, usePresenceOf } from '../hooks/usePresence';
 import { useActiveCalls, useConversationActions, useFriendActions, useRespondRequest } from '../hooks/useSocialData';
@@ -143,6 +143,13 @@ export function ConversationView({ conv, userId }: { conv: Conversation; userId:
       return true;
     }
   });
+  // The layout editor's "Profile panel" switch (2.1) changes it live.
+  useEffect(() => {
+    if (conv.type !== 'dm') return;
+    const on = (e: Event) => setShowMembersRaw((e as CustomEvent<boolean>).detail);
+    window.addEventListener('aether-details-panel', on);
+    return () => window.removeEventListener('aether-details-panel', on);
+  }, [conv.type]);
   const setShowMembers = (fn: (v: boolean) => boolean) =>
     setShowMembersRaw((v) => {
       const next = fn(v);

@@ -8,7 +8,7 @@ import { useEscape } from '../lib/escape';
 import { t } from '../lib/i18n';
 import { DEFAULT_CUSTOM_LAYOUT, useSettingsStore, type BaseLayoutId, type CustomLayout, type LayoutPanel } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
-import { CheckIcon, GripIcon } from './icons';
+import { CheckIcon, EyeOffIcon, GripIcon } from './icons';
 import { toast } from './Toaster';
 
 const NAMES: Record<LayoutPanel, string> = { rail: 'Spaces bar', list: 'Chat list', main: 'Chat' };
@@ -102,6 +102,24 @@ export function LayoutEditor() {
   const { panels, details } = usePanelRects([cl.order.join(), cl.listWidth, cl.detailsWidth, cl.detailsSide, cl.floating, cl.gap, cl.showRail, cl.base]);
   const drag = useRef<{ panel: LayoutPanel; x: number } | null>(null);
   const [dragging, setDragging] = useState<LayoutPanel | null>(null);
+  const [detailsOn, setDetailsOn] = useState(() => {
+    try {
+      return localStorage.getItem('aether.dmProfilePanel') !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const setDetails = (on: boolean) => {
+    setDetailsOn(on);
+    try {
+      localStorage.setItem('aether.dmProfilePanel', on ? '1' : '0');
+    } catch {
+      /* not saved */
+    }
+    window.dispatchEvent(new CustomEvent('aether-details-panel', { detail: on }));
+    const ui = useUiStore.getState();
+    if (ui.memberListOpen !== on) ui.toggleMemberList();
+  };
   const done = () => {
     setEditing(false);
     toast.success(t('Layout saved'));
@@ -149,6 +167,17 @@ export function LayoutEditor() {
       {/* Outlines and move handles over each panel. */}
       {[...panels.entries()].map(([panel, r]) => (
         <div key={panel} className="pointer-events-none fixed z-[95] rounded-[10px] border-2 border-dashed border-ae-accent bg-ae-accent/5" style={{ left: r.left, top: r.top, width: r.width, height: r.height }}>
+          {panel !== 'main' && (
+            <button
+              type="button"
+              aria-label={t('Hide {name}', { name: t(NAMES[panel]) })}
+              title={t('Hide {name}', { name: t(NAMES[panel]) })}
+              className="pointer-events-auto absolute top-11 left-1/2 grid h-7 w-7 -translate-x-1/2 place-items-center rounded-full bg-ae-elevated text-ae-text shadow-lg ring-1 ring-ae-border hover:bg-ae-hover"
+              onClick={() => set(panel === 'rail' ? { showRail: false } : { showList: false })}
+            >
+              <EyeOffIcon size={14} />
+            </button>
+          )}
           <button
             type="button"
             className={`pointer-events-auto absolute top-2 left-1/2 flex -translate-x-1/2 cursor-grab items-center gap-1.5 rounded-full bg-ae-accent px-3 py-1.5 text-xs font-bold whitespace-nowrap text-ae-on-accent shadow-lg active:cursor-grabbing ${dragging === panel ? 'scale-105' : ''}`}
@@ -178,6 +207,14 @@ export function LayoutEditor() {
           </button>
         </div>
       ))}
+      {panels.get('rail') && (
+        <ResizeBar
+          rect={panels.get('rail')!}
+          side={cl.order.indexOf('rail') < cl.order.indexOf('main') ? 'right' : 'left'}
+          label={t('Resize the spaces bar')}
+          onResize={(dx) => set({ railWidth: clamp(current().railWidth + (cl.order.indexOf('rail') < cl.order.indexOf('main') ? dx : -dx), 60, 104) })}
+        />
+      )}
       {listRect && (
         <ResizeBar rect={listRect} side={listFacesRight ? 'right' : 'left'} label={t('Resize the chat list')} onResize={(dx) => set({ listWidth: clamp(current().listWidth + (listFacesRight ? dx : -dx), 180, 440) })} />
       )}
@@ -221,11 +258,19 @@ export function LayoutEditor() {
             {t('Spaces bar')}
           </label>
           <label className="flex items-center gap-2">
+            <input type="checkbox" checked={cl.showList} onChange={(e) => set({ showList: e.target.checked })} />
+            {t('Chat list')}
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={detailsOn} onChange={(e) => setDetails(e.target.checked)} />
+            {t('Profile panel')}
+          </label>
+          <label className="flex items-center gap-2">
             <input type="checkbox" checked={cl.floating} onChange={(e) => set({ floating: e.target.checked })} />
             {t('Floating panels')}
           </label>
           <span className="flex items-center gap-1.5">
-            {t('Profile panel')}
+            {t('Profile side')}
             <button type="button" aria-pressed={cl.detailsSide === 'left'} className={chip(cl.detailsSide === 'left')} onClick={() => set({ detailsSide: 'left' })}>
               {t('Left')}
             </button>
@@ -237,12 +282,25 @@ export function LayoutEditor() {
             {t('Roundness')}
             <input type="range" min={0} max={28} value={cl.radius} disabled={!cl.floating} onChange={(e) => set({ radius: Number(e.target.value) })} className="w-24 accent-[var(--ae-accent)]" />
           </label>
+          <label className="flex items-center gap-2">
+            {t('Message width')}
+            <input
+              type="range"
+              min={0}
+              max={1400}
+              step={40}
+              value={cl.mainMaxWidth || 1400}
+              onChange={(e) => set({ mainMaxWidth: Number(e.target.value) >= 1400 ? 0 : Math.max(560, Number(e.target.value)) })}
+              className="w-24 accent-[var(--ae-accent)]"
+            />
+            <span className="w-10 text-ae-muted">{cl.mainMaxWidth ? `${cl.mainMaxWidth}` : t('Full')}</span>
+          </label>
           <label className={`flex items-center gap-2 ${cl.floating ? '' : 'opacity-50'}`}>
             {t('Spacing')}
             <input type="range" min={0} max={24} value={cl.gap} disabled={!cl.floating} onChange={(e) => set({ gap: Number(e.target.value) })} className="w-24 accent-[var(--ae-accent)]" />
           </label>
         </div>
-        <p className="text-xs text-ae-muted">{t('Drag a panel’s handle to move it, or the accent bar on its edge to resize it. Open a DM’s profile to place that panel too.')}</p>
+        <p className="text-xs text-ae-muted">{t('Drag a handle to move a panel, the accent bar on its edge to resize it, or the eye to hide it. Untick a panel above to hide it, tick it to bring it back.')}</p>
       </div>
     </>
   );

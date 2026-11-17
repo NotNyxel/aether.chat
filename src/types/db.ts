@@ -273,6 +273,8 @@ export interface ForwardedFrom {
 
 export interface Message {
   id: string;
+  /** A shared clip (2.4): the message shows a clip card. */
+  clip_id?: string | null;
   channel_id: string | null;
   conversation_id: string | null;
   author_id: string | null;

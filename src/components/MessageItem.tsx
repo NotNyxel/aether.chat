@@ -1,4 +1,5 @@
 /** One chat message: header, reply/forward context, Markdown, attachments, poll, embeds, reactions, hover toolbar. */
+import { ClipCard } from './Clips';
 import { t } from '../lib/i18n';
 import { useCancelQueued } from '../hooks/useChatData';
 import { ClockIcon } from './icons';
@@ -476,10 +477,12 @@ function MessageItemImpl(props: MessageItemProps) {
               <p className="text-xs text-ae-muted">Enter to save · Esc to cancel</p>
             </div>
           ) : (
-            message.content && <Markdown source={text} jumbo={emojiSize(text)} className="text-[15px] leading-[1.375rem] text-ae-text/95" />
+            // A clip's "🎬 title" text is for older apps; the card shows the title.
+            message.content && !(message.clip_id && text.startsWith('🎬')) && <Markdown source={text} jumbo={emojiSize(text)} className="text-[15px] leading-[1.375rem] text-ae-text/95" />
           )}
           {translating && !editing && message.content && <TranslatedText text={text} onClose={() => setTranslating(false)} />}
 
+          {message.clip_id && <ClipCard clipId={message.clip_id} />}
           {message.attachments.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-2">
               {message.attachments.map((a) => (

@@ -3,6 +3,8 @@
  * automatic :shortcode: conversion, emoji picker, polls, file uploads (button, paste,
  * drag-and-drop) with spoiler and alt text, replies, typing indicator, Enter to send.
  */
+import { canRecord } from '../lib/clips';
+import { pickClipFor } from './Clips';
 import { useE2e } from './E2eChat';
 import { toast } from './Toaster';
 import { promptText } from './ConfirmDialog';
@@ -16,7 +18,7 @@ import { ExpressionPicker, type ExpressionTab } from './ExpressionPicker';
 import { DisplayName } from './MessageItem';
 import { t } from '../lib/i18n';
 import { PhotoEditor } from './PhotoEditor';
-import { StickerIcon, AttachIcon, BotIcon, BrushIcon, ClockIcon, CloseIcon, EyeOffIcon, FileIcon, HashIcon, PlusIcon, PollIcon, ReplyIcon, SendIcon, SmileIcon, TimeoutIcon, TrashIcon, UploadIcon } from './icons';
+import { StickerIcon, AttachIcon, BotIcon, BrushIcon, PlayIcon, ClockIcon, CloseIcon, EyeOffIcon, FileIcon, HashIcon, PlusIcon, PollIcon, ReplyIcon, SendIcon, SmileIcon, TimeoutIcon, TrashIcon, UploadIcon } from './icons';
 import { PollDialog } from './PollDialog';
 import { Avatar } from './ProfileCard';
 import { BOT_COMMANDS, parseBotCommand } from '../lib/botCommands';
@@ -616,6 +618,18 @@ export function Composer(props: ComposerProps) {
                 >
                   <PollIcon size={16} className="text-ae-muted" /> Create a poll
                 </button>
+                {canRecord && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm hover:bg-ae-hover"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      pickClipFor(scope);
+                    }}
+                  >
+                    <PlayIcon size={16} className="text-ae-muted" /> {t('Share a clip')}
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={!draft.trim()}

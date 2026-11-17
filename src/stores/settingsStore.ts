@@ -118,6 +118,8 @@ export interface Keybinds {
   toggleDeafen: string | null;
   /** 2.1: Playing → Locked in → AFK. */
   cyclePlayMode?: string | null;
+  /** Save a clip of the last moments (2.4, Windows app). */
+  saveClip?: string | null;
   pushToTalk: string | null;
   pushToTalkEnabled: boolean;
 }
@@ -222,6 +224,7 @@ export const DEFAULT_KEYBINDS: Keybinds = {
   toggleMute: 'Ctrl+Shift+KeyM',
   toggleDeafen: 'Ctrl+Shift+KeyD',
   cyclePlayMode: 'Ctrl+Shift+KeyL',
+  saveClip: 'Ctrl+Shift+KeyC',
   pushToTalk: null,
   pushToTalkEnabled: false,
 };

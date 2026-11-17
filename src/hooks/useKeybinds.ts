@@ -5,7 +5,9 @@
  * system-wide shortcuts so they work while you're in a game or another app. Any combo that can't
  * be registered (another app owns it) falls back to working only while Aether is focused.
  * The tray menu's Toggle mute / Toggle deafen are handled here too.
- */
+ */
+import { canRecord, useClipSettings } from '../lib/clips';
+import { clipNow } from './useClips';
 import { cyclePlayMode } from '../stores/settingsStore';
 import { useEffect, useRef, useState } from 'react';
 import { onTrayAction, registerGlobalShortcuts } from '../lib/desktop';
@@ -42,6 +44,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
   const [globalCombos, setGlobalCombos] = useState<Set<string>>(new Set());
 
   const ptt = keybinds.pushToTalkEnabled ? keybinds.pushToTalk : null;
+  const clipsOn = useClipSettings((x) => x.s.enabled) && canRecord;
 
   // System-wide shortcuts.
   useEffect(() => {
@@ -55,6 +58,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
       keybinds.toggleMute && { combo: keybinds.toggleMute, onPress: () => actions.current.toggleMute() },
       keybinds.toggleDeafen && { combo: keybinds.toggleDeafen, onPress: () => actions.current.toggleDeafen() },
       keybinds.cyclePlayMode && { combo: keybinds.cyclePlayMode, onPress: () => cyclePlayMode() },
+      clipsOn && keybinds.saveClip && { combo: keybinds.saveClip, onPress: () => void clipNow() },
       ptt && { combo: ptt, onPress: () => actions.current.setMuted(false), onRelease: () => actions.current.setMuted(true) },
     ].filter((b): b is { combo: string; onPress: () => void; onRelease?: () => void } => !!b);
     // Unique combos only (the same combo bound twice would fail the second registration), and only
@@ -76,7 +80,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
       setGlobalCombos(new Set());
       void dispose?.();
     };
-  }, [globalOn, keybinds.toggleMute, keybinds.toggleDeafen, keybinds.cyclePlayMode, ptt]);
+  }, [globalOn, keybinds.toggleMute, keybinds.toggleDeafen, keybinds.cyclePlayMode, keybinds.saveClip, clipsOn, ptt]);
 
   // In-window shortcuts (skipping combos already handled globally, so they don't fire twice).
   useEffect(() => {

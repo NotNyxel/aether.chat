@@ -1,4 +1,5 @@
-/** Home sidebar: Friends entry and the Direct Messages list (DMs + group DMs) with unread and call markers. */
+/** Home sidebar: Friends entry and the Direct Messages list (DMs + group DMs) with unread and call markers. */
+import { openClips } from './Clips';
 import { effectiveLayout, useSettingsStore } from '../stores/settingsStore';
 import { t } from '../lib/i18n';
 import { openQuickSwitcher } from './QuickSwitcher';
@@ -15,7 +16,7 @@ import { ConversationAvatar, isUnread, useConversationTitle } from './Conversati
 import { GroupDialog } from './GroupDialog';
 import { useProfile } from '../hooks/useChatData';
 import { ActivityLine } from './ActivityCards';
-import { BellIcon, BellOffIcon, CheckIcon, CloseIcon, InboxIcon, PhoneIcon, PinIcon, SparklesIcon, PlusIcon, SearchIcon, UsersIcon } from './icons';
+import { BellIcon, BellOffIcon, CheckIcon, CloseIcon, InboxIcon, PhoneIcon, PinIcon, SparklesIcon, PlusIcon, SearchIcon, UsersIcon, PlayIcon } from './icons';
 import { useRequestConversations } from './FriendsExtras';
 import { UserPanel } from './UserPanel';
 import { plateProps } from '../lib/cosmetics';
@@ -180,6 +181,10 @@ export function HomeSidebar({ userId }: { userId: string }) {
           <InboxIcon size={20} />
           <span className="flex-1 font-medium">{t('Message requests')}</span>
           {requestCount > 0 && <span className="rounded-full bg-ae-danger px-1.5 text-xs font-bold text-white">{requestCount}</span>}
+        </button>
+        <button type="button" onClick={openClips} className="mt-0.5 flex w-full items-center gap-3 rounded-ae px-2 py-2 text-left text-sm text-ae-muted hover:bg-ae-hover hover:text-ae-text">
+          <PlayIcon size={20} />
+          <span className="flex-1 font-medium">{t('Clips')}</span>
         </button>
 
         <div className="mt-4 mb-1 flex items-center justify-between px-2">

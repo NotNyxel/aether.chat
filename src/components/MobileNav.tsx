@@ -3,11 +3,12 @@
  * Servers, Notifications and You, each a full screen with a large title, like a native app.
  * Opening a chat hides the tab bar; the chat header has a back button.
  */
+import { openClips } from './Clips';
 import { MomentsStrip } from './Moments';
 import { useMomentFeed } from '../hooks/useMoments';
 import { t } from '../lib/i18n';
 import { openTour, openWhatsNew } from './WhatsNew';
-import { RocketIcon, SparklesIcon } from './icons';
+import { RocketIcon, SparklesIcon, PlayIcon } from './icons';
 import { openBugReport } from './BugReport';
 import { BugIcon } from './icons';
 import { useMemo, useState, type ReactNode } from 'react';
@@ -261,6 +262,7 @@ export function MobileYou({ userId }: { userId: string }) {
       </div>
       <div className="mx-4 mt-4 shrink-0 overflow-hidden rounded-2xl bg-ae-sunken/70">
         <Row icon={<EditIcon size={17} />} label={t('Edit profile')} hint={t('Avatar, banner, decorations, effects')} onClick={openStudio} />
+        <Row icon={<PlayIcon size={17} />} label={t('Clips')} hint={t('Clips your friends share with you')} onClick={openClips} />
         <Row
           icon={<PresenceDot status={status === 'invisible' ? 'offline' : status} size={12} />}
           label={STATUS_LABELS[status]}

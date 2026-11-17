@@ -1786,5 +1786,43 @@ await expectOk('moment overlays: own folder only, need media, readable with the 
   await as(A, `delete from public.moments where id = $1`, [ok]);
 });
 
+await expectOk('clips: share in chats you can post in, members see it, outsiders do not, receipts, delivery, cleanup targets', async () => {
+  const fails = async (who, sql, params) => {
+    try {
+      await as(who, sql, params);
+    } catch {
+      return true;
+    }
+    return false;
+  };
+  const conv = (await db.query(`select conversation_id from public.conversation_members where user_id = $1 limit 1`, [A])).rows[0].conversation_id;
+  const members = (await db.query(`select user_id from public.conversation_members where conversation_id = $1 and user_id <> $2`, [conv, A])).rows.map((r) => r.user_id);
+  const outsider = (await db.query(`select id from public.users where id not in (select user_id from public.conversation_members where conversation_id = $1) and not public.is_app_admin(id) limit 1`, [conv])).rows[0]?.id;
+  const ins = `insert into public.clip_shares (scope_id, title, game, duration, size_bytes, chunk_size, chunks) values ($1, 'Clutch', 'VALORANT', 30, 1000, 47185920, 1) returning id`;
+  const id = (await as(A, ins, [conv])).rows[0].id;
+  if (outsider && !(await fails(outsider, ins, [conv]))) throw new Error('outsider shared into chat');
+  if (members[0] && (await as(members[0], `select count(*)::int n from public.clip_shares where id = $1`, [id])).rows[0].n !== 1) throw new Error('member cannot see');
+  if (outsider && (await as(outsider, `select count(*)::int n from public.clip_shares where id = $1`, [id])).rows[0].n !== 0) throw new Error('outsider sees');
+  if (outsider && !(await fails(outsider, `insert into public.clip_receipts (share_id) values ($1)`, [id]))) throw new Error('outsider receipt');
+  if (members[0] && !(await fails(members[0], `update public.clip_shares set status = 'gone' where id = $1 returning id`, [id])) ) {
+    const st = (await db.query(`select status from public.clip_shares where id = $1`, [id])).rows[0].status;
+    if (st !== 'uploading') throw new Error('member changed status');
+  }
+  await as(A, `update public.clip_shares set status = 'ready' where id = $1`, [id]);
+  const delivered = async () => (await db.query(`select public.clip_fully_delivered($1) d`, [id])).rows[0].d;
+  if (members.length && (await delivered())) throw new Error('delivered before receipts');
+  for (const m of members) await as(m, `insert into public.clip_receipts (share_id, via) values ($1, 'p2p')`, [id]);
+  if (!(await delivered())) throw new Error('not delivered after all receipts');
+  const targets = (await db.query(`select * from public.clip_cleanup_targets() where id = $1`, [id])).rows[0];
+  if (!targets?.parts) throw new Error('not marked for cleanup ' + JSON.stringify(targets));
+  // P2P nonce: members can file one; the sender can read it.
+  if (members[0]) {
+    await as(members[0], `insert into public.clip_p2p_requests (share_id, nonce) values ($1, 'abcdefghijklmnop')`, [id]);
+    if ((await as(A, `select count(*)::int n from public.clip_p2p_requests where share_id = $1`, [id])).rows[0].n !== 1) throw new Error('sender cannot read requests');
+  }
+  if (!(await fails(A, `select * from public.clip_cleanup_targets()`))) throw new Error('users can call cleanup targets');
+  await db.query(`delete from public.clip_shares where id = $1`, [id]);
+});
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

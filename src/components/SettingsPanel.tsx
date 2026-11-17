@@ -8,6 +8,7 @@
  *   Bandwidth  : audio/video bitrate profile and screen-share resolution and frame-rate defaults
  * Audio settings live in the settings store. MainLayout pushes changes into the running voice engine.
  */
+import { ClipsSettings } from './Clips';
 import { currentLanguage, LANGUAGES, languageSetting, setLanguage, t } from '../lib/i18n';
 import { openTour, openWhatsNew } from './WhatsNew';
 import { openBugReport } from './BugReport';
@@ -27,7 +28,7 @@ import { DEFAULT_CUSTOM_LAYOUT, effectiveLayout, useSettingsStore, type Keybinds
 import { useUiStore, type SettingsTab } from '../stores/uiStore';
 import { isHexColor, LAYOUT_THEMES, PRESET_ORDER, SECRET_PRESETS, THEME_PRESETS, type ThemePresetId } from '../theme/presets';
 import { redeemCode } from '../lib/secrets';
-import { AdminIcon, AppWindowIcon, ArrowLeftIcon as BackIcon, BellIcon, CloseIcon, CodeIcon, GameIcon, GaugeIcon, IdCardIcon, KeyboardIcon, LogOutIcon, NetworkIcon, PaletteIcon, ShieldIcon, StageIcon, UserIcon } from './icons';
+import { PlayIcon, AdminIcon, AppWindowIcon, ArrowLeftIcon as BackIcon, BellIcon, CloseIcon, CodeIcon, GameIcon, GaugeIcon, IdCardIcon, KeyboardIcon, LogOutIcon, NetworkIcon, PaletteIcon, ShieldIcon, StageIcon, UserIcon } from './icons';
 import { DeveloperTab } from './Developer';
 import { ActivityTab, BackgroundShortcutsSection, DesktopNotificationsSection, WindowsTab } from './SettingsDesktop';
 import { useTheme } from './ThemeEngine';
@@ -900,6 +901,7 @@ function KeybindsTab() {
         <KeybindRow label="Toggle mute" hint="Mute or unmute your microphone." combo={keybinds.toggleMute} onChange={bind('toggleMute')} />
         <KeybindRow label="Toggle deafen" hint="Silence all incoming audio (also mutes you)." combo={keybinds.toggleDeafen} onChange={bind('toggleDeafen')} />
         <KeybindRow label="Switch playing mode" hint="Playing → Locked in → AFK, shown next to your game. Works while you're in a game." combo={keybinds.cyclePlayMode ?? null} onChange={bind('cyclePlayMode')} />
+        <KeybindRow label="Save a clip" hint="Saves the last moments of your game (Settings → Clips). Works while you're in a game." combo={keybinds.saveClip ?? null} onChange={bind('saveClip')} />
       </Section>
       <Section title="Push to talk">
         <Toggle
@@ -1012,6 +1014,7 @@ const TAB_GROUPS: { title: string; tabs: { id: SettingsTab; label: string; icon:
       { id: 'keybinds', label: t('Keybinds'), icon: <KeyboardIcon size={15} /> },
       { id: 'bandwidth', label: t('Streaming & Bandwidth'), icon: <NetworkIcon size={15} /> },
       { id: 'activity', label: t('Activity Privacy'), icon: <GameIcon size={15} /> },
+      { id: 'clips', label: t('Clips'), icon: <PlayIcon size={15} /> },
       { id: 'windows', label: t('Windows Settings'), icon: <AppWindowIcon size={15} /> },
       { id: 'developer', label: t('Developer'), icon: <CodeIcon size={15} /> },
     ],
@@ -1094,6 +1097,7 @@ export function SettingsPanel({ userId, onSignOut }: { userId: string; onSignOut
           {tab === 'windows' && <WindowsTab />}
           {tab === 'standing' && <AccountStanding />}
           {tab === 'developer' && <DeveloperTab />}
+          {tab === 'clips' && <ClipsSettings />}
           {tab === 'admin' && me?.is_admin && <AdminTab userId={userId} />}
         </div>
         <button

@@ -1,4 +1,6 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { useClipInbox, useClipRecorder } from '../hooks/useClips';
+import { ClipsLayer } from './Clips';
 import { useSettingsSync } from '../lib/settingsSync';
 import { MomentsLayer } from './Moments';
 import { useRecordPlaySessions } from '../hooks/usePlayHistory';
@@ -293,6 +295,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <ReminderWatcher />
       <BugReportLayer />
       <MomentsLayer />
+      <ClipsLayer />
       {layoutEditing && desktopShell && <LayoutEditor />}
       <OfflineBar userId={userId} />
       <WhatsNewLayer userId={userId} />
@@ -329,6 +332,9 @@ export function MainLayout({ userId, onSignOut }: { userId: string; onSignOut: (
   useRecordPlaySessions(activity);
   // Settings follow you to every device (2.3).
   useSettingsSync(userId);
+  // Clips (2.4): the replay buffer (Windows app) and clips shared with you.
+  useClipRecorder();
+  useClipInbox(userId);
   const listening = useSpotifyListening();
   // Offline mode: messages written without a connection go out when it's back.
   useOutboxFlusher(userId);

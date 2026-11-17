@@ -1,4 +1,5 @@
 /** App-level desktop behaviour: auto-idle, game activity, taskbar badge, tray, custom status expiry. */
+import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useMemo, useState } from 'react';
 import { create } from 'zustand';
 import { idleSeconds, nowPlaying, runningGame, runningProcesses, setBadge, setCloseToTray } from '../lib/desktop';
@@ -47,7 +48,7 @@ export function useAutoIdle(status: PresenceStatus): PresenceStatus {
  */
 export function useGameActivity(): GameActivity | null {
   const { shareActivity, customGames, mode } = useSettingsStore((s) => s.activity);
-  const [game, setGame] = useState<{ name: string; since: number } | null>(null);
+  const [game, setGame] = useState<{ name: string; since: number; detail: string | null } | null>(null);
   useEffect(() => {
     if (!shareActivity || !isTauri) {
       setGame(null);
@@ -57,9 +58,11 @@ export function useGameActivity(): GameActivity | null {
     const scan = async () => {
       const procs = await runningProcesses().catch(() => []);
       const name = (customGames.length ? detectGame(procs, customGames.filter(Boolean)) : null) ?? (await runningGame()) ?? detectGame(procs, []);
+      // Roblox: which experience (read from Roblox's own log, name looked up once).
+      const detail = name && /roblox/i.test(name) ? ((await invoke<{ place_id: number; name: string | null } | null>('roblox_place').catch(() => null))?.name ?? null) : null;
       if (stopped) return;
-      // Same game as before: keep its start time.
-      setGame((cur) => (name ? (cur?.name === name ? cur : { name, since: Date.now() }) : null));
+      // Same game as before: keep its start time (switching Roblox experiences keeps your play time).
+      setGame((cur) => (name ? (cur?.name === name && cur.detail === detail ? cur : { name, since: cur?.name === name ? cur.since : Date.now(), detail }) : null));
     };
     void scan();
     const t = setInterval(() => void scan(), 15_000);

@@ -99,8 +99,8 @@ export function ActivitySections({ userId }: { userId: string }) {
   const time = game ? playedFor(game.since, now) : null;
   return (
     <>
-      {game && <PlayingCard name={game.name} startedLabel={[MODE_LABEL[game.mode], time && (time === 'just started' ? time : `for ${time}`)].filter(Boolean).join(' · ')} />}
-      {game && userId !== me && <AskToJoinButton userId={userId} game={game.name} />}
+      {game && <PlayingCard name={game.name} startedLabel={[game.detail, MODE_LABEL[game.mode], time && (time === 'just started' ? time : `for ${time}`)].filter(Boolean).join(' · ')} />}
+      {game && userId !== me && <AskToJoinButton userId={userId} game={game.detail ? `${game.detail} (${game.name})` : game.name} />}
       {track && <ListeningCard track={track} />}
     </>
   );
@@ -117,7 +117,7 @@ export function ActivityLine({ userId, fallback }: { userId: string; fallback?: 
       <span className={`flex min-w-0 items-center gap-1 ${game.mode === 'afk' ? 'opacity-70' : ''}`}>
         <GameArtIcon name={game.name} size={14} rounded="rounded-[3px]" />
         <span className="truncate">
-          {MODE_LABEL[game.mode]} <b>{game.name}</b>
+          {MODE_LABEL[game.mode]} <b>{game.detail ?? game.name}</b>{game.detail ? ` · ${game.name}` : ''}
           {time && time !== 'just started' && ` · ${time}`}
         </span>
       </span>

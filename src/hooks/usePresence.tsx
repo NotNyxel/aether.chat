@@ -36,6 +36,8 @@ export interface GameActivity {
   /** Epoch ms. */
   since: number;
   mode: 'playing' | 'locked' | 'afk';
+  /** 2.4: what you're playing inside the game, e.g. the Roblox experience. */
+  detail?: string | null;
 }
 
 function asGame(v: unknown): GameActivity | null {
@@ -47,6 +49,7 @@ function asGame(v: unknown): GameActivity | null {
     // Never in the future, never before a day ago (a bad clock shouldn't show "Playing for 3 years").
     since: Number.isFinite(since) ? Math.min(Date.now(), Math.max(Date.now() - 86_400_000, since)) : Date.now(),
     mode: g.mode === 'locked' || g.mode === 'afk' ? g.mode : 'playing',
+    detail: typeof g.detail === 'string' && g.detail.trim() ? g.detail.trim().slice(0, 120) : null,
   };
 }
 

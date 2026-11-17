@@ -1735,5 +1735,21 @@ await expectOk('apps: secrets stay hidden, tokens post only where installed, com
   await as(A, `delete from public.bots where id = $1`, [made.id]);
 });
 
+await expectOk('contact messages: only app admins read them; nobody writes through the API', async () => {
+  await db.query(`insert into public.contact_messages (name, email, topic, message, ip_hash) values ('Sam', 'sam@example.com', 'idea', 'Please add a dark blue theme', 'abc')`);
+  const admin = (await db.query(`select id from public.users where public.is_app_admin(id) limit 1`)).rows[0]?.id;
+  const someone = (await db.query(`select id from public.users where not public.is_app_admin(id) limit 1`)).rows[0].id;
+  if (admin && (await as(admin, `select count(*)::int n from public.contact_messages`)).rows[0].n < 1) throw new Error('admin cannot read');
+  if ((await as(someone, `select count(*)::int n from public.contact_messages`)).rows[0].n !== 0) throw new Error('user can read');
+  let denied = '';
+  try {
+    await as(someone, `insert into public.contact_messages (name, email, topic, message, ip_hash) values ('x', 'x@y.zz', 'other', 'spam spam spam', 'x')`);
+  } catch (e) {
+    denied = e.message;
+  }
+  if (!denied) throw new Error('user inserted');
+  await db.query(`delete from public.contact_messages`);
+});
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

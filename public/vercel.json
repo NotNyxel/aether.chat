@@ -12,7 +12,31 @@
       "destination": "/app.html"
     },
     {
-      "source": "/((?!site/|assets/).*)",
+      "source": "/features",
+      "destination": "/features.html"
+    },
+    {
+      "source": "/download",
+      "destination": "/download.html"
+    },
+    {
+      "source": "/faq",
+      "destination": "/faq.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
+      "source": "/changelog",
+      "destination": "/changelog.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/contact.html"
+    },
+    {
+      "source": "/((?!site/|assets/|(?:features|download|faq|privacy|changelog|contact)(?:\\.html)?$).*)",
       "destination": "/app.html"
     }
   ],

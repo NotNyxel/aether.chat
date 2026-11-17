@@ -1,0 +1,39 @@
+<!-- title: Contact us · Aether -->
+<!-- description: Questions, bug reports, ideas or account help: send the Aether team a message. -->
+<!-- script: contact.ts -->
+      <section class="page-top">
+        <h1>Contact us</h1>
+        <p class="lead">Questions, bugs, ideas or account trouble: tell us and we'll reply by email. Already using Aether? Settings → Report a bug can include a screenshot.</p>
+      </section>
+
+      <section class="contact">
+        <form id="contact-form" class="card-form" novalidate>
+          <div class="row">
+            <label>Your name<input name="name" autocomplete="name" maxlength="80" required /></label>
+            <label>Email to reply to<input name="email" type="email" autocomplete="email" maxlength="200" required /></label>
+          </div>
+          <label>
+            What's it about?
+            <select name="topic">
+              <option value="question">A question</option>
+              <option value="bug">Something's broken</option>
+              <option value="idea">An idea</option>
+              <option value="account">Help with my account</option>
+              <option value="safety">Safety or reporting someone</option>
+              <option value="other">Something else</option>
+            </select>
+          </label>
+          <label>Message<textarea name="message" rows="7" maxlength="4000" minlength="10" required placeholder="What's on your mind?"></textarea></label>
+          <!-- People never see or fill this in; bots often do. -->
+          <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off" /></label>
+          <div id="turnstile" class="turnstile"></div>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+          <button class="btn primary big" type="submit" id="send">Send message</button>
+          <p class="small">We use your email only to reply. See <a href="/privacy">Privacy</a>.</p>
+        </form>
+        <div class="sent" id="sent" hidden>
+          <h2>Thanks! Your message is on its way.</h2>
+          <p>We'll reply to the email you gave us, usually within a few days.</p>
+          <p><a class="btn ghost" href="/">Back to home</a></p>
+        </div>
+      </section>

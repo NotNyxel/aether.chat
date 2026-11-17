@@ -197,7 +197,7 @@ export function ChannelSidebar({ userId, server, channels, activeChannelId }: {
   const menuItem = 'flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-ae-accent hover:text-ae-on-accent';
 
   return (
-    <aside className="ae-panel flex w-60 shrink-0 flex-col border-r border-ae-border">
+    <aside data-panel="list" className="ae-panel flex w-60 shrink-0 flex-col border-r border-ae-border">
       <div className="relative">
         {/* The header row is always 48px tall, matching the channel header beside it. A banner sits
             behind it and extends below, faded so its artwork never fights with the server name. */}

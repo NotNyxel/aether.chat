@@ -1,12 +1,11 @@
 /** Ephemeral UI state: Home vs server view, selections, panels, dialogs, jump targets, lightbox. */
 import { isPhoneLayout, isTabletLayout } from '../lib/phone';
-import { useSettingsStore } from './settingsStore';
+import { effectiveLayout, useSettingsStore } from './settingsStore';
 import { create } from 'zustand';
 
 /** True when a layout with a "Now" home (Orbit, Lounge) is on and the window shows the desktop layout. */
 export function nowHomeOnDesktop(): boolean {
-  const layout = useSettingsStore.getState().theme.layout;
-  return !!layout && layout !== 'classic' && !isPhoneLayout() && !isTabletLayout();
+  return effectiveLayout(useSettingsStore.getState().theme) !== 'classic' && !isPhoneLayout() && !isTabletLayout();
 }
 
 export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows' | 'standing' | 'admin';
@@ -43,6 +42,9 @@ interface UiState {
   view: 'home' | 'server';
   /** Home pane target: the friends list or a conversation id. */
   homeTarget: 'friends' | string;
+  /** Custom layout editor open (2.1). */
+  layoutEditing: boolean;
+  setLayoutEditing: (on: boolean) => void;
   serverId: string | null;
   /** Last channel viewed per server, so switching servers restores your place. */
   channelByServer: Record<string, string>;
@@ -99,6 +101,8 @@ export const useUiStore = create<UiState>()((set) => ({
   view: 'home',
   // Orbit and Lounge open on their "Now" home (desktop); Classic starts on Friends.
   homeTarget: nowHomeOnDesktop() ? 'now' : 'friends',
+  layoutEditing: false,
+  setLayoutEditing: (layoutEditing) => set({ layoutEditing }),
   serverId: null,
   channelByServer: {},
   memberListOpen: true,

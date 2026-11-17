@@ -95,7 +95,7 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
   }, [unread, notifyMap]);
 
   return (
-    <nav className="ae-scroll flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-ae-sunken py-3" aria-label="Servers">
+    <nav data-panel="rail" className="ae-scroll flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-ae-sunken py-3" aria-label="Servers">
       <button
         type="button"
         data-tip="Direct messages"

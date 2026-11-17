@@ -1,4 +1,5 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { LayoutEditor } from './LayoutEditor';
 import { useTrackWorkspaceTab, WorkspaceInbox, WorkspaceTabs, WorkspaceTree } from './Workspace';
 import { LoungeCalls, LoungeHome, LoungeNav } from './Lounge';
 import { OrbitHome } from './OrbitHome';
@@ -26,7 +27,7 @@ import { useKeybinds } from '../hooks/useKeybinds';
 import { useUnreadSummary } from '../hooks/useMessageExtras';
 import { PresenceProvider } from '../hooks/usePresence';
 import { useConversations, useFriendships } from '../hooks/useSocialData';
-import { useSettingsStore } from '../stores/settingsStore';
+import { effectiveLayout, useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
 import type { Channel, Server } from '../types/db';
 import { CallProvider, useCall } from './CallContext';
@@ -100,7 +101,8 @@ function PopoverForUser({ me, userId, server, onClose }: { me: string; userId: s
 }
 
 function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
-  const layout = useSettingsStore((s) => s.theme.layout ?? 'classic');
+  const layout = useSettingsStore((s) => effectiveLayout(s.theme));
+  const layoutEditing = useUiStore((s) => s.layoutEditing);
   // The desktop layouts (Orbit, Lounge…) only apply when the window shows the desktop shell.
   const desktopShell = !isPhoneLayout() && !isTabletLayout();
   const { voice } = useCall();
@@ -229,7 +231,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
         <HomeSidebar userId={userId} />
       )}
 
-      <main className="flex min-w-0 flex-1 bg-ae-bg">
+      <main data-panel="main" className="flex min-w-0 flex-1 bg-ae-bg">
         {servers.isError ? (
           <div className="m-auto max-w-md space-y-2 text-center">
             <h2 className="text-lg font-bold">Can't load your data</h2>
@@ -287,6 +289,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <Lightbox />
       <ReminderWatcher />
       <BugReportLayer />
+      {layoutEditing && desktopShell && <LayoutEditor />}
       <OfflineBar userId={userId} />
       <WhatsNewLayer userId={userId} />
       <ProfilePeekLayer me={userId} server={server} />

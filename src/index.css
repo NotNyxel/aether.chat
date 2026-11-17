@@ -1397,3 +1397,43 @@ select,
     padding-bottom: 1px;
   }
 }
+
+/* ── 2.1 Custom layout: the base layout's look, rearranged and resized (desktop only).
+   Values come from ThemeEngine as --ae-cl-* variables. ─────────────────────────────────── */
+:root[data-ae-cl='on']:not([data-ae-phone='true']):not([data-ae-tablet='true']) {
+  & .ae-shell > [data-panel='rail'] {
+    order: var(--ae-cl-rail, 0);
+  }
+  & .ae-shell > [data-panel='list'] {
+    order: var(--ae-cl-list, 1);
+    width: var(--ae-cl-list-w, 260px) !important;
+  }
+  & .ae-shell > [data-panel='main'] {
+    order: var(--ae-cl-main, 2);
+  }
+  & .ae-chat-body > aside {
+    order: var(--ae-cl-details, 1);
+    width: var(--ae-cl-details-w, 300px) !important;
+  }
+  &[data-ae-cl-rail='hidden'] .ae-shell > [data-panel='rail'] {
+    display: none !important;
+  }
+  /* Floating: rounded panels with space between. Flush: edge to edge. */
+  &[data-ae-cl-float='on'] .ae-shell {
+    gap: var(--ae-cl-gap, 10px);
+    padding: 0 var(--ae-cl-gap, 10px) var(--ae-cl-gap, 10px);
+  }
+  &[data-ae-cl-float='on'] .ae-shell > :is([data-panel='list'], [data-panel='main']) {
+    border: 1px solid var(--ae-border);
+    border-radius: var(--ae-cl-radius, 16px);
+    overflow: hidden;
+  }
+  &[data-ae-cl-float='off'] .ae-shell {
+    gap: 0;
+    padding: 0;
+  }
+  &[data-ae-cl-float='off'] .ae-shell > :is([data-panel='list'], [data-panel='main']) {
+    border-radius: 0;
+    box-shadow: none;
+  }
+}

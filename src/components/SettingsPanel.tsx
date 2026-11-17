@@ -23,7 +23,7 @@ import { isTauri } from '../lib/platform';
 import { listAudioDevices, type BandwidthProfile, type ScreenFrameRate, type ScreenResolution } from '../hooks/useVoiceEngine';
 import { comboFromEvent, formatCombo } from '../lib/keybinds';
 import { ALL_SOUNDS, playSound, SOUND_INFO } from '../lib/sounds';
-import { useSettingsStore, type Keybinds, type LayoutId } from '../stores/settingsStore';
+import { DEFAULT_CUSTOM_LAYOUT, effectiveLayout, useSettingsStore, type Keybinds, type LayoutId } from '../stores/settingsStore';
 import { useUiStore, type SettingsTab } from '../stores/uiStore';
 import { isHexColor, LAYOUT_THEMES, PRESET_ORDER, SECRET_PRESETS, THEME_PRESETS, type ThemePresetId } from '../theme/presets';
 import { redeemCode } from '../lib/secrets';
@@ -156,6 +156,7 @@ const LAYOUTS: { id: LayoutId; name: string; blurb: string; ready: boolean }[] =
   { id: 'orbit', name: 'Orbit', blurb: 'Floating panels and a “Now” home with what your friends are up to.', ready: true },
   { id: 'workspace', name: 'Workspace', blurb: 'Tabs for open chats, one list for everything, keyboard-first.', ready: true },
   { id: 'lounge', name: 'Lounge', blurb: 'Social-first: top navigation, a feed home, rooms as live cards.', ready: true },
+  { id: 'custom', name: 'Custom', blurb: 'Start from any layout, then drag panels around and resize them.', ready: true },
 ];
 
 /** A tiny sketch of each layout, drawn with the current theme's colours. */
@@ -185,6 +186,14 @@ function LayoutSketch({ id }: { id: LayoutId }) {
         <span className="flex flex-1 gap-[2px]"><span className={`w-10 ${box}`} /><span className="flex-1 bg-ae-bg" /><span className={`w-10 ${box}`} /></span>
       </span>
     );
+  if (id === 'custom')
+    return (
+      <span className="flex h-full gap-[4px] bg-ae-sunken p-[5px]">
+        <span className="flex-1 rounded-[6px] border border-dashed border-ae-accent bg-ae-bg" />
+        <span className="w-10 rounded-[6px] border border-dashed border-ae-accent bg-ae-surface" />
+        <span className="w-3 rounded-[4px] border border-dashed border-ae-accent bg-ae-surface" />
+      </span>
+    );
   return (
     <span className="flex h-full flex-col gap-[4px] bg-ae-sunken p-[5px]">
       <span className="mx-auto h-2 w-16 rounded-full bg-ae-surface" />
@@ -200,6 +209,13 @@ function LayoutSection() {
   const setTheme = useSettingsStore((s) => s.setTheme);
   const current = theme.layout ?? 'classic';
   const pick = (id: LayoutId) => {
+    if (id === 'custom') {
+      // Custom starts from the layout you're on, then opens the editor over the app.
+      if (current !== 'custom') setTheme({ layout: 'custom', customLayout: { ...DEFAULT_CUSTOM_LAYOUT, ...theme.customLayout, base: effectiveLayout(theme) } });
+      useUiStore.getState().closeSettings();
+      useUiStore.getState().setLayoutEditing(true);
+      return;
+    }
     if (id === current) return;
     // Switching shows the layout with its own first theme (your custom theme, if on, stays).
     const first = LAYOUT_THEMES[id][0];
@@ -212,7 +228,7 @@ function LayoutSection() {
   };
   return (
     <Section title="Layout" description="How Aether is arranged on a computer. Phones and tablets keep their own layout. Each layout comes with its own themes, listed first below.">
-      <div role="radiogroup" aria-label="Layout" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div role="radiogroup" aria-label="Layout" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {LAYOUTS.map((l) => (
           <button
             key={l.id}
@@ -232,7 +248,7 @@ function LayoutSection() {
                 {!l.ready && <span className="rounded bg-ae-surface px-1.5 text-[10px] text-ae-muted">SOON</span>}
                 {current === l.id && <CheckIcon size={13} className="ml-auto text-ae-accent" />}
               </span>
-              <span className="mt-0.5 block text-xs text-ae-muted">{l.blurb}</span>
+              <span className="mt-0.5 block text-xs text-ae-muted">{l.id === 'custom' && current === 'custom' ? t('Click to keep editing your layout.') : l.blurb}</span>
             </span>
           </button>
         ))}
@@ -348,7 +364,7 @@ function AppearanceTab() {
         </button>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[
-            ...LAYOUT_THEMES[theme.layout ?? 'classic'].filter((id) => !PRESET_ORDER.includes(id)),
+            ...LAYOUT_THEMES[effectiveLayout(theme)].filter((id) => !PRESET_ORDER.includes(id)),
             ...PRESET_ORDER,
             ...secretsUnlocked.filter((id) => SECRET_PRESETS.includes(id)),
           ].map((id) => {

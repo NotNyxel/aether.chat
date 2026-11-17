@@ -20,6 +20,7 @@
  */
 import { createContext, useContext, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import { DEFAULT_CUSTOM_THEME, useSettingsStore, type CustomTheme, type ThemeSettings } from '../stores/settingsStore';
+import { DEFAULT_CUSTOM_LAYOUT, effectiveLayout } from '../stores/settingsStore';
 import { customBackdrop } from '../theme/custom';
 import { isHexColor, readableTextOn, THEME_PRESETS, type ThemePresetId, type ThemeTokens } from '../theme/presets';
 
@@ -223,7 +224,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     for (const [key, value] of Object.entries(tokens)) root.style.setProperty(cssVarName(key), value);
     root.dataset.aeTheme = theme.presetId;
-    root.dataset.aeLayout = theme.layout ?? 'classic';
+    root.dataset.aeLayout = effectiveLayout(theme);
+    // Custom layout (2.1): order, sizes and panel style as variables the stylesheet reads.
+    const cl = theme.layout === 'custom' ? { ...DEFAULT_CUSTOM_LAYOUT, ...theme.customLayout } : null;
+    root.dataset.aeCl = cl ? 'on' : 'off';
+    root.dataset.aeClRail = cl && !cl.showRail ? 'hidden' : 'shown';
+    root.dataset.aeClFloat = cl?.floating ? 'on' : 'off';
+    if (cl) {
+      cl.order.forEach((panel, i) => root.style.setProperty(`--ae-cl-${panel}`, String(i)));
+      root.style.setProperty('--ae-cl-list-w', `${cl.listWidth}px`);
+      root.style.setProperty('--ae-cl-details-w', `${cl.detailsWidth}px`);
+      root.style.setProperty('--ae-cl-details', cl.detailsSide === 'left' ? '-1' : '1');
+      root.style.setProperty('--ae-cl-radius', `${cl.radius}px`);
+      root.style.setProperty('--ae-cl-gap', `${cl.gap}px`);
+    }
     root.dataset.aeReduceMotion = String(theme.reduceMotion);
     root.dataset.aeAmbient = String(theme.ambientBackground);
     root.dataset.aeAnimations = theme.animations;

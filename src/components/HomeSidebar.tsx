@@ -1,5 +1,5 @@
 /** Home sidebar: Friends entry and the Direct Messages list (DMs + group DMs) with unread and call markers. */
-import { useSettingsStore } from '../stores/settingsStore';
+import { effectiveLayout, useSettingsStore } from '../stores/settingsStore';
 import { t } from '../lib/i18n';
 import { openQuickSwitcher } from './QuickSwitcher';
 import { ask } from './ConfirmDialog';
@@ -114,7 +114,7 @@ function ConversationRow({ conv, me, active, inCall, count: rawCount, muted, pin
 }
 
 export function HomeSidebar({ userId }: { userId: string }) {
-  const orbit = useSettingsStore((s) => s.theme.layout === 'orbit');
+  const orbit = useSettingsStore((s) => effectiveLayout(s.theme) === 'orbit');
   const homeTarget = useUiStore((s) => s.homeTarget);
   const openHome = useUiStore((s) => s.openHome);
   const { data: conversations = [] } = useConversations();
@@ -133,7 +133,7 @@ export function HomeSidebar({ userId }: { userId: string }) {
   const callIds = new Set(activeCalls.map((c) => c.conversation_id));
 
   return (
-    <aside className="ae-panel flex w-60 shrink-0 flex-col border-r border-ae-border">
+    <aside data-panel="list" className="ae-panel flex w-60 shrink-0 flex-col border-r border-ae-border">
       <header className="flex h-12 items-center border-b border-ae-border px-2.5">
         <button
           type="button"

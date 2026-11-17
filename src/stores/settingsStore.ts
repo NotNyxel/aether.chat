@@ -61,9 +61,49 @@ export interface ThemeSettings {
   custom?: CustomTheme | null;
   /** Desktop layout (2.1): how the app is arranged on computers. Phones and tablets keep their own. */
   layout: LayoutId;
+  /** Your own arrangement, used when `layout` is 'custom'. */
+  customLayout?: CustomLayout;
 }
 
-export type LayoutId = 'classic' | 'orbit' | 'workspace' | 'lounge';
+export type BaseLayoutId = 'classic' | 'orbit' | 'workspace' | 'lounge';
+export type LayoutId = BaseLayoutId | 'custom';
+export type LayoutPanel = 'rail' | 'list' | 'main';
+
+/** A custom layout (2.1): a base layout, rearranged and resized. */
+export interface CustomLayout {
+  base: BaseLayoutId;
+  /** Left-to-right order of the spaces bar, the chat list and the chat. */
+  order: LayoutPanel[];
+  showRail: boolean;
+  /** Chat list width in px. */
+  listWidth: number;
+  /** Profile / members panel: which side of the chat, and its width. */
+  detailsSide: 'left' | 'right';
+  detailsWidth: number;
+  /** Floating rounded panels with space between, or flush edge to edge. */
+  floating: boolean;
+  /** Panel corner roundness and spacing in px. */
+  radius: number;
+  gap: number;
+}
+
+export const DEFAULT_CUSTOM_LAYOUT: CustomLayout = {
+  base: 'classic',
+  order: ['rail', 'list', 'main'],
+  showRail: true,
+  listWidth: 260,
+  detailsSide: 'right',
+  detailsWidth: 300,
+  floating: true,
+  radius: 16,
+  gap: 10,
+};
+
+/** The layout whose screens are used: a custom layout is built on one of the four. */
+export function effectiveLayout(theme: Pick<ThemeSettings, 'layout' | 'customLayout'>): BaseLayoutId {
+  if (theme.layout === 'custom') return theme.customLayout?.base ?? 'classic';
+  return theme.layout ?? 'classic';
+}
 
 export interface Keybinds {
   toggleMute: string | null;

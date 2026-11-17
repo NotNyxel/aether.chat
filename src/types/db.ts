@@ -38,6 +38,8 @@ export interface UserProfile {
   discoverable: boolean;
   /** 2.1: show "played this week" on your profile. */
   show_play_history?: boolean;
+  /** 2.1: moment ring colour: 'accent', a preset gradient, or a hex colour. */
+  moment_ring?: string | null;
   is_admin: boolean;
   status_emoji: string | null;
   bio: string | null;
@@ -77,6 +79,7 @@ export type EditableProfile = Pick<
   | 'decor'
   | 'discoverable'
   | 'show_play_history'
+  | 'moment_ring'
   | 'read_receipts'
   | 'status_emoji'
   | 'bio'

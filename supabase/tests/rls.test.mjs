@@ -1519,6 +1519,44 @@ await expectOk('play history: own, people you share with, hidden, no backdating,
   await as(A, `delete from public.game_sessions`);
   if ((await as(A, `select * from public.play_history($1)`, [A])).rows.length !== 0) throw new Error('not cleared');
 });
+await expectOk('moments: audiences, close friends, views, expiry, own files only', async () => {
+  const people = (await db.query(`select id, public.are_friends(id, $1) f, public.shares_server(id, $1) s from public.users where id <> $1`, [A])).rows;
+  const friend = people.find((p) => p.f)?.id;
+  const spaceOnly = people.find((p) => !p.f && p.s)?.id;
+  const stranger = people.find((p) => !p.f && !p.s)?.id;
+  const post = async (audience) =>
+    (await as(A, `insert into public.moments (kind, body, background, audience) values ('text', 'hello', '#123456', $1) returning id`, [audience])).rows[0].id;
+  const sees = async (who, id) => (await as(who, `select count(*)::int n from public.moments where id = $1`, [id])).rows[0].n === 1;
+  const fr = await post('friends');
+  if (friend && !(await sees(friend, fr))) throw new Error('friend cannot see');
+  if (stranger && (await sees(stranger, fr))) throw new Error('stranger sees friends moment');
+  if (spaceOnly && (await sees(spaceOnly, fr))) throw new Error('space member sees friends-only moment');
+  const ev = await post('everyone');
+  if (spaceOnly && !(await sees(spaceOnly, ev))) throw new Error('space member cannot see everyone moment');
+  if (stranger && (await sees(stranger, ev))) throw new Error('stranger sees everyone moment');
+  const cl = await post('close');
+  if (friend && (await sees(friend, cl))) throw new Error('not-close friend sees close moment');
+  if (friend) {
+    await as(A, `insert into public.close_friends (friend_id) values ($1)`, [friend]);
+    if (!(await sees(friend, cl))) throw new Error('close friend cannot see');
+    await as(friend, `insert into public.moment_views (moment_id) values ($1)`, [cl]);
+    const ownerViews = (await as(A, `select count(*)::int n from public.moment_views where moment_id = $1`, [cl])).rows[0].n;
+    if (ownerViews !== 1) throw new Error('owner cannot see views');
+  }
+  if (stranger) {
+    let refused = '';
+    try { await as(stranger, `insert into public.moment_views (moment_id) values ($1)`, [cl]); } catch (e) { refused = e.message; }
+    if (!refused) throw new Error('stranger marked a hidden moment seen');
+  }
+  await db.query(`update public.moments set expires_at = now() - interval '1 minute' where id = $1`, [fr]);
+  if (friend && (await sees(friend, fr))) throw new Error('expired moment still visible');
+  if (!(await sees(A, fr))) throw new Error('owner lost their own expired moment');
+  let other = '';
+  try { await as(A, `insert into public.moments (kind, media_path, audience) values ('image', $1, 'friends')`, [`${B}/x.png`]); } catch (e) { other = e.message; }
+  if (!other) throw new Error("used someone else's file");
+  await as(A, `delete from public.moments`);
+  await as(A, `delete from public.close_friends`);
+});
 await expectOk('errors are grouped and counted; only admins can read them', async () => {
   for (const u of [E, E, B]) await as(u, `select public.log_client_error('abc123', 'TypeError: x is undefined', 'at foo', '2.0.0', 'web', '/app')`);
   const r = (await as(A, `select count, cardinality(users) n from public.client_errors where fingerprint = 'abc123'`)).rows[0];

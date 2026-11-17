@@ -1,4 +1,5 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { MomentsLayer } from './Moments';
 import { useRecordPlaySessions } from '../hooks/usePlayHistory';
 import { LayoutEditor } from './LayoutEditor';
 import { useTrackWorkspaceTab, WorkspaceInbox, WorkspaceTabs, WorkspaceTree } from './Workspace';
@@ -290,6 +291,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
       <Lightbox />
       <ReminderWatcher />
       <BugReportLayer />
+      <MomentsLayer />
       {layoutEditing && desktopShell && <LayoutEditor />}
       <OfflineBar userId={userId} />
       <WhatsNewLayer userId={userId} />

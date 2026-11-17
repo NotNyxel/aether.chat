@@ -2,7 +2,9 @@
  * The Lounge layout (2.1): social-first. A top bar (Home, Chats, Spaces, Calls) replaces the server
  * column; Home is a feed of what's happening; Calls gathers every call you can hop into.
  * Chats and Spaces reuse the normal chat and server screens.
- */
+ */
+import { openMomentComposer, openMoments } from './Moments';
+import { ringBackground, useMomentFeed } from '../hooks/useMoments';
 import { useMemo } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { isRowUnread, useUnreadSummary } from '../hooks/useMessageExtras';
@@ -14,7 +16,7 @@ import { useUiStore } from '../stores/uiStore';
 import type { Conversation, Server } from '../types/db';
 import { useCall } from './CallContext';
 import { ConversationAvatar, useConversationTitle } from './ConversationBits';
-import { MessageIcon, PhoneIcon, CameraIcon, UsersIcon } from './icons';
+import { MessageIcon, PhoneIcon, CameraIcon, PlusIcon, UsersIcon } from './icons';
 import { useChannelNames } from './Inbox';
 import { ActiveCard, CallCard, CatchUpRow } from './OrbitHome';
 import { Avatar } from './ProfileCard';
@@ -94,12 +96,14 @@ function FriendCard({ userId }: { userId: string }) {
   const track = useListeningOf(userId);
   const peek = useUiStore((s) => s.peekProfile);
   const online = status !== 'offline';
+  const moments = useMomentFeed().byUser.get(userId);
+  const ring = moments && !moments.seen ? ringBackground(p?.moment_ring, p?.accent_color) : null;
   return (
     <button
       type="button"
-      onClick={(e) => peek(userId, e.currentTarget)}
-      className={`ae-press flex h-[180px] w-[128px] shrink-0 flex-col justify-between rounded-[22px] bg-ae-surface p-3 text-left ${online ? '' : 'opacity-70'}`}
-      style={{ boxShadow: online ? 'inset 0 0 0 3px var(--ae-accent)' : undefined }}
+      onClick={(e) => (moments ? openMoments(userId) : peek(userId, e.currentTarget))}
+      className={`ae-press relative flex h-[180px] w-[128px] shrink-0 flex-col justify-between rounded-[22px] bg-ae-surface p-3 text-left ${online || moments ? '' : 'opacity-70'}`}
+      style={{ boxShadow: !ring && online ? 'inset 0 0 0 3px var(--ae-accent)' : undefined, border: ring ? '3px solid transparent' : undefined, background: ring ? `linear-gradient(var(--ae-surface), var(--ae-surface)) padding-box, ${ring} border-box` : undefined }}
     >
       <span className="relative self-start">
         <Avatar profile={p} size={40} showFrame={false} />
@@ -174,7 +178,13 @@ export function LoungeHome({ userId }: { userId: string }) {
               {t('Add friends')}
             </button>
           ) : (
-            friends.map((id) => <FriendCard key={id} userId={id} />)
+            <>
+              <button type="button" onClick={openMomentComposer} className="ae-press flex h-[180px] w-[128px] shrink-0 flex-col items-center justify-center gap-2 rounded-[22px] border-2 border-dashed border-ae-border text-sm text-ae-muted hover:text-ae-text">
+                <span className="grid h-11 w-11 place-items-center rounded-full bg-ae-accent text-ae-on-accent"><PlusIcon size={20} /></span>
+                {t('Add moment')}
+              </button>
+              {friends.map((id) => <FriendCard key={id} userId={id} />)}
+            </>
           )}
         </div>
         <div className={`${panel} flex flex-col gap-3 p-6`}>

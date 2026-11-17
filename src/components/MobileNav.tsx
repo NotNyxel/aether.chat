@@ -3,6 +3,8 @@
  * Servers, Notifications and You, each a full screen with a large title, like a native app.
  * Opening a chat hides the tab bar; the chat header has a back button.
  */
+import { MomentsStrip } from './Moments';
+import { useMomentFeed } from '../hooks/useMoments';
 import { t } from '../lib/i18n';
 import { openTour, openWhatsNew } from './WhatsNew';
 import { RocketIcon, SparklesIcon } from './icons';
@@ -70,7 +72,9 @@ function OnlineFriend({ userId }: { userId: string }) {
   const { data: p } = useProfile(userId);
   const status = usePresenceOf(userId);
   const peek = useUiStore((s) => s.peekProfile);
-  if (status === 'offline') return null;
+  const hasMoments = useMomentFeed().byUser.has(userId);
+  // Friends with moments are already in the row, with their ring.
+  if (status === 'offline' || hasMoments) return null;
   return (
     <button type="button" className="flex w-16 shrink-0 flex-col items-center gap-1" onClick={(e) => peek(userId, e.currentTarget)}>
       <span className="relative">
@@ -173,13 +177,11 @@ export function MobileHome({ userId }: { userId: string }) {
           </div>
         </div>
 
-        {friends.length > 0 && (
-          <div className="ae-scroll mt-4 flex gap-1 overflow-x-auto px-3 [scrollbar-width:none] empty:hidden">
-            {friends.map((id) => (
-              <OnlineFriend key={id} userId={id} />
-            ))}
-          </div>
-        )}
+        <MomentsStrip className="mt-4 px-3">
+          {friends.map((id) => (
+            <OnlineFriend key={id} userId={id} />
+          ))}
+        </MomentsStrip>
 
         <div className="mt-3 px-4 empty:hidden">
           <FolderChips archivedCount={archivedCount} />

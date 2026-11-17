@@ -3,6 +3,8 @@
  * to, calls you can join, what you missed, and reminders coming up — instead of a friends list.
  * Everything links straight to the chat, call or person.
  */
+import { MomentsStrip } from './Moments';
+import { useMomentFeed } from '../hooks/useMoments';
 import { useMemo } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { isRowUnread, useUnreadSummary } from '../hooks/useMessageExtras';
@@ -35,6 +37,7 @@ function FriendBubble({ userId }: { userId: string }) {
   const status = usePresenceOf(userId);
   const peek = useUiStore((s) => s.peekProfile);
   const online = status !== 'offline';
+  if (useMomentFeed().byUser.has(userId)) return null; // shown in the moments part of the row
   return (
     <button type="button" className="ae-press flex w-[72px] shrink-0 flex-col items-center gap-2" onClick={(e) => peek(userId, e.currentTarget)}>
       <span className="relative rounded-full" style={{ boxShadow: online ? '0 0 0 3px var(--ae-bg), 0 0 0 5px var(--ae-accent)' : '0 0 0 3px var(--ae-bg), 0 0 0 5px var(--ae-border)' }}>
@@ -156,11 +159,11 @@ export function OrbitHome({ userId }: { userId: string }) {
           {greeting()}, {me?.display_name || me?.username}
         </h1>
         {friends.length ? (
-          <div className="ae-scroll flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none]" aria-label={t('Friends')}>
+          <MomentsStrip size={56}>
             {friends.map((id) => (
               <FriendBubble key={id} userId={id} />
             ))}
-          </div>
+          </MomentsStrip>
         ) : (
           <button type="button" onClick={() => openHome('friends')} className="ae-press flex items-center gap-2 rounded-full bg-ae-accent px-4 py-2 text-sm font-semibold text-ae-on-accent">
             <UsersIcon size={16} /> {t('Add your first friend')}

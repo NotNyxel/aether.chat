@@ -2,6 +2,7 @@
  * Settings → My Account (email, password, two-factor, sessions, data export, delete account)
  * and Settings → Privacy & Safety (DMs, friend requests, message requests, blocked users).
  */
+import { ringBackground, useCloseFriends, useToggleCloseFriend } from '../hooks/useMoments';
 import { pwnedMessage } from '../lib/pwned';
 import { DownloadIcon, LockIcon, MonitorIcon, PhoneDeviceIcon, UnlockIcon } from './icons';
 import { ask } from './ConfirmDialog';
@@ -9,7 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useProfile, useUpdateProfile } from '../hooks/useChatData';
 import { DEFAULT_PRIVACY, usePrivacySettings, useSavePrivacy } from '../hooks/useAccount';
-import { useBlocks, useFriendActions } from '../hooks/useSocialData';
+import { useBlocks, useFriendActions, useFriendships } from '../hooks/useSocialData';
 import { authRedirectUrl } from '../lib/authLinks';
 import { isTauri } from '../lib/platform';
 import { useSupabase } from '../lib/supabase';
@@ -674,6 +675,10 @@ export function PrivacyTab({ userId }: { userId: string }) {
         />
       </Section>
 
+      <Section title="Moments" description="24-hour photos, videos and text cards. Pick your ring colour, and who counts as a close friend for moments you share with “Close friends”.">
+        <MomentSettings userId={userId} />
+      </Section>
+
       <Section title="Discovery">
         <DiscoverableToggle userId={userId} />
       </Section>
@@ -718,6 +723,80 @@ export function PrivacyTab({ userId }: { userId: string }) {
         </ul>
       </Section>
     </div>
+  );
+}
+
+const RING_CHOICES: { id: string; label: string }[] = [
+  { id: 'accent', label: 'Your accent' },
+  { id: 'sunset', label: 'Sunset' },
+  { id: 'ocean', label: 'Ocean' },
+  { id: 'aurora', label: 'Aurora' },
+  { id: 'candy', label: 'Candy' },
+];
+
+function MomentSettings({ userId }: { userId: string }) {
+  const { data: me } = useProfile(userId);
+  const update = useUpdateProfile(userId);
+  const { data: friendships = [] } = useFriendships();
+  const { data: close = new Set<string>() } = useCloseFriends();
+  const toggle = useToggleCloseFriend();
+  const ring = me?.moment_ring ?? 'accent';
+  const friends = friendships.filter((f) => f.status === 'accepted').map((f) => (f.requester_id === userId ? f.addressee_id : f.requester_id));
+  const custom = /^#[0-9a-fA-F]{6}$/.test(ring) ? ring : null;
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="grid h-16 w-16 place-items-center rounded-full" style={{ background: ringBackground(ring, me?.accent_color) }} aria-hidden="true">
+          <span className="rounded-full bg-ae-bg p-[2px]">
+            <Avatar profile={me} size={52} showFrame={false} />
+          </span>
+        </span>
+        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Ring colour">
+          {RING_CHOICES.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              role="radio"
+              aria-checked={ring === c.id}
+              onClick={() => update.mutate({ moment_ring: c.id })}
+              className={`flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-semibold ${ring === c.id ? 'border-ae-accent' : 'border-ae-border hover:border-ae-muted'}`}
+            >
+              <span className="h-4 w-4 rounded-full" style={{ background: ringBackground(c.id, me?.accent_color) }} />
+              {c.label}
+            </button>
+          ))}
+          <label className={`flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-semibold ${custom ? 'border-ae-accent' : 'border-ae-border'}`}>
+            <input type="color" value={custom ?? '#7658fb'} onChange={(e) => update.mutate({ moment_ring: e.target.value })} className="h-4 w-4 cursor-pointer rounded-full border-0 bg-transparent p-0" />
+            Custom
+          </label>
+        </div>
+      </div>
+      <div>
+        <p className="mb-2 text-sm font-semibold">Close friends · {close.size}</p>
+        {friends.length === 0 ? (
+          <p className="text-sm text-ae-muted">Add friends first; then pick your close friends here.</p>
+        ) : (
+          <ul className="ae-scroll max-h-56 space-y-1 overflow-y-auto">
+            {friends.map((id) => (
+              <CloseFriendRow key={id} id={id} on={close.has(id)} onChange={(on) => toggle.mutate({ id, on })} />
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CloseFriendRow({ id, on, onChange }: { id: string; on: boolean; onChange: (on: boolean) => void }) {
+  const { data: p } = useProfile(id);
+  return (
+    <li>
+      <label className="flex cursor-pointer items-center gap-3 rounded-ae px-2 py-1.5 hover:bg-ae-hover">
+        <Avatar profile={p} size={28} showFrame={false} />
+        <span className="flex-1 text-sm">{p?.display_name || p?.username}</span>
+        <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4" />
+      </label>
+    </li>
   );
 }
 

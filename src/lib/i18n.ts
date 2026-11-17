@@ -29,6 +29,13 @@ export const LANGUAGES: Language[] = [
   { code: 'hi', name: 'हिन्दी', english: 'Hindi' },
   { code: 'ja', name: '日本語', english: 'Japanese' },
   { code: 'ar', name: 'العربية', english: 'Arabic', dir: 'rtl' },
+  { code: 'ko', name: '한국어', english: 'Korean' },
+  { code: 'zh', name: '简体中文', english: 'Chinese (Simplified)' },
+  { code: 'vi', name: 'Tiếng Việt', english: 'Vietnamese' },
+  { code: 'nl', name: 'Nederlands', english: 'Dutch' },
+  { code: 'uk', name: 'Українська', english: 'Ukrainian' },
+  { code: 'bn', name: 'বাংলা', english: 'Bengali' },
+  { code: 'ur', name: 'اردو', english: 'Urdu', dir: 'rtl' },
 ];
 
 const KEY = 'aether.lang';
@@ -49,6 +56,8 @@ function resolve(setting: string): string {
   if (setting !== 'auto' && LANGUAGES.some((l) => l.code === setting)) return setting;
   for (const tag of navigator.languages ?? [navigator.language]) {
     const base = tag.toLowerCase().split('-')[0]!;
+    // Only Simplified Chinese is translated; Traditional (TW/HK/MO) keeps English unless picked.
+    if (base === 'zh' && /^zh-(tw|hk|mo|hant)/i.test(tag)) continue;
     if (LANGUAGES.some((l) => l.code === base)) return base;
   }
   return 'en';

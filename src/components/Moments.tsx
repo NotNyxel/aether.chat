@@ -76,27 +76,29 @@ export function MomentsStrip({ size = 52, className = '', children }: { size?: n
   const hasMine = feed.byUser.has(me);
   return (
     <div className={`ae-scroll flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] ${className}`} aria-label={t('Moments')}>
-      <div className="flex w-[68px] shrink-0 flex-col items-center gap-1.5">
+      <div className="flex min-w-[68px] shrink-0 flex-col items-center gap-1.5">
         <span className="relative">
           {hasMine ? (
             <MomentRing userId={me} size={size}>
               <Avatar profile={mine} size={size} showFrame={false} />
             </MomentRing>
           ) : (
-            <button type="button" onClick={openMomentComposer} aria-label={t('Add a moment')} className="ae-press rounded-full p-1">
+            // Same footprint as a ring, so it lines up with the people next to it.
+            <button type="button" onClick={openMomentComposer} aria-label={t('Add a moment')} className="ae-press block rounded-full border-2 border-dashed border-ae-border p-[2px]">
               <Avatar profile={mine} size={size} showFrame={false} />
             </button>
           )}
+          {/* On the ring's edge, clear of the face. */}
           <button
             type="button"
             aria-label={t('Add a moment')}
             onClick={openMomentComposer}
-            className="absolute right-0 bottom-0 grid h-5 w-5 place-items-center rounded-full bg-ae-accent text-ae-on-accent ring-2 ring-ae-bg"
+            className="absolute -right-1 -bottom-1 grid h-6 w-6 place-items-center rounded-full bg-ae-accent text-ae-on-accent ring-[3px] ring-ae-bg"
           >
-            <PlusIcon size={12} />
+            <PlusIcon size={13} />
           </button>
         </span>
-        <span className="w-full truncate text-center text-[11px] text-ae-muted">{t('Your moment')}</span>
+        <span className="text-center text-[11px] whitespace-nowrap text-ae-muted">{t('Your moment')}</span>
       </div>
       {others.map((p) => (
         <PersonBubble key={p.userId} person={p} size={size} />

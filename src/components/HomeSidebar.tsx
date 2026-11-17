@@ -1,4 +1,5 @@
-/** Home sidebar: Friends entry and the Direct Messages list (DMs + group DMs) with unread and call markers. */
+/** Home sidebar: Friends entry and the Direct Messages list (DMs + group DMs) with unread and call markers. */
+import { useSettingsStore } from '../stores/settingsStore';
 import { t } from '../lib/i18n';
 import { openQuickSwitcher } from './QuickSwitcher';
 import { ask } from './ConfirmDialog';
@@ -14,7 +15,7 @@ import { ConversationAvatar, isUnread, useConversationTitle } from './Conversati
 import { GroupDialog } from './GroupDialog';
 import { useProfile } from '../hooks/useChatData';
 import { ActivityLine } from './ActivityCards';
-import { BellIcon, BellOffIcon, CheckIcon, CloseIcon, InboxIcon, PhoneIcon, PinIcon, PlusIcon, SearchIcon, UsersIcon } from './icons';
+import { BellIcon, BellOffIcon, CheckIcon, CloseIcon, InboxIcon, PhoneIcon, PinIcon, SparklesIcon, PlusIcon, SearchIcon, UsersIcon } from './icons';
 import { useRequestConversations } from './FriendsExtras';
 import { UserPanel } from './UserPanel';
 import { plateProps } from '../lib/cosmetics';
@@ -113,6 +114,7 @@ function ConversationRow({ conv, me, active, inCall, count: rawCount, muted, pin
 }
 
 export function HomeSidebar({ userId }: { userId: string }) {
+  const orbit = useSettingsStore((s) => s.theme.layout === 'orbit');
   const homeTarget = useUiStore((s) => s.homeTarget);
   const openHome = useUiStore((s) => s.openHome);
   const { data: conversations = [] } = useConversations();
@@ -144,6 +146,19 @@ export function HomeSidebar({ userId }: { userId: string }) {
       </header>
 
       <div className="ae-scroll flex-1 overflow-y-auto px-2 py-3">
+        {orbit && (
+          <button
+            type="button"
+            onClick={() => openHome('now')}
+            aria-current={homeTarget === 'now' ? 'page' : undefined}
+            className={`mb-0.5 flex w-full items-center gap-3 rounded-ae px-2 py-2 text-left text-sm ${
+              homeTarget === 'now' ? 'bg-ae-surface text-ae-text' : 'text-ae-muted hover:bg-ae-hover hover:text-ae-text'
+            }`}
+          >
+            <SparklesIcon size={20} />
+            <span className="flex-1 font-medium">{t('Now')}</span>
+          </button>
+        )}
         <button
           type="button"
           onClick={() => openHome('friends')}

@@ -59,7 +59,11 @@ export interface ThemeSettings {
   animateStatus: boolean;
   /** Your own theme; replaces the preset while it's on. */
   custom?: CustomTheme | null;
+  /** Desktop layout (2.1): how the app is arranged on computers. Phones and tablets keep their own. */
+  layout: LayoutId;
 }
+
+export type LayoutId = 'classic' | 'orbit' | 'workspace' | 'lounge';
 
 export interface Keybinds {
   toggleMute: string | null;
@@ -145,6 +149,7 @@ export const DEFAULT_THEME: ThemeSettings = {
   ambientBackground: true,
   animations: 'full',
   animateStatus: true,
+  layout: 'classic',
 };
 
 export const DEFAULT_KEYBINDS: Keybinds = {

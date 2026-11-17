@@ -23,7 +23,7 @@ import { RemindersList } from './Reminders';
 type ChannelInfo = Pick<Channel, 'id' | 'name' | 'server_id'>;
 
 /** Names for channels in any server (only the ones we need). */
-function useChannelNames(ids: string[]) {
+export function useChannelNames(ids: string[]) {
   const sb = useSupabase();
   const key = [...ids].sort().join(',');
   return useQuery({

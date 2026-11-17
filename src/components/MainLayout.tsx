@@ -1,4 +1,6 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { OrbitHome } from './OrbitHome';
+import { isPhoneLayout, isTabletLayout } from '../lib/phone';
 import { useOutboxFlusher } from '../hooks/useChatData';
 import { OfflineBar } from './OfflineBar';
 import { WhatsNewLayer } from './WhatsNew';
@@ -96,6 +98,7 @@ function PopoverForUser({ me, userId, server, onClose }: { me: string; userId: s
 }
 
 function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
+  const layout = useSettingsStore((s) => s.theme.layout ?? 'classic');
   const { voice } = useCall();
   useKeybinds(voice);
 
@@ -168,7 +171,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
     <WindowFrame
       bar={
         <TitleBar
-          title={server ? server.name : conversation ? 'Direct messages' : homeTarget === 'requests' ? 'Message requests' : 'Friends'}
+          title={server ? server.name : conversation ? 'Direct messages' : homeTarget === 'requests' ? 'Message requests' : homeTarget === 'now' && layout === 'orbit' ? 'Now' : 'Friends'}
           lead={
             mobilePane === 'main' && (
               <button type="button" aria-label="Back" className="ae-mobile-only -ml-1 grid h-9 w-9 place-items-center rounded-full text-ae-muted hover:bg-ae-hover" onClick={() => setMobilePane('nav')}>
@@ -206,6 +209,8 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
           <ConversationView key={conversation.id} conv={conversation} userId={userId} />
         ) : homeTarget === 'requests' ? (
           <MessageRequestsView userId={userId} />
+        ) : homeTarget === 'now' && layout === 'orbit' && !isPhoneLayout() && !isTabletLayout() ? (
+          <OrbitHome userId={userId} />
         ) : (
           <FriendsView userId={userId} />
         )}

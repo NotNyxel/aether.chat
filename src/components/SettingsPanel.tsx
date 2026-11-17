@@ -11,7 +11,7 @@
 import { currentLanguage, LANGUAGES, languageSetting, setLanguage, t } from '../lib/i18n';
 import { openTour, openWhatsNew } from './WhatsNew';
 import { openBugReport } from './BugReport';
-import { BugIcon, LockIcon, SparklesIcon } from './icons';
+import { BugIcon, CheckIcon, LockIcon, SparklesIcon } from './icons';
 import { isQuietNow, useQuietHours, useSaveQuietHours } from '../hooks/useQuietHours';
 import { AccountTab, PrivacyTab } from './SettingsAccount';
 import { ProfileEditor } from './ProfileEditor';
@@ -23,9 +23,9 @@ import { isTauri } from '../lib/platform';
 import { listAudioDevices, type BandwidthProfile, type ScreenFrameRate, type ScreenResolution } from '../hooks/useVoiceEngine';
 import { comboFromEvent, formatCombo } from '../lib/keybinds';
 import { ALL_SOUNDS, playSound, SOUND_INFO } from '../lib/sounds';
-import { useSettingsStore, type Keybinds } from '../stores/settingsStore';
+import { useSettingsStore, type Keybinds, type LayoutId } from '../stores/settingsStore';
 import { useUiStore, type SettingsTab } from '../stores/uiStore';
-import { isHexColor, PRESET_ORDER, SECRET_PRESETS, THEME_PRESETS, type ThemePresetId } from '../theme/presets';
+import { isHexColor, LAYOUT_THEMES, PRESET_ORDER, SECRET_PRESETS, THEME_PRESETS, type ThemePresetId } from '../theme/presets';
 import { redeemCode } from '../lib/secrets';
 import { AdminIcon, AppWindowIcon, ArrowLeftIcon as BackIcon, BellIcon, CloseIcon, GameIcon, GaugeIcon, IdCardIcon, KeyboardIcon, LogOutIcon, NetworkIcon, PaletteIcon, ShieldIcon, StageIcon, UserIcon } from './icons';
 import { ActivityTab, BackgroundShortcutsSection, DesktopNotificationsSection, WindowsTab } from './SettingsDesktop';
@@ -151,6 +151,95 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
 // Appearance tab
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
+const LAYOUTS: { id: LayoutId; name: string; blurb: string; ready: boolean }[] = [
+  { id: 'classic', name: 'Classic', blurb: 'Server bar, channel list, chat. The layout you know.', ready: true },
+  { id: 'orbit', name: 'Orbit', blurb: 'Floating panels and a “Now” home with what your friends are up to.', ready: true },
+  { id: 'workspace', name: 'Workspace', blurb: 'Tabs for open chats, one list for everything, keyboard-first.', ready: false },
+  { id: 'lounge', name: 'Lounge', blurb: 'Social-first: top navigation, a feed home, rooms as live cards.', ready: false },
+];
+
+/** A tiny sketch of each layout, drawn with the current theme's colours. */
+function LayoutSketch({ id }: { id: LayoutId }) {
+  const box = 'rounded-[3px] bg-ae-surface';
+  if (id === 'classic')
+    return (
+      <span className="flex h-full gap-[3px] bg-ae-sunken p-[3px]">
+        <span className="flex w-3 flex-col gap-[3px]"><span className="h-3 rounded-full bg-ae-accent" /><span className="h-3 rounded-full bg-ae-surface" /><span className="h-3 rounded-full bg-ae-surface" /></span>
+        <span className={`w-10 ${box}`} />
+        <span className="flex-1 rounded-[3px] bg-ae-bg" />
+        <span className={`w-8 ${box}`} />
+      </span>
+    );
+  if (id === 'orbit')
+    return (
+      <span className="flex h-full gap-[4px] bg-ae-sunken p-[5px]">
+        <span className="flex w-3 flex-col gap-[4px]"><span className="h-3 rounded-[4px] bg-ae-accent" /><span className="h-3 rounded-[4px] bg-ae-surface" /></span>
+        <span className="w-10 rounded-[6px] border border-ae-border bg-ae-bg" />
+        <span className="flex flex-1 flex-col gap-[4px]"><span className="h-5 rounded-[6px] border border-ae-border bg-ae-bg" /><span className="flex flex-1 gap-[4px]"><span className="flex-1 rounded-[6px] border border-ae-border bg-ae-bg" /><span className="flex-1 rounded-[6px] border border-ae-border bg-ae-bg" /></span></span>
+      </span>
+    );
+  if (id === 'workspace')
+    return (
+      <span className="flex h-full flex-col bg-ae-sunken">
+        <span className="flex h-3 gap-[2px] px-[3px] pt-[3px]"><span className="w-6 rounded-t-[2px] bg-ae-bg" /><span className="w-6 rounded-t-[2px] bg-ae-surface" /><span className="w-6 rounded-t-[2px] bg-ae-surface" /></span>
+        <span className="flex flex-1 gap-[2px]"><span className={`w-10 ${box}`} /><span className="flex-1 bg-ae-bg" /><span className={`w-10 ${box}`} /></span>
+      </span>
+    );
+  return (
+    <span className="flex h-full flex-col gap-[4px] bg-ae-sunken p-[5px]">
+      <span className="mx-auto h-2 w-16 rounded-full bg-ae-surface" />
+      <span className="flex gap-[3px]"><span className="h-7 w-5 rounded-[4px] bg-ae-accent" /><span className="h-7 w-5 rounded-[4px] bg-ae-surface" /><span className="h-7 w-5 rounded-[4px] bg-ae-surface" /></span>
+      <span className="flex-1 rounded-[6px] bg-ae-bg" />
+    </span>
+  );
+}
+
+/** Layouts (2.1): how Aether is arranged on a computer. Each brings its own themes. */
+function LayoutSection() {
+  const theme = useSettingsStore((s) => s.theme);
+  const setTheme = useSettingsStore((s) => s.setTheme);
+  const current = theme.layout ?? 'classic';
+  const pick = (id: LayoutId) => {
+    if (id === current) return;
+    // Switching shows the layout with its own first theme (your custom theme, if on, stays).
+    const first = LAYOUT_THEMES[id][0];
+    setTheme({ layout: id, ...(first && !theme.custom?.enabled ? { presetId: first } : {}) });
+    const ui = useUiStore.getState();
+    if (id === 'orbit' && ui.homeTarget === 'friends') ui.openHome('now');
+    if (id !== 'orbit' && ui.homeTarget === 'now') ui.openHome('friends');
+    toast.success(`Layout: ${LAYOUTS.find((l) => l.id === id)!.name}`);
+  };
+  return (
+    <Section title="Layout" description="How Aether is arranged on a computer. Phones and tablets keep their own layout. Each layout comes with its own themes, listed first below.">
+      <div role="radiogroup" aria-label="Layout" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {LAYOUTS.map((l) => (
+          <button
+            key={l.id}
+            type="button"
+            role="radio"
+            aria-checked={current === l.id}
+            disabled={!l.ready}
+            onClick={() => pick(l.id)}
+            className={`ae-lift overflow-hidden rounded-ae border text-left disabled:cursor-not-allowed disabled:opacity-60 ${current === l.id ? 'border-ae-accent ae-glow' : 'border-ae-border hover:border-ae-muted'}`}
+          >
+            <span className="block h-20 overflow-hidden border-b border-ae-border" aria-hidden="true">
+              <LayoutSketch id={l.id} />
+            </span>
+            <span className="block p-2.5">
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                {l.name}
+                {!l.ready && <span className="rounded bg-ae-surface px-1.5 text-[10px] text-ae-muted">SOON</span>}
+                {current === l.id && <CheckIcon size={13} className="ml-auto text-ae-accent" />}
+              </span>
+              <span className="mt-0.5 block text-xs text-ae-muted">{l.blurb}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 /** Language (2.0): follows the device by default. Switching reloads the window. */
 function LanguageSection() {
   const setting = languageSetting();
@@ -242,6 +331,7 @@ function AppearanceTab() {
 
   return (
     <div className="space-y-6">
+      <LayoutSection />
       <LanguageSection />
       <Section title="Theme">
         <button
@@ -256,7 +346,11 @@ function AppearanceTab() {
           </span>
         </button>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[...PRESET_ORDER, ...secretsUnlocked.filter((id) => SECRET_PRESETS.includes(id))].map((id) => {
+          {[
+            ...LAYOUT_THEMES[theme.layout ?? 'classic'].filter((id) => !PRESET_ORDER.includes(id)),
+            ...PRESET_ORDER,
+            ...secretsUnlocked.filter((id) => SECRET_PRESETS.includes(id)),
+          ].map((id) => {
             const preset = THEME_PRESETS[id];
             const t = preset.tokens;
             const active = theme.presetId === id && !theme.custom?.enabled;
@@ -280,6 +374,7 @@ function AppearanceTab() {
                     {preset.label}
                     {preset.light && <span className="ml-2 rounded bg-ae-surface px-1.5 text-[10px] text-ae-muted">LIGHT</span>}
                     {SECRET_PRESETS.includes(id) && <span className="ml-2 rounded bg-ae-accent/20 px-1.5 text-[10px] text-ae-accent">SECRET</span>}
+                    {id.startsWith('orbit-') && <span className="ml-2 rounded bg-ae-accent/20 px-1.5 text-[10px] text-ae-accent">ORBIT</span>}
                   </p>
                   <p className="text-xs text-ae-muted">{preset.description}</p>
                 </div>

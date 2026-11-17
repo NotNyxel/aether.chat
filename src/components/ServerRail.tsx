@@ -92,6 +92,7 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
         data-tip="Direct messages"
         data-tip-side="right"
         aria-label="Home"
+        aria-current={activeId === null ? 'page' : undefined}
         onClick={() => openHome()}
         // Phones have their own Messages tab, so the rail is servers only there.
         className={`ae-desktop-only relative grid h-12 w-12 place-items-center transition-all ${
@@ -114,6 +115,7 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
           <div key={s.id} className="relative">
             {/* Discord-style pill: tall for the active server, a dot for unread ones */}
             <span
+              data-rail-pill=""
               className={`absolute top-1/2 -left-3 w-1 -translate-y-1/2 rounded-r-full bg-ae-text transition-all ${
                 active ? 'h-9' : state?.unread ? 'h-2' : 'h-0'
               }`}
@@ -123,6 +125,7 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
               data-tip={serverMuted ? `${s.name} (muted)` : s.name}
               data-tip-side="right"
               aria-label={s.name}
+              aria-current={active ? 'page' : undefined}
               onClick={() => selectServer(s.id)}
               onContextMenu={(e) => serverMenu(e, s)}
               className={`relative grid h-12 w-12 place-items-center overflow-hidden text-sm font-semibold transition-all ${serverMuted && !active ? 'opacity-50 ' : ''}${

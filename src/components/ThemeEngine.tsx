@@ -223,6 +223,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     for (const [key, value] of Object.entries(tokens)) root.style.setProperty(cssVarName(key), value);
     root.dataset.aeTheme = theme.presetId;
+    root.dataset.aeLayout = theme.layout ?? 'classic';
     root.dataset.aeReduceMotion = String(theme.reduceMotion);
     root.dataset.aeAmbient = String(theme.ambientBackground);
     root.dataset.aeAnimations = theme.animations;

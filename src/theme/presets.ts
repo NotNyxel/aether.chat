@@ -46,6 +46,10 @@ export type ThemePresetId =
   | 'cotton-candy'
   | 'github-light'
   | 'nightfall'
+  // Made for the Orbit layout (2.1).
+  | 'orbit-violet'
+  | 'orbit-dusk'
+  | 'orbit-dawn'
   // Secret themes (2.1): hidden until unlocked with a code (lib/secrets.ts).
   | 'secret-goblin'
   | 'secret-arcade'
@@ -376,6 +380,22 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
     bg: '#fff5fb', bgElevated: '#ffffff', bgSunken: '#fbe9f4', surface: '#f8e6f2', surfaceHover: '#f0d7e9', border: '#ecd2e4',
     text: '#3a2440', textMuted: '#8a6b90', accent: '#ff6fb5', radius: '18px',
   }, true),
+  // ── Orbit layout themes: soft floating panels, rounded and calm. ──
+  'orbit-violet': preset('orbit-violet', 'Orbit Violet', 'Deep night with a violet glow. Made for Orbit.', {
+    backdrop: '#0c0b14', bg: '#15131f', bgElevated: '#1c1929', bgSunken: '#0c0b14', surface: '#211d31', surfaceHover: '#2a2540', border: '#2a2540',
+    text: '#ece9f7', textMuted: '#a29cbc', accent: '#7658fb', accentContrast: '#ffffff', radius: '14px',
+    font: `'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif`,
+  }),
+  'orbit-dusk': preset('orbit-dusk', 'Orbit Dusk', 'Blue hour: slate panels and a soft sky accent. Made for Orbit.', {
+    backdrop: '#0b1018', bg: '#121a26', bgElevated: '#182231', bgSunken: '#0b1018', surface: '#1d2939', surfaceHover: '#253447', border: '#26344a',
+    text: '#e6edf7', textMuted: '#9db0c8', accent: '#5aa9ff', radius: '14px',
+    font: `'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif`,
+  }),
+  'orbit-dawn': preset('orbit-dawn', 'Orbit Dawn', 'Light, warm and airy. Made for Orbit.', {
+    backdrop: '#efeaf6', bg: '#fbf9fe', bgElevated: '#ffffff', bgSunken: '#efeaf6', surface: '#f1ecf8', surfaceHover: '#e7e0f2', border: '#e2dbee',
+    text: '#1d1830', textMuted: '#625a7a', accent: '#6a4cf0', accentContrast: '#ffffff', radius: '14px',
+    font: `'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif`,
+  }, true),
   // ── Secret themes: never listed until unlocked. Each also has its own touches in index.css. ──
   'secret-goblin': preset('secret-goblin', 'Goblin Mode', 'Feral. Mossy. Slightly crooked. Unlocked with a secret code.', {
     bg: '#141a0d', bgElevated: '#1b2312', bgSunken: '#0f140a', surface: '#232d17', surfaceHover: '#2c391d', border: '#3a4a25',
@@ -461,3 +481,11 @@ export function readableTextOn(hex: string): string {
 
 /** Hidden themes, shown in Settings only once unlocked with a code. */
 export const SECRET_PRESETS: ThemePresetId[] = ['secret-goblin', 'secret-arcade', 'secret-hackerman', 'secret-disco', 'secret-deepfried'];
+
+/** Each desktop layout's own theme set (shown first in Settings); the first is applied when you switch to it. */
+export const LAYOUT_THEMES: Record<'classic' | 'orbit' | 'workspace' | 'lounge', ThemePresetId[]> = {
+  classic: ['oled-dark', 'midnight', 'aether-glass', 'daylight'],
+  orbit: ['orbit-violet', 'orbit-dusk', 'orbit-dawn'],
+  workspace: [],
+  lounge: [],
+};

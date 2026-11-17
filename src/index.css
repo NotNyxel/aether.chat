@@ -1202,3 +1202,63 @@ select,
 :root[data-ae-theme='secret-deepfried'] :is(h1, h2, h3) {
   text-shadow: 1px 1px 0 #ff2a00, -1px -1px 0 #ff2a00;
 }
+
+/* ── 2.1 Orbit layout (desktop and wide browser windows): floating rounded panels, a dock of
+   rounded squares, a roomier sidebar. Phones and tablets keep their own layouts. ──────────── */
+:root[data-ae-layout='orbit']:not([data-ae-phone='true']):not([data-ae-tablet='true']) {
+  & .ae-shell {
+    gap: 12px;
+    padding: 4px 12px 12px;
+    background: var(--ae-backdrop, var(--ae-bg-sunken));
+  }
+  & .ae-shell > nav {
+    width: 64px;
+    background: transparent;
+    padding-top: 4px;
+    gap: 10px;
+  }
+  /* Dock: rounded squares, the active one ringed instead of Discord's side pill. */
+  & .ae-shell > nav :is(button, a).h-12 {
+    border-radius: 16px !important;
+  }
+  & .ae-shell > nav [data-rail-pill] {
+    display: none;
+  }
+  & .ae-shell > nav [aria-current='page'] {
+    box-shadow: 0 0 0 3px var(--ae-bg-sunken), 0 0 0 5px var(--ae-accent);
+  }
+  & .ae-shell > aside,
+  & .ae-shell > main {
+    border: 1px solid var(--ae-border);
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--ae-bg);
+    box-shadow: 0 10px 34px rgb(0 0 0 / 0.22);
+  }
+  & .ae-shell > aside {
+    width: 284px;
+  }
+  & .ae-shell > aside > header {
+    border-bottom: 0;
+    height: auto;
+    padding: 12px 12px 4px;
+  }
+  & .ae-shell > aside > header > button {
+    height: 40px;
+    border-radius: 14px;
+    border: 1px solid var(--ae-border);
+    background: var(--ae-bg-sunken);
+  }
+  & .ae-shell > aside li > button {
+    border-radius: 12px;
+  }
+  /* You: a rounded card at the bottom of the sidebar. */
+  & .ae-userpanel {
+    margin: 8px;
+    border-radius: 16px;
+    background: var(--ae-surface);
+  }
+  & .ae-chat-header {
+    height: 56px;
+  }
+}

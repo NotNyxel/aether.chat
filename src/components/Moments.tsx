@@ -24,7 +24,8 @@ import { t } from '../lib/i18n';
 import { useUiStore } from '../stores/uiStore';
 import { ask } from './ConfirmDialog';
 import { Dialog } from './Dialog';
-import { CloseIcon, ImageIcon, PlusIcon, TrashIcon, UsersIcon } from './icons';
+import { CloseIcon, ImageIcon, PlusIcon, TrashIcon, UsersIcon, BrushIcon } from './icons';
+import { PhotoEditor } from './PhotoEditor';
 import { Avatar } from './ProfileCard';
 import { prefillDraft } from './ScheduledMessages';
 import { toast } from './Toaster';
@@ -353,6 +354,7 @@ function Composer({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState('');
   const [bg, setBg] = useState(BACKGROUNDS[0]!);
   const [audience, setAudience] = useState<MomentAudience>('friends');
+  const [editPhoto, setEditPhoto] = useState(false);
   useEffect(() => {
     if (!file) return setPreview(null);
     const u = URL.createObjectURL(file);
@@ -388,6 +390,21 @@ function Composer({ onClose }: { onClose: () => void }) {
           <ImageIcon size={15} /> {file ? t('Change photo or video') : t('Photo or video')}
           <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </label>
+        {file && /^image\/(png|jpeg|webp)$/.test(file.type) && (
+          <button type="button" className="ae-press inline-flex items-center gap-2 rounded-ae bg-ae-surface px-3 py-2 text-sm hover:bg-ae-hover" onClick={() => setEditPhoto(true)}>
+            <BrushIcon size={15} /> {t('Edit')}
+          </button>
+        )}
+        {editPhoto && file && (
+          <PhotoEditor
+            file={file}
+            onCancel={() => setEditPhoto(false)}
+            onDone={(f) => {
+              setEditPhoto(false);
+              setFile(f);
+            }}
+          />
+        )}
         {file && (
           <button type="button" className="rounded-ae px-3 py-2 text-sm text-ae-muted hover:bg-ae-hover" onClick={() => setFile(null)}>
             {t('Text only')}

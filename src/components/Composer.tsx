@@ -14,7 +14,9 @@ import type { Attachment, Channel, Message, MessageScope, ServerRole } from '../
 import { useProfiles } from './ConversationBits';
 import { ExpressionPicker, type ExpressionTab } from './ExpressionPicker';
 import { DisplayName } from './MessageItem';
-import { StickerIcon, AttachIcon, BotIcon, ClockIcon, CloseIcon, EyeOffIcon, FileIcon, HashIcon, PlusIcon, PollIcon, ReplyIcon, SendIcon, SmileIcon, TimeoutIcon, TrashIcon, UploadIcon } from './icons';
+import { t } from '../lib/i18n';
+import { PhotoEditor } from './PhotoEditor';
+import { StickerIcon, AttachIcon, BotIcon, BrushIcon, ClockIcon, CloseIcon, EyeOffIcon, FileIcon, HashIcon, PlusIcon, PollIcon, ReplyIcon, SendIcon, SmileIcon, TimeoutIcon, TrashIcon, UploadIcon } from './icons';
 import { PollDialog } from './PollDialog';
 import { Avatar } from './ProfileCard';
 import { BOT_COMMANDS, parseBotCommand } from '../lib/botCommands';
@@ -146,13 +148,19 @@ export function Composer(props: ComposerProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const addFiles = (files: FileList | File[]) => {
+  // The files as picked (by uploaded URL), so photos can be edited even in encrypted chats.
+  const originals = useRef(new Map<string, File>());
+  const [editing, setEditingPhoto] = useState<{ index: number; file: File } | null>(null);
+  const addFiles = (files: FileList | File[], at?: number) => {
     if (e2e.on && !e2e.key) return toast.error('This chat is encrypted. Unlock encrypted messages on this device to send files here.');
     for (const file of Array.from(files).slice(0, 10)) {
       setUploading((n) => n + 1);
       // Each file uploads on its own (a shared mutation only reports back for the last call).
       void uploadAttachmentTo(sb, scope.id, file, e2eKey)
-        .then((a) => setPending((p) => [...p, a].slice(0, 10)))
+        .then((a) => {
+          originals.current.set(a.url, file);
+          setPending((p) => (at !== undefined ? [...p.slice(0, at), a, ...p.slice(at)] : [...p, a]).slice(0, 10));
+        })
         .catch((e: Error) => toast.error(e.message))
         .finally(() => setUploading((n) => n - 1));
     }
@@ -454,6 +462,18 @@ export function Composer(props: ComposerProps) {
           </div>
         )}
 
+        {editing && (
+          <PhotoEditor
+            file={editing.file}
+            onCancel={() => setEditingPhoto(null)}
+            onDone={(f) => {
+              const { index } = editing;
+              setEditingPhoto(null);
+              setPending((p) => p.filter((_, j) => j !== index));
+              addFiles([f], index);
+            }}
+          />
+        )}
         {(pending.length > 0 || uploading > 0) && (
           <div className="ae-scroll flex gap-2.5 overflow-x-auto border-b border-ae-border/60 p-3">
             {pending.map((a, i) => (
@@ -475,6 +495,17 @@ export function Composer(props: ComposerProps) {
                   >
                     <EyeOffIcon size={14} />
                   </button>
+                  {originals.current.get(a.url)?.type.match(/^image\/(png|jpeg|webp)$/) && (
+                    <button
+                      type="button"
+                      data-tip={t('Edit photo')}
+                      aria-label={t('Edit photo')}
+                      className="grid h-6 w-6 place-items-center rounded text-ae-muted hover:text-ae-text"
+                      onClick={() => setEditingPhoto({ index: i, file: originals.current.get(a.url)! })}
+                    >
+                      <BrushIcon size={14} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     data-tip="Alt text"

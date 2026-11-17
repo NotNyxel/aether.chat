@@ -1630,5 +1630,61 @@ await expectOk('shared lists: chat members read and edit, outsiders cannot, serv
   if ((await db.query(`select count(*)::int n from public.shared_list_items where list_id = $1`, [list.id])).rows[0].n !== 0) throw new Error('items left');
 });
 
+await expectOk('mini-games: seats, turns, legal moves only, wins and draws, no direct writes', async () => {
+  const conv = (await db.query(`select conversation_id from public.conversation_members where user_id = $1 limit 1`, [A])).rows[0].conversation_id;
+  const other = (await db.query(`select user_id from public.conversation_members where conversation_id = $1 and user_id <> $2 limit 1`, [conv, A])).rows[0]?.user_id;
+  const outsider = (await db.query(`select id from public.users where id not in (select user_id from public.conversation_members where conversation_id = $1) limit 1`, [conv])).rows[0]?.id;
+  if (!other) throw new Error('need a second member');
+  const fails = async (who, sql, params) => {
+    try {
+      await as(who, sql, params);
+    } catch {
+      return true;
+    }
+    return false;
+  };
+  const g = (await as(A, `select public.start_game($1, 'tictactoe') id`, [conv])).rows[0].id;
+  if (!(await fails(A, `select public.play_move($1, 0)`, [g]))) throw new Error('moved before anyone joined');
+  if (outsider && !(await fails(outsider, `select public.join_game($1)`, [g]))) throw new Error('outsider joined');
+  await as(other, `select public.join_game($1)`, [g]);
+  if (!(await fails(other, `select public.play_move($1, 4)`, [g]))) throw new Error('played out of turn');
+  // A: 0, 1, 2 across the top; other: 3, 4.
+  await as(A, `select public.play_move($1, 0)`, [g]);
+  if (!(await fails(other, `select public.play_move($1, 0)`, [g]))) throw new Error('played on a taken cell');
+  await as(other, `select public.play_move($1, 3)`, [g]);
+  await as(A, `select public.play_move($1, 1)`, [g]);
+  await as(other, `select public.play_move($1, 4)`, [g]);
+  await as(A, `select public.play_move($1, 2)`, [g]);
+  const row = (await as(other, `select winner, board from public.chat_games where id = $1`, [g])).rows[0];
+  if (row.winner !== 0 || row.board !== 'AAABB....') throw new Error(JSON.stringify(row));
+  if (!(await fails(other, `select public.play_move($1, 5)`, [g]))) throw new Error('moved after the end');
+  if (!(await fails(A, `update public.chat_games set winner = 1 where id = $1`, [g])) && (await db.query(`select winner from public.chat_games where id = $1`, [g])).rows[0].winner !== 0)
+    throw new Error('direct update allowed');
+  if (outsider && (await as(outsider, `select count(*)::int n from public.chat_games where id = $1`, [g])).rows[0].n !== 0) throw new Error('outsider can see it');
+
+  // Connect four: columns stack; four in a column wins.
+  const c = (await as(other, `select public.rematch($1) id`, [g])).rows[0].id; // tictactoe rematch: other goes first
+  const r = (await as(other, `select player_a, kind from public.chat_games where id = $1`, [c])).rows[0];
+  if (r.player_a !== other) throw new Error('rematch seats not swapped');
+  const c4 = (await as(A, `select public.start_game($1, 'connect4', $2) id`, [conv, other])).rows[0].id;
+  for (let i = 0; i < 3; i++) {
+    await as(A, `select public.play_move($1, 0)`, [c4]);
+    await as(other, `select public.play_move($1, 1)`, [c4]);
+  }
+  await as(A, `select public.play_move($1, 0)`, [c4]);
+  const c4row = (await db.query(`select winner, substr(board, 36, 1) bottom from public.chat_games where id = $1`, [c4])).rows[0];
+  if (c4row.winner !== 0 || c4row.bottom !== 'A') throw new Error('connect4 ' + JSON.stringify(c4row));
+  const full = (await as(A, `select public.start_game($1, 'connect4', $2) id`, [conv, other])).rows[0].id;
+  for (let i = 0; i < 6; i++) await as(i % 2 ? other : A, `select public.play_move($1, 6)`, [full]);
+  if (!(await fails(A, `select public.play_move($1, 6)`, [full]))) throw new Error('played in a full column');
+
+  // Draw detection and giving up.
+  const d = (await db.query(`select public.game_result('tictactoe', 'ABAABBBAA') r`)).rows[0].r;
+  if (d !== 2) throw new Error('draw ' + d);
+  await as(other, `select public.leave_game($1)`, [full]);
+  if ((await db.query(`select winner from public.chat_games where id = $1`, [full])).rows[0].winner !== 0) throw new Error('give up');
+  await db.query(`delete from public.chat_games where scope_id = $1`, [conv]);
+});
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

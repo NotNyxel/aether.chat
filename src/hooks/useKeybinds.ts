@@ -34,6 +34,8 @@ export function isSafeGlobal(combo: string): boolean {
   return comboHasModifier(combo) || /^(F\d{1,2}|ScrollLock|Pause|Insert|NumpadMultiply|NumpadDivide|NumpadSubtract|NumpadAdd)$/.test(combo);
 }
 
+let regChain: Promise<void> = Promise.resolve();
+
 export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | 'toggleDeafen' | 'setMuted'>): void {
   const keybinds = useSettingsStore((s) => s.keybinds);
   const globalOn = useSettingsStore((s) => s.system.globalShortcuts) && isTauri;
@@ -66,10 +68,14 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
     // letter working in every other app.
     const unique = bindings.filter((b, i) => bindings.findIndex((x) => x.combo === b.combo) === i && isSafeGlobal(b.combo));
 
-    void registerGlobalShortcuts(unique).then((r) => {
+    // One after another: the old shortcuts must be released before the new ones are taken, or
+    // Windows says "already in use" and a changed keybind ends up registered nowhere.
+    regChain = regChain.then(async () => {
+      if (disposed) return;
+      const r = await registerGlobalShortcuts(unique);
       failedGlobal = r.failed;
       listeners.forEach((fn) => fn());
-      if (disposed) void r.dispose();
+      if (disposed) await r.dispose();
       else {
         dispose = r.dispose;
         setGlobalCombos(new Set(r.registered));
@@ -78,7 +84,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
     return () => {
       disposed = true;
       setGlobalCombos(new Set());
-      void dispose?.();
+      regChain = regChain.then(() => dispose?.());
     };
   }, [globalOn, keybinds.toggleMute, keybinds.toggleDeafen, keybinds.cyclePlayMode, keybinds.saveClip, clipsOn, ptt]);
 
@@ -90,6 +96,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
     const lMute = local(keybinds.toggleMute);
     const lDeafen = local(keybinds.toggleDeafen);
     const lMode = local(keybinds.cyclePlayMode ?? null);
+    const lClip = clipsOn ? local(keybinds.saveClip ?? null) : null;
 
     const onDown = (e: KeyboardEvent) => {
       if (lPtt && matchesCombo(e, lPtt) && allowed(e, lPtt)) {
@@ -107,6 +114,9 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
       } else if (lMode && matchesCombo(e, lMode) && allowed(e, lMode)) {
         e.preventDefault();
         cyclePlayMode();
+      } else if (lClip && matchesCombo(e, lClip) && allowed(e, lClip)) {
+        e.preventDefault();
+        void clipNow();
       }
     };
     const onUp = (e: KeyboardEvent) => {
@@ -126,7 +136,7 @@ export function useKeybinds(voice: Pick<VoiceEngine, 'status' | 'toggleMute' | '
       window.removeEventListener('keyup', onUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [keybinds, ptt, globalCombos, setMuted, toggleDeafen, toggleMute]);
+  }, [keybinds, ptt, globalCombos, setMuted, toggleDeafen, toggleMute, clipsOn]);
 
   // Tray menu.
   useEffect(() => onTrayAction((a) => (a === 'mute' ? actions.current.toggleMute() : actions.current.toggleDeafen())), []);

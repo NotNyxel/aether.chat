@@ -1107,31 +1107,29 @@ pub async fn clips_hash(path: String) -> Res<String> {
 
 // ── Roblox: which experience you're in ──────────────────────────────────────────────────────
 
-/// The place you joined, from a Roblox log. Newer clients log little; older ones say
-/// "Joining game '…' place 123 at …". Takes the last mention, strongest form first.
-fn place_in_log(text: &str) -> Option<u64> {
+/// The game you're in right now, from Roblox's own join/leave events (like Medal and Bloxstrap).
+/// Web requests in the log are ignored: the home screen loads your friends' games, which aren't
+/// yours. Returns None in the menus (after you left a game, or before joining one).
+fn place_in_log(text: &str) -> Option<(u64, Option<u64>)> {
     let num = |s: &str| s.split(|c: char| !c.is_ascii_digit()).next().and_then(|n| n.parse::<u64>().ok()).filter(|n| *n > 0);
-    let mut joining = None;
-    let mut place_id = None;
-    let mut place_ids = None;
+    let mut current: Option<(u64, Option<u64>)> = None;
     for line in text.lines() {
-        if let Some(i) = line.find("Joining game") {
+        if let Some(i) = line.find("! Joining game") {
             if let Some(p) = line[i..].split(" place ").nth(1).and_then(num) {
-                joining = Some(p);
+                current = Some((p, None));
             }
-        }
-        let lower = line.to_ascii_lowercase();
-        if let Some(i) = lower.rfind("placeids=") {
-            if let Some(p) = num(&line[i + 9..]) {
-                place_ids = Some(p);
+        } else if let Some(i) = line.find("game_join_loadtime:") {
+            let rest = &line[i..];
+            let place = rest.find("placeid:").and_then(|k| num(&rest[k + 8..]));
+            let universe = rest.find("universeid:").and_then(|k| num(&rest[k + 11..]));
+            if let Some(p) = place {
+                current = Some((p, universe));
             }
-        } else if let Some(i) = lower.rfind("placeid=") {
-            if let Some(p) = num(&line[i + 8..]) {
-                place_id = Some(p);
-            }
+        } else if line.contains("returnToLuaApp: (stage:UGCGame)") || line.contains("leaveUGCGameInternal") || line.contains("Time to disconnect replication data") {
+            current = None;
         }
     }
-    joining.or(place_id).or(place_ids)
+    current
 }
 
 #[derive(Serialize)]
@@ -1140,12 +1138,10 @@ pub struct RobloxPlace {
     name: Option<String>,
 }
 
-/// Reads the newest Roblox log for the place you joined and looks up its name.
-#[tauri::command]
-pub async fn roblox_place() -> Option<RobloxPlace> {
+/// The newest Roblox player log, read for the current game (None in the menus).
+fn current_place() -> Option<(u64, Option<u64>)> {
     let logs = std::env::var("LOCALAPPDATA").ok().map(|d| PathBuf::from(d).join("Roblox").join("logs"))?;
-    // The player's logs, newest first (not the crash handler's).
-    let mut files: Vec<(SystemTime, PathBuf)> = fs::read_dir(&logs)
+    let newest = fs::read_dir(&logs)
         .ok()?
         .filter_map(|d| d.ok())
         .map(|d| d.path())
@@ -1154,17 +1150,15 @@ pub async fn roblox_place() -> Option<RobloxPlace> {
             n.ends_with(".log") && n.contains("Player") && !n.contains("CrashHandler")
         })
         .filter_map(|p| Some((fs::metadata(&p).ok()?.modified().ok()?, p)))
-        .collect();
-    files.sort_by(|a, b| b.0.cmp(&a.0));
-    let mut place: Option<u64> = None;
-    for (_, path) in files.iter().take(3) {
-        let text = fs::read(path).ok()?;
-        place = place_in_log(&String::from_utf8_lossy(&text));
-        if place.is_some() {
-            break;
-        }
-    }
-    let place_id = place?;
+        .max_by_key(|(t, _)| *t)?
+        .1;
+    place_in_log(&String::from_utf8_lossy(&fs::read(newest).ok()?))
+}
+
+/// Reads the newest Roblox log for the place you joined and looks up its name.
+#[tauri::command]
+pub async fn roblox_place() -> Option<RobloxPlace> {
+    let (place_id, universe) = current_place()?;
     static NAMES: Mutex<Option<HashMap<u64, String>>> = Mutex::new(None);
     if let Some(n) = NAMES.lock().unwrap().get_or_insert_with(HashMap::new).get(&place_id) {
         return Some(RobloxPlace { place_id, name: Some(n.clone()) });
@@ -1172,8 +1166,13 @@ pub async fn roblox_place() -> Option<RobloxPlace> {
     let _ = rustls::crypto::ring::default_provider().install_default();
     let client = reqwest::Client::builder().user_agent("AetherClips/1.0").timeout(Duration::from_secs(6)).build().ok()?;
     let name = async {
-        let u: serde_json::Value = client.get(format!("https://apis.roblox.com/universes/v1/places/{place_id}/universe")).send().await.ok()?.json().await.ok()?;
-        let universe = u["universeId"].as_u64()?;
+        let universe = match universe {
+            Some(u) => u,
+            None => {
+                let u: serde_json::Value = client.get(format!("https://apis.roblox.com/universes/v1/places/{place_id}/universe")).send().await.ok()?.json().await.ok()?;
+                u["universeId"].as_u64()?
+            }
+        };
         let g: serde_json::Value = client.get(format!("https://games.roblox.com/v1/games?universeIds={universe}")).send().await.ok()?.json().await.ok()?;
         g["data"][0]["name"].as_str().map(|s| s.to_string())
     }
@@ -1198,6 +1197,23 @@ pub async fn clips_pick_folder(app: AppHandle) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn roblox_log_tracks_joins_and_ignores_friends() {
+        let home = "x https://games.roblox.com//v1/games/multiget-place-details?placeIds=93844268955707
+";
+        assert_eq!(place_in_log(home), None, "friends' games on the home screen aren't yours");
+        let joined = format!("{home}[FLog::Output] ! Joining game 'abc' place 114234929420007 at 10.0.0.1
+[FLog::GameJoinLoadTime] Report game_join_loadtime: placeid:114234929420007, join_time:0.8, universeid:555, x
+");
+        assert_eq!(place_in_log(&joined), Some((114234929420007, Some(555))));
+        let left = format!("{joined}[FLog::SingleSurfaceApp] returnToLuaApp: (stage:UGCGame).
+");
+        assert_eq!(place_in_log(&left), None, "back in the menus");
+        let rejoined = format!("{left}[FLog::Output] ! Joining game 'def' place 42 at 10.0.0.2
+");
+        assert_eq!(place_in_log(&rejoined), Some((42, None)));
+    }
 
     // Captures the default mic and game sound for 3 s and prints their levels:
     //   cargo test audio_levels -- --ignored --nocapture
@@ -1228,7 +1244,7 @@ mod tests {
         let place = tauri::async_runtime::block_on(roblox_place());
         match place {
             Some(p) => println!("place {} → {:?}", p.place_id, p.name),
-            None => println!("no Roblox log found"),
+            None => println!("not in a Roblox game right now (menus or closed)"),
         }
     }
 

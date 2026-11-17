@@ -3,6 +3,18 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.4.3] - 2026-11-17
+
+### Fixes
+
+- **Roblox shows your game, not a friend's.** Aether now follows Roblox's own join and leave events (the way clip
+  apps like Medal do) instead of anything the home screen loads, so friends' games are never mistaken for yours.
+  In the menus it just says Roblox.
+- **Changing the clip key works.** Shortcuts are swapped one after the other now, so a new key is never left
+  unregistered; the clip key also works while Aether is in front.
+- The Clips page and settings show **your** clip key, and warn if the key can't work during games or another app
+  already uses it.
+
 ## [2.4.2] - 2026-11-17
 
 ### Clips: much lighter, better sound

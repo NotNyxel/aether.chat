@@ -1456,3 +1456,15 @@ select,
     margin-inline: auto;
   }
 }
+
+/* Chat header: on phones, secondary buttons live in the ⋮ menu (MessagePane). */
+.ae-chat-more {
+  display: none;
+}
+:root[data-ae-phone='true'] .ae-chat-more {
+  display: inline-flex;
+  order: 99;
+}
+:root[data-ae-phone='true'] .ae-chat-extras {
+  display: none !important;
+}

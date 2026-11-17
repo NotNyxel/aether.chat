@@ -4,9 +4,10 @@
  * pins and search), jump to present, auto mark-as-read, pins and search panels, drag-and-drop
  * uploads, typing indicator and the composer.
  */
+import { openContextMenu } from './ContextMenu';
 import { ListsPanel } from './SharedLists';
 import { GamesPanel } from './ChatGames';
-import { ArrowDownIcon, GameIcon, ImageIcon, ListIcon, LockIcon, MegaphoneIcon, PinIcon } from './icons';
+import { ArrowDownIcon, GameIcon, ImageIcon, ListIcon, MoreVerticalIcon, TvIcon, LockIcon, MegaphoneIcon, PinIcon } from './icons';
 import { t } from '../lib/i18n';
 import { ask } from './ConfirmDialog';
 import { messageRenderKey, useServerMembers, useServers } from '../hooks/useChatData';
@@ -325,8 +326,28 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
         <MobileBack onClick={onBack} />
         {header}
         <div className="ml-3 flex shrink-0 items-center gap-2">
-          <WatchButton scopeId={scope.id} onOpen={() => setWatchOpen((v) => !v)} />
+          {/* On phones these move into the ⋮ menu so the chat's name keeps its room. */}
+          <button
+            type="button"
+            className="ae-chat-more leading-none opacity-70 hover:opacity-100"
+            aria-label={t('More')}
+            onClick={(e) =>
+              openContextMenu(e, [
+                { label: t('Pinned messages'), icon: <PinIcon size={15} />, onClick: () => setPanel('pins') },
+                { label: t('Media & files'), icon: <ImageIcon size={15} />, onClick: () => setPanel('media') },
+                { label: t('Lists'), icon: <ListIcon size={15} />, onClick: () => setPanel('lists') },
+                { label: t('Games'), icon: <GameIcon size={15} />, onClick: () => setPanel('games') },
+                { label: t('Watch together'), icon: <TvIcon size={15} />, onClick: () => setWatchOpen(true) },
+              ])
+            }
+          >
+            <MoreVerticalIcon size={18} className="ae-ico" />
+          </button>
+          <span className="ae-chat-extras contents">
+            <WatchButton scopeId={scope.id} onOpen={() => setWatchOpen((v) => !v)} />
+          </span>
           <NotificationBell scope={scope} />
+          <span className="ae-chat-extras contents">
           <button
             type="button"
             title="Pinned messages"
@@ -362,6 +383,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
           >
             <ImageIcon size={16} className="ae-ico" />
           </button>
+          </span>
           <form
             className="ae-desktop-only"
             onSubmit={(e) => {

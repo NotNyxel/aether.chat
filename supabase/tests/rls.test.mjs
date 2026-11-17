@@ -1686,5 +1686,54 @@ await expectOk('mini-games: seats, turns, legal moves only, wins and draws, no d
   await db.query(`delete from public.chat_games where scope_id = $1`, [conv]);
 });
 
+await expectOk('apps: secrets stay hidden, tokens post only where installed, commands checked, managers install', async () => {
+  const fails = async (who, sql, params) => {
+    try {
+      await as(who, sql, params);
+    } catch {
+      return true;
+    }
+    return false;
+  };
+  const made = (await as(A, `select * from public.create_bot('Helper Bot', 'Says hi')`)).rows[0];
+  if (!made.token.startsWith('aeb_') || made.token.length < 60) throw new Error('token ' + made.token);
+  const stored = (await db.query(`select token_hash, signing_secret from public.bots where id = $1`, [made.id])).rows[0];
+  if (stored.token_hash === made.token || stored.token_hash.length !== 64) throw new Error('token stored in plain');
+  if (!(await fails(A, `select token_hash from public.bots where id = $1`, [made.id]))) throw new Error('hash readable');
+  if (!(await fails(A, `select signing_secret from public.bots where id = $1`, [made.id]))) throw new Error('secret readable');
+  if ((await as(A, `select public.bot_signing_secret($1) s`, [made.id])).rows[0].s !== stored.signing_secret) throw new Error('owner secret');
+  if ((await as(B, `select public.bot_signing_secret($1) s`, [made.id])).rows[0].s !== null) throw new Error('other saw secret');
+  if ((await as(B, `select count(*)::int n from public.bots where id = $1`, [made.id])).rows[0].n !== 0) throw new Error('private app visible');
+  await as(A, `insert into public.bot_commands (bot_id, name, description) values ($1, 'hello', 'Say hello')`, [made.id]);
+  if (!(await fails(B, `insert into public.bot_commands (bot_id, name) values ($1, 'evil')`, [made.id]))) throw new Error('other added command');
+
+  // A server A manages, a text channel in it, and someone who can't manage it.
+  const srv = (await db.query(`select s.id from public.servers s where s.owner_id = $1 limit 1`, [A])).rows[0]?.id;
+  if (!srv) throw new Error('A owns no server');
+  const ch = (await db.query(`select id from public.channels where server_id = $1 and type = 'text' limit 1`, [srv])).rows[0].id;
+  // Not installed yet: the token can't post.
+  if (!(await fails('00000000-0000-0000-0000-000000000000', `select public.bot_post($1, $2, 'hi')`, [made.token, ch]))) throw new Error('posted before install');
+  const member = (await db.query(`select user_id from public.server_members where server_id = $1 and user_id <> $2 limit 1`, [srv, A])).rows[0]?.user_id;
+  if (member && !(await fails(member, `insert into public.server_bots (server_id, bot_id, added_by) values ($1, $2, $3)`, [srv, made.id, member]))) throw new Error('non-manager installed');
+  await as(A, `insert into public.server_bots (server_id, bot_id, added_by) values ($1, $2, $3)`, [srv, made.id, A]);
+  if (member && (await as(member, `select count(*)::int n from public.bots where id = $1`, [made.id])).rows[0].n !== 1) throw new Error('member cannot see installed app');
+  const msg = (await db.query(`select public.bot_post($1, $2, 'Hello from the API') id`, [made.token, ch])).rows[0].id;
+  const m = (await db.query(`select is_bot, bot_name, author_id, content from public.messages where id = $1`, [msg])).rows[0];
+  if (!m.is_bot || m.bot_name !== 'Helper Bot' || m.author_id !== null) throw new Error(JSON.stringify(m));
+  if (!(await fails(A, `select public.bot_post('aeb_wrong', $1, 'x')`, [ch]))) throw new Error('bad token posted');
+  // Reset: the old token stops working.
+  const fresh = (await as(A, `select public.reset_bot_token($1) t`, [made.id])).rows[0].t;
+  if (!(await fails(A, `select public.bot_post($1, $2, 'x')`, [made.token, ch]))) throw new Error('old token still works');
+  await db.query(`select public.bot_post($1, $2, 'new token works')`, [fresh, ch]);
+  // Commands: real ones only, and only for people who can post there.
+  await as(A, `select public.check_bot_command($1, $2, 'hello')`, [ch, made.id]);
+  if (!(await fails(A, `select public.check_bot_command($1, $2, 'nope')`, [ch, made.id]))) throw new Error('unknown command accepted');
+  if (!(await fails(A, `select public.bot_reply($1, $2, $3, 'hello', 'x')`, [made.id, ch, A]))) throw new Error('users can call bot_reply');
+  const outsider = (await db.query(`select id from public.users where id not in (select user_id from public.server_members where server_id = $1) limit 1`, [srv])).rows[0]?.id;
+  if (outsider && !(await fails(outsider, `select public.check_bot_command($1, $2, 'hello')`, [ch, made.id]))) throw new Error('outsider ran command');
+  await db.query(`delete from public.messages where channel_id = $1 and is_bot and bot_name = 'Helper Bot'`, [ch]);
+  await as(A, `delete from public.bots where id = $1`, [made.id]);
+});
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

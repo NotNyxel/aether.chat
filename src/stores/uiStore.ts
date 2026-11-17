@@ -8,7 +8,7 @@ export function nowHomeOnDesktop(): boolean {
   return effectiveLayout(useSettingsStore.getState().theme) !== 'classic' && !isPhoneLayout() && !isTabletLayout();
 }
 
-export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows' | 'standing' | 'admin';
+export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows' | 'standing' | 'developer' | 'admin';
 
 export type ServerSettingsTab = 'overview' | 'roles' | 'members' | 'invites' | 'bans' | 'audit' | 'soundboard' | 'moderation' | 'automod' | 'community' | 'bot' | 'emoji' | 'stickers';
 

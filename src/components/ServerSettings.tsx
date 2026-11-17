@@ -3,6 +3,7 @@
  * Every tab and control is gated by the caller's permissions and role rank; the database
  * enforces the same rules (RLS + RPC checks), so the UI only hides what would fail anyway.
  */
+import { ServerApps } from './Developer';
 import { inviteLink } from '../lib/invites';
 import { ask, promptText } from './ConfirmDialog';
 import { AutomodTab, ModerationTab, TransferOwnership } from './ServerModeration';
@@ -936,7 +937,7 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
   const tabs: { id: ServerSettingsTab; label: string; show: boolean }[] = [
     { id: 'overview', label: 'Overview', show: true },
     { id: 'community', label: 'Safety & Welcome', show: rank.can(Permission.MANAGE_SERVER) },
-    { id: 'bot', label: 'Bot', show: rank.can(Permission.MANAGE_SERVER) },
+    { id: 'bot', label: 'Bots & apps', show: rank.can(Permission.MANAGE_SERVER) },
     { id: 'roles', label: 'Roles', show: rank.can(Permission.MANAGE_ROLES) },
     {
       id: 'members',
@@ -985,6 +986,11 @@ function ServerSettingsInner({ server, userId, tab }: { server: Server; userId: 
           {active === 'automod' && <AutomodTab server={server} />}
           {active === 'community' && <CommunityTab server={server} userId={userId} editable={rank.can(Permission.MANAGE_SERVER)} />}
           {active === 'bot' && <BotTab server={server} userId={userId} editable={rank.can(Permission.MANAGE_SERVER)} />}
+          {active === 'bot' && (
+            <div className="mt-6">
+              <ServerApps serverId={server.id} editable={rank.can(Permission.MANAGE_SERVER)} />
+            </div>
+          )}
           {active === 'roles' && <RolesTab server={server} rank={rank} />}
           {active === 'members' && <MembersTab server={server} rank={rank} />}
           {active === 'emoji' && <EmojiTab server={server} canManage={rank.can(Permission.MANAGE_EXPRESSIONS)} />}

@@ -20,6 +20,7 @@ import { StickerIcon, AttachIcon, BotIcon, BrushIcon, ClockIcon, CloseIcon, EyeO
 import { PollDialog } from './PollDialog';
 import { Avatar } from './ProfileCard';
 import { BOT_COMMANDS, parseBotCommand } from '../lib/botCommands';
+import { useRunAppCommand, useServerApps } from '../hooks/useBots';
 import { useSupabase } from '../lib/supabase';
 import { useMeId } from '../hooks/useMe';
 import { useServers } from '../hooks/useChatData';
@@ -148,6 +149,12 @@ export function Composer(props: ComposerProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Apps (2.1): slash commands from bots added to this server.
+  const appServerId = scope.kind === 'channel' ? (props.channels.find((c) => c.id === scope.id)?.server_id ?? null) : null;
+  const { data: apps } = useServerApps(appServerId);
+  const appCommands = (apps?.commands ?? []).map((c) => ({ ...c, bot: apps!.bots.find((b) => b.id === c.bot_id) }));
+  const runApp = useRunAppCommand();
+
   // The files as picked (by uploaded URL), so photos can be edited even in encrypted chats.
   const originals = useRef(new Map<string, File>());
   const [editing, setEditingPhoto] = useState<{ index: number; file: File } | null>(null);
@@ -178,26 +185,38 @@ export function Composer(props: ComposerProps) {
   // ── Autocomplete ──────────────────────────────────────────────────────────────────────────
   const trigger = useMemo(() => {
     if (dismissed) return null;
-    const slash = props.botCommands ? /^\/([a-z0-9]*)$/i.exec(draft.slice(0, caret)) : null;
+    const slash = props.botCommands || appCommands.length ? /^\/([a-z0-9_-]*)$/i.exec(draft.slice(0, caret)) : null;
     if (slash) return { kind: '/', query: slash[1]!.toLowerCase(), start: 0 };
     const m = TRIGGER.exec(draft.slice(0, caret));
     if (!m) return null;
     const [, , kind, query] = m;
     if (kind === ':' && query.length < 2) return null;
     return { kind, query: query.toLowerCase(), start: caret - query.length - 1 };
-  }, [draft, caret, dismissed, props.botCommands]);
+  }, [draft, caret, dismissed, props.botCommands, appCommands.length]);
 
   const suggestions = useMemo<Suggestion[]>(() => {
     if (!trigger) return [];
     const q = trigger.query;
     if (trigger.kind === '/') {
-      return BOT_COMMANDS.filter((c) => c.name.startsWith(q)).map((c) => ({
-        key: c.name,
-        insert: `/${c.name} `,
-        label: `/${c.name}${c.args ? ` ${c.args}` : ''}`,
-        sub: `${c.description}${c.mod ? ' · moderators' : ''}`,
-        icon: <BotIcon size={18} className="text-ae-accent" />,
-      }));
+      const builtIn = (props.botCommands ? BOT_COMMANDS : [])
+        .filter((c) => c.name.startsWith(q))
+        .map((c) => ({
+          key: c.name,
+          insert: `/${c.name} `,
+          label: `/${c.name}${c.args ? ` ${c.args}` : ''}`,
+          sub: `${c.description}${c.mod ? ' · moderators' : ''}`,
+          icon: <BotIcon size={18} className="text-ae-accent" />,
+        }));
+      const fromApps = appCommands
+        .filter((c) => c.name.startsWith(q) && !builtIn.some((b) => b.key === c.name))
+        .map((c) => ({
+          key: `${c.bot_id}:${c.name}`,
+          insert: `/${c.name} `,
+          label: `/${c.name}`,
+          sub: [c.description, c.bot?.name].filter(Boolean).join(' · '),
+          icon: c.bot?.avatar_url ? <img src={c.bot.avatar_url} alt="" className="h-[18px] w-[18px] rounded-full object-cover" /> : <BotIcon size={18} className="text-ae-accent" />,
+        }));
+      return [...builtIn, ...fromApps];
     }
     if (trigger.kind === '@') {
       const people: Suggestion[] = [];
@@ -287,6 +306,19 @@ export function Composer(props: ComposerProps) {
   const submit = () => {
     const content = draft.trim();
     if ((!content && pending.length === 0) || uploading > 0 || cooldownLeft > 0 || props.timedOutUntil) return;
+    const appMatch = scope.kind === 'channel' && pending.length === 0 ? /^\/([a-z0-9_-]{1,32})(?:\s+([\s\S]*))?$/i.exec(content.trim()) : null;
+    const appCommand = appMatch && !(props.botCommands && parseBotCommand(content)) ? appCommands.find((c) => c.name === appMatch[1]!.toLowerCase()) : undefined;
+    if (appCommand) {
+      setDraft('');
+      runApp({ channelId: scope.id, botId: appCommand.bot_id, command: appCommand.name, args: (appMatch![2] ?? '').trim() }).then(
+        () => props.onSent(),
+        (e: Error) => {
+          toast.error(e.message);
+          setDraft(content);
+        },
+      );
+      return;
+    }
     const command = props.botCommands && scope.kind === 'channel' && pending.length === 0 ? parseBotCommand(content) : null;
     if (command) {
       setDraft('');

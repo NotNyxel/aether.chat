@@ -127,7 +127,7 @@
 .ae-avatar[data-deco]::after {
   content: '';
   position: absolute;
-  inset: -20%;
+  inset: -55%; /* 140% box + free room (see lib/decoArt.ts) */
   z-index: 2;
   pointer-events: none;
   background: var(--deco-art) center / contain no-repeat;

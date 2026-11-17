@@ -6,10 +6,13 @@
  */
 
 export const svgUrl = (svg: string) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-const wrap = (body: string, vb = '0 0 120 120') => `<svg xmlns='http://www.w3.org/2000/svg' viewBox='${vb}'>${body}</svg>`;
+// Avatar art uses a 120-unit head box with 30 units of free room on every side (-30..150), so ears,
+// hats and floating halos can poke out without the SVG edge cutting them off.
+const wrap = (body: string, vb = '-30 -30 180 180') => `<svg xmlns='http://www.w3.org/2000/svg' viewBox='${vb}'>${body}</svg>`;
 const float = (dy = 3, dur = 2.4) => `<animateTransform attributeName='transform' type='translate' values='0 0;0 -${dy};0 0' dur='${dur}s' repeatCount='indefinite'/>`;
 
-// Avatar box: the decoration layer is 140% of the avatar, so the head is a circle at (60,60) r≈43.
+// Avatar box: the head is a circle at (60,60) r≈43; the decoration layer is 210% of the avatar
+// (viewBox -30..150), i.e. 140% for the 0..120 box plus room around it.
 export interface AvatarDeco {
   id: string;
   label: string;

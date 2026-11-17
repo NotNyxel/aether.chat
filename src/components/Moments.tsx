@@ -20,7 +20,6 @@ import { useConversationActions } from '../hooks/useSocialData';
 import { useEscape } from '../lib/escape';
 import { t } from '../lib/i18n';
 import { useUiStore } from '../stores/uiStore';
-import { ask } from './ConfirmDialog';
 import { CloseIcon, PlusIcon, TrashIcon, UsersIcon } from './icons';
 import { Avatar } from './ProfileCard';
 import { prefillDraft } from './ScheduledMessages';
@@ -117,7 +116,7 @@ function PersonBubble({ person, size }: { person: PersonMoments; size: number })
   );
 }
 
-function MomentBody({ m, onVideoEnd, paused }: { m: Moment; onVideoEnd: () => void; paused: boolean }) {
+function MomentBody({ m, onVideoEnd, paused, onReady }: { m: Moment; onVideoEnd: () => void; paused: boolean; onReady: () => void }) {
   const { data: url } = useMomentMedia(m.media_path);
   const { data: overlay } = useMomentMedia(m.overlay_path ?? null);
   const video = useRef<HTMLVideoElement>(null);
@@ -138,13 +137,13 @@ function MomentBody({ m, onVideoEnd, paused }: { m: Moment; onVideoEnd: () => vo
       {m.kind === 'video' && m.overlay_path ? (
         // Made in the studio: the video fills a 9:16 frame and its additions sit on top, as composed.
         <div className="relative aspect-[9/16] max-h-full w-full max-w-full">
-          <video ref={video} src={url} className="absolute inset-0 h-full w-full object-cover" playsInline autoPlay onEnded={onVideoEnd} />
+          <video ref={video} src={url} className="absolute inset-0 h-full w-full object-cover" playsInline autoPlay onEnded={onVideoEnd} onLoadedData={onReady} onError={onReady} />
           {overlay && <img src={overlay} alt="" className="pointer-events-none absolute inset-0 h-full w-full" draggable={false} />}
         </div>
       ) : m.kind === 'video' ? (
-        <video ref={video} src={url} className="max-h-full max-w-full" playsInline autoPlay onEnded={onVideoEnd} />
+        <video ref={video} src={url} className="max-h-full max-w-full" playsInline autoPlay onEnded={onVideoEnd} onLoadedData={onReady} onError={onReady} />
       ) : (
-        <img src={url} alt="" className="max-h-full max-w-full object-contain" draggable={false} />
+        <img src={url} alt="" className="max-h-full max-w-full object-contain" draggable={false} onLoad={onReady} onError={onReady} />
       )}
       {m.body && <p className="absolute inset-x-6 bottom-20 rounded-xl bg-black/55 px-4 py-2 text-center text-[15px] text-white">{m.body}</p>}
     </div>
@@ -226,11 +225,18 @@ function Viewer({ start, onClose }: { start: string; onClose: () => void }) {
     }
   };
 
+  // The countdown starts only once the photo or video has loaded, so nobody misses it.
+  const [ready, setReady] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  useEffect(() => {
+    setReady(m?.kind === 'text');
+    setConfirmDelete(false);
+  }, [m?.id, m?.kind]);
   useEffect(() => {
     if (!m) return;
     if (m.user_id !== me) seen(m.id);
     setProgress(0);
-    if (m.kind === 'video') return; // advances when it ends
+    if (m.kind === 'video' || !ready) return; // videos advance when they end
     const total = 6000;
     const started = Date.now();
     let elapsed = 0;
@@ -241,7 +247,7 @@ function Viewer({ start, onClose }: { start: string; onClose: () => void }) {
       if (elapsed >= total) next();
     }, 50);
     return () => clearInterval(id);
-  }, [m?.id]);
+  }, [m?.id, ready]);
   // Track pause time so a held moment doesn't skip ahead.
   const pausedRef = useRef(false);
   const pausedFor = useRef(0);
@@ -287,7 +293,12 @@ function Viewer({ start, onClose }: { start: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[98] grid place-items-center bg-black/90 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={t('{name}’s moment', { name })}>
       <div className="relative h-[min(92vh,820px)] w-[min(92vw,460px)] overflow-hidden rounded-2xl bg-black shadow-2xl">
-        <MomentBody m={m} paused={paused} onVideoEnd={next} />
+        <MomentBody m={m} paused={paused || confirmDelete} onVideoEnd={next} onReady={() => setReady(true)} />
+        {!ready && (
+          <div className="pointer-events-none absolute inset-0 grid place-items-center" role="status" aria-label={t('Loading…')}>
+            <span className="h-10 w-10 animate-spin rounded-full border-[3px] border-white/25 border-t-white" />
+          </div>
+        )}
         {/* Progress, who, when. */}
         <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/60 to-transparent p-3">
           <div className="flex gap-1">
@@ -308,11 +319,7 @@ function Viewer({ start, onClose }: { start: string; onClose: () => void }) {
                 type="button"
                 aria-label={t('Delete this moment')}
                 className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/15"
-                onClick={async () => {
-                  setPaused(true);
-                  if (await ask(t('Delete this moment?'), { danger: true, confirmLabel: t('Delete') })) del.mutate(m, { onSuccess: () => (list.length > 1 ? setIndex(Math.max(0, index - 1)) : onClose()) });
-                  setPaused(false);
-                }}
+                onClick={() => setConfirmDelete(true)}
               >
                 <TrashIcon size={16} />
               </button>
@@ -322,6 +329,30 @@ function Viewer({ start, onClose }: { start: string; onClose: () => void }) {
             </button>
           </div>
         </div>
+        {confirmDelete && (
+          // Inside the viewer, so it isn't hidden behind it.
+          <div className="absolute inset-0 z-20 grid place-items-center bg-black/65 p-6" role="alertdialog" aria-label={t('Delete this moment?')}>
+            <div className="w-full max-w-xs rounded-2xl bg-ae-elevated p-4 text-ae-text shadow-2xl">
+              <p className="font-bold">{t('Delete this moment?')}</p>
+              <p className="mt-1 text-sm text-ae-muted">{t('It disappears for everyone right away.')}</p>
+              <div className="mt-4 flex justify-end gap-2">
+                <button type="button" className="rounded-ae px-3 py-1.5 text-sm hover:bg-ae-hover" onClick={() => setConfirmDelete(false)}>
+                  {t('Cancel')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-ae bg-ae-danger px-3 py-1.5 text-sm font-bold text-white"
+                  onClick={() => {
+                    setConfirmDelete(false);
+                    del.mutate(m, { onSuccess: () => (list.length > 1 ? setIndex(Math.max(0, index - 1)) : onClose()) });
+                  }}
+                >
+                  {t('Delete')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Tap left / right; hold to pause. */}
         <button type="button" aria-label={t('Previous')} className="absolute top-20 bottom-24 left-0 w-1/3" onClick={prev} onPointerDown={() => setPaused(true)} onPointerUp={() => setPaused(false)} onPointerLeave={() => setPaused(false)} />
         <button type="button" aria-label={t('Next')} className="absolute top-20 right-0 bottom-24 w-2/3" onClick={next} onPointerDown={() => setPaused(true)} onPointerUp={() => setPaused(false)} onPointerLeave={() => setPaused(false)} />

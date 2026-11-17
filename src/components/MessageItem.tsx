@@ -22,7 +22,8 @@ import { openReactionPicker, useQuickReactions } from './ReactionPicker';
 import { useUiStore } from '../stores/uiStore';
 import type { Attachment, Message, PollVote } from '../types/db';
 import { EmojiPicker } from './EmojiPicker';
-import { BotIcon, CheckIcon, EditIcon, FileIcon, FlagIcon, ForwardIcon, LinkIcon, LockIcon, MegaphoneIcon, PinIcon, PinOffIcon, ReactIcon, ThreadIcon, TrashIcon, ReplyIcon, CopyIcon, BookmarkIcon, BookmarkCheckIcon } from './icons';
+import { BotIcon, CheckIcon, EditIcon, FileIcon, FlagIcon, ForwardIcon, LinkIcon, LockIcon, MegaphoneIcon, PinIcon, PinOffIcon, ReactIcon, ThreadIcon, TrashIcon, ReplyIcon, CopyIcon, BookmarkIcon, BookmarkCheckIcon, GlobeIcon } from './icons';
+import { canTranslate, TranslatedText } from './Translate';
 import { LinkEmbed } from './LinkEmbed';
 import { PollCard } from './PollCard';
 import { Avatar, StyledName } from './ProfileCard';
@@ -247,6 +248,7 @@ function MessageItemImpl(props: MessageItemProps) {
   const qcR = useQueryClient();
   // Encrypted chats: the readable text (or a placeholder when this device can't decrypt it).
   const text = useMessageText(message.content);
+  const [translating, setTranslating] = useState(false);
   const toggleSaved = useToggleSaved();
   const remindItem = useRemindMenuItem();
   const isSaved = !!qcR.getQueryData<{ message_id: string }[]>(['saved-messages'])?.some((r) => r.message_id === message.id);
@@ -311,6 +313,11 @@ function MessageItemImpl(props: MessageItemProps) {
           props.canPin && { label: message.pinned ? t('Unpin message') : t('Pin message'), icon: <PinIcon size={15} />, onClick: () => props.onTogglePin(message.id, !message.pinned) },
           props.canPublish && { label: 'Publish', icon: <MegaphoneIcon size={15} />, onClick: () => announcements.publish.mutate(message.id) },
           'divider',
+          message.content && canTranslate() && {
+            label: translating ? t('Hide translation') : t('Translate'),
+            icon: <GlobeIcon size={15} />,
+            onClick: () => setTranslating((v) => !v),
+          },
           message.content && {
             label: t('Copy text'),
             icon: <CopyIcon size={15} />,
@@ -471,6 +478,7 @@ function MessageItemImpl(props: MessageItemProps) {
           ) : (
             message.content && <Markdown source={text} jumbo={emojiSize(text)} className="text-[15px] leading-[1.375rem] text-ae-text/95" />
           )}
+          {translating && !editing && message.content && <TranslatedText text={text} onClose={() => setTranslating(false)} />}
 
           {message.attachments.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-2">

@@ -8,6 +8,8 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import type { Attachment } from '../types/db';
 import { LockIcon, MicIcon, PauseIcon, PlayIcon, SendIcon, TrashIcon } from './icons';
 import { toast } from './Toaster';
+import { currentLanguage, t } from '../lib/i18n';
+import { transcribe } from '../lib/ondevice';
 
 const MAX_SECONDS = 300;
 /** How far left to slide (px) to lock a recording. */
@@ -277,7 +279,50 @@ export function VoiceRecorder({
 }
 
 /** A voice message in chat: play/pause, a waveform you can tap to seek, and the time. */
+/** "Transcript" under a voice message: Whisper on this device (lib/transcribe.ts). */
+function Transcript({ url }: { url: string }) {
+  const [state, setState] = useState<{ s: 'idle' } | { s: 'busy'; p: number | null } | { s: 'done'; text: string } | { s: 'error'; msg: string }>({ s: 'idle' });
+  const run = () => {
+    setState({ s: 'busy', p: null });
+    const lang = currentLanguage().slice(0, 2).toLowerCase();
+    transcribe(url, /^[a-z]{2}$/.test(lang) ? lang : undefined, (p) => setState({ s: 'busy', p }))
+      .then((text) => setState({ s: 'done', text }))
+      .catch((e: Error) => setState({ s: 'error', msg: e.message }));
+  };
+  if (state.s === 'idle')
+    return (
+      <button type="button" onClick={run} className="mt-1 text-xs font-semibold text-ae-muted hover:text-ae-text hover:underline">
+        {t('Show transcript')}
+      </button>
+    );
+  if (state.s === 'busy')
+    return (
+      <p className="mt-1 text-xs text-ae-muted" role="status">
+        {state.p !== null && state.p < 1 ? t('Getting transcription ready on this device… {n}%', { n: Math.round(state.p * 100) }) : t('Transcribing…')}
+      </p>
+    );
+  if (state.s === 'error')
+    return (
+      <p className="mt-1 text-xs text-ae-danger">
+        {t('Couldn’t transcribe this.')}{' '}
+        <button type="button" onClick={run} className="underline">
+          {t('Try again')}
+        </button>
+      </p>
+    );
+  return <p className="mt-1 max-w-[300px] text-sm whitespace-pre-wrap text-ae-text/90 italic">{state.text || t('(No speech found)')}</p>;
+}
+
 export function VoiceMessagePlayer({ a }: { a: VoiceAttachment }) {
+  return (
+    <div>
+      <VoicePlayerBar a={a} />
+      <Transcript url={a.url} />
+    </div>
+  );
+}
+
+function VoicePlayerBar({ a }: { a: VoiceAttachment }) {
   const audio = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [pos, setPos] = useState(0);

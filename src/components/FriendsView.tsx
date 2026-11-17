@@ -1,4 +1,5 @@
 /** Friends page: Online / All / Pending / Blocked tabs and Add Friend by username. */
+import { UpcomingBirthdays } from './Birthdays';
 import { MomentsStrip } from './Moments';
 import { t } from '../lib/i18n';
 import { MessageRequests, SearchPeople } from './FriendsExtras';
@@ -233,6 +234,7 @@ export function FriendsView({ userId }: { userId: string }) {
       <div className="ae-scroll flex-1 overflow-y-auto px-6 py-4">
         {error && <p className="mb-2 text-sm text-ae-danger">{error.message}</p>}
         {(tab === 'online' || tab === 'all') && <MomentsStrip className="mb-4" />}
+        {(tab === 'online' || tab === 'all') && <UpcomingBirthdays className="mb-4" />}
         {tab === 'add' && <AddFriend />}
         {tab === 'search' && <SearchPeople />}
 

@@ -1577,5 +1577,58 @@ await expectOk('sign-ups never confirmed after 7 days are removed; everyone else
   if (removed !== 1 || left !== 'adminmade,confirmed,newbie') throw new Error(`${removed} ${left}`);
 });
 
+await expectOk('birthdays: friends see shared ones, nobody else; raw rows private', async () => {
+  const people = (await db.query(`select id, public.are_friends(id, $1) f from public.users where id <> $1`, [A])).rows;
+  const friend = people.find((p) => p.f)?.id;
+  const stranger = people.find((p) => !p.f)?.id;
+  await as(A, `insert into public.birthdays (month, day) values (3, 14)`);
+  const seen = async (who) => (await as(who, `select * from public.friend_birthdays() where user_id = $1`, [A])).rows.length;
+  if (friend && (await seen(friend)) !== 1) throw new Error('friend should see it');
+  if (stranger && (await seen(stranger)) !== 0) throw new Error('stranger saw it');
+  if (friend && (await as(friend, `select count(*)::int n from public.birthdays`)).rows[0].n !== 0) throw new Error('raw rows readable');
+  await as(A, `update public.birthdays set visibility = 'nobody'`);
+  if (friend && (await seen(friend)) !== 0) throw new Error('hidden but visible');
+  let bad = '';
+  try {
+    await as(A, `update public.birthdays set month = 2, day = 30`);
+  } catch (e) {
+    bad = e.message;
+  }
+  if (!bad) throw new Error('Feb 30 accepted');
+  await as(A, `delete from public.birthdays`);
+});
+await expectOk('shared lists: chat members read and edit, outsiders cannot, server records who ticked', async () => {
+  const conv = (await db.query(`select conversation_id from public.conversation_members where user_id = $1 limit 1`, [A])).rows[0]?.conversation_id;
+  if (!conv) throw new Error('no conversation for A');
+  const member = (await db.query(`select user_id from public.conversation_members where conversation_id = $1 and user_id <> $2 limit 1`, [conv, A])).rows[0]?.user_id;
+  const outsider = (await db.query(`select id from public.users where id not in (select user_id from public.conversation_members where conversation_id = $1) limit 1`, [conv])).rows[0]?.id;
+  const list = (await as(A, `insert into public.shared_lists (scope_id, title) values ($1, ' Groceries ') returning id, title, created_by`, [conv])).rows[0];
+  if (list.title !== 'Groceries' || list.created_by !== A) throw new Error(JSON.stringify(list));
+  const item = (await as(A, `insert into public.shared_list_items (list_id, body) values ($1, 'milk') returning id, scope_id`, [list.id])).rows[0];
+  if (item.scope_id !== conv) throw new Error('scope not copied');
+  if (member) {
+    const r = (await as(member, `update public.shared_list_items set done = true where id = $1 returning done_by`, [item.id])).rows[0];
+    if (r?.done_by !== member) throw new Error('done_by ' + JSON.stringify(r));
+  }
+  if (outsider) {
+    if ((await as(outsider, `select count(*)::int n from public.shared_lists where id = $1`, [list.id])).rows[0].n !== 0) throw new Error('outsider sees list');
+    let denied = '';
+    try {
+      await as(outsider, `insert into public.shared_lists (scope_id, title) values ($1, 'x')`, [conv]);
+    } catch (e) {
+      denied = e.message;
+    }
+    if (!denied) throw new Error('outsider created a list');
+    const upd = (await as(outsider, `update public.shared_list_items set body = 'pwned' where id = $1 returning id`, [item.id])).rows.length;
+    if (upd !== 0) throw new Error('outsider edited');
+  }
+  if (member) {
+    const del = (await as(member, `delete from public.shared_lists where id = $1 returning id`, [list.id])).rows.length;
+    if (del !== 0) throw new Error('non-creator deleted list');
+  }
+  await as(A, `delete from public.shared_lists where id = $1`, [list.id]);
+  if ((await db.query(`select count(*)::int n from public.shared_list_items where list_id = $1`, [list.id])).rows[0].n !== 0) throw new Error('items left');
+});
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');
 process.exit(failures ? 1 : 0);

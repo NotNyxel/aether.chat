@@ -2,6 +2,7 @@
  * Settings → My Account (email, password, two-factor, sessions, data export, delete account)
  * and Settings → Privacy & Safety (DMs, friend requests, message requests, blocked users).
  */
+import { BirthdaySettings } from './Birthdays';
 import { ringBackground, useCloseFriends, useToggleCloseFriend } from '../hooks/useMoments';
 import { pwnedMessage } from '../lib/pwned';
 import { DownloadIcon, LockIcon, MonitorIcon, PhoneDeviceIcon, UnlockIcon } from './icons';
@@ -673,6 +674,10 @@ export function PrivacyTab({ userId }: { userId: string }) {
             { id: 'nobody', label: 'No one', hint: 'Friends see a note that you don’t join groups this way. Ask them to message you instead.' },
           ]}
         />
+      </Section>
+
+      <Section title="Birthday" description="Friends see it on your profile and get a reminder on the day. You can keep it to yourself.">
+        <BirthdaySettings />
       </Section>
 
       <Section title="Moments" description="24-hour photos, videos and text cards. Pick your ring colour, and who counts as a close friend for moments you share with “Close friends”.">

@@ -6,6 +6,7 @@
  * `contain: layout paint style` and `isolation: isolate`, so nothing can paint outside it,
  * including position: fixed overlays.
  */
+import { BirthdayLine } from './Birthdays';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { activeCustomStatus } from '../hooks/useDesktop';
 import { Markdown } from '../lib/markdown';
@@ -392,6 +393,7 @@ export function ProfileCard({ profile, className = '' }: ProfileCardProps) {
           <section>
             <h3 className="mb-1 text-[11px] font-bold tracking-wide text-ae-muted uppercase">Member since</h3>
             <p className="text-sm">{memberSince}</p>
+            <BirthdayLine userId={profile.id} className="mt-1" />
           </section>
         </div>
       </div>

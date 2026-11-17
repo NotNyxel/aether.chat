@@ -4,7 +4,9 @@
  * pins and search), jump to present, auto mark-as-read, pins and search panels, drag-and-drop
  * uploads, typing indicator and the composer.
  */
-import { ArrowDownIcon, ImageIcon, LockIcon, MegaphoneIcon, PinIcon } from './icons';
+import { ListsPanel } from './SharedLists';
+import { ArrowDownIcon, ImageIcon, ListIcon, LockIcon, MegaphoneIcon, PinIcon } from './icons';
+import { t } from '../lib/i18n';
 import { ask } from './ConfirmDialog';
 import { messageRenderKey, useServerMembers, useServers } from '../hooks/useChatData';
 import { NotificationBell } from './NotificationMenu';
@@ -112,7 +114,7 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
 
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [panel, setPanel] = useState<'pins' | 'search' | 'media' | null>(null);
+  const [panel, setPanel] = useState<'pins' | 'search' | 'media' | 'lists' | null>(null);
   const [searchSeed, setSearchSeed] = useState('');
   const [dropped, setDropped] = useState<File[] | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -306,6 +308,8 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
       <PinsPanel scope={scope} serverId={serverId} canPin={canPin} onUnpin={(id) => pin.mutate({ id, pinned: false })} onClose={() => setPanel(null)} />
     ) : panel === 'media' ? (
       <MediaPanel scope={scope} serverId={serverId} onClose={() => setPanel(null)} />
+    ) : panel === 'lists' ? (
+      <ListsPanel scopeId={scope.id} onClose={() => setPanel(null)} />
     ) : panel === 'search' ? (
       <SearchPanel key={searchSeed} scope={scope} serverId={serverId} channels={channels} initial={searchSeed} onClose={() => setPanel(null)} />
     ) : (
@@ -327,6 +331,15 @@ export function MessagePane({ scope, userId, serverId, header, placeholder, empt
             onClick={() => setPanel(panel === 'pins' ? null : 'pins')}
           >
             <PinIcon size={15} className="ae-ico" />
+          </button>
+          <button
+            type="button"
+            title={t('Lists')}
+            aria-label={t('Lists')}
+            className={`leading-none ${panel === 'lists' ? '' : 'opacity-60 hover:opacity-100'}`}
+            onClick={() => setPanel(panel === 'lists' ? null : 'lists')}
+          >
+            <ListIcon size={16} className="ae-ico" />
           </button>
           <button
             type="button"

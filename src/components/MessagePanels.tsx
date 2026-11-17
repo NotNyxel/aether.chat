@@ -50,7 +50,7 @@ function ResultCard({ m, serverId, channelName, onUnpin }: {
   );
 }
 
-function PanelShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+export function PanelShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <aside className="flex w-80 shrink-0 flex-col border-l border-ae-border bg-ae-elevated/60">
       <header className="flex h-11 items-center justify-between border-b border-ae-border px-3">

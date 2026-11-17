@@ -4,6 +4,7 @@
  * the right of the avatar row. Used for viewing someone's profile and as the live preview in
  * Profile Studio.
  */
+import { BirthdayLine } from './Birthdays';
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { activeCustomStatus } from '../hooks/useDesktop';
 import { Markdown } from '../lib/markdown';
@@ -188,6 +189,7 @@ export function FullProfile({
                   <p className="flex items-center gap-1.5 text-sm">
                     <CalendarIcon size={14} className="text-ae-muted" /> {since}
                   </p>
+                  <BirthdayLine userId={profile.id} className="mt-1" />
                 </section>
                 {aboutExtra}
               </div>

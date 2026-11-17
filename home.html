@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta property="og:title" content="Aether: chat, voice and video with your people" />
     <meta property="og:description" content="Aether is a free chat app for friends and communities: messages, servers, voice and video calls, Moments, games and deep customization. Windows, macOS, Linux, Android, iPhone and the web." />
-    <meta property="og:image" content="/site/layout-orbit.png" />
+    <meta property="og:image" content="/site/layout-orbit.webp" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
   </head>
@@ -50,9 +50,26 @@
           <p class="small" id="platform-note">Windows, macOS, Linux, Android, iPhone and iPad, and the web.</p>
         </div>
         <div class="hero-shot">
-          <img class="shot desktop" src="/site/layout-orbit.png" alt="Aether's Orbit layout: a greeting, friends with Moments rings, and what's coming up" width="1280" height="760" />
-          <img class="shot phone" src="/site/phone-list.png" alt="Aether on a phone: the Messages screen with the bottom tab bar" width="500" height="1000" />
+          <div class="tilt">
+            <div class="device desktop"><img src="/site/layout-orbit.webp" alt="Aether's Orbit layout: a greeting, friends with Moments rings, and what's coming up" width="2880" height="1800" fetchpriority="high" /></div>
+            <div class="device phone"><img src="/site/phone-list.webp" alt="Aether on a phone: the Messages screen with the bottom tab bar" width="780" height="1688" /></div>
+          </div>
         </div>
+      </section>
+
+      <section class="marquee" aria-label="Platforms">
+        <div class="marquee-track" aria-hidden="true">
+          <span>Windows</span><span>macOS</span><span>Linux</span><span>Android</span><span>iPhone &amp; iPad</span><span>Web</span><span>19 languages</span><span>Free forever</span>
+          <span>Windows</span><span>macOS</span><span>Linux</span><span>Android</span><span>iPhone &amp; iPad</span><span>Web</span><span>19 languages</span><span>Free forever</span>
+        </div>
+        <p class="sr-only">Available on Windows, macOS, Linux, Android, iPhone and iPad, and the web, in 19 languages.</p>
+      </section>
+
+      <section class="numbers" aria-label="Aether in numbers">
+        <div><b>6</b><span>platforms, one account</span></div>
+        <div><b>19</b><span>languages</span></div>
+        <div><b>0</b><span>ads or paywalls</span></div>
+        <div><b>~9 MB</b><span>Windows app</span></div>
       </section>
 
       <section class="layouts" aria-labelledby="layouts-h">
@@ -66,8 +83,13 @@
           <button type="button" role="tab" aria-selected="false" data-shot="classic">Classic</button>
         </div>
         <figure class="layout-shot">
-          <img id="layout-img" class="shot desktop" src="/site/layout-orbit.png" alt="The Orbit layout" width="1280" height="760" loading="lazy" />
-          <figcaption id="layout-cap">Orbit: a calm home with your friends, their Moments and what's coming up.</figcaption>
+          <div class="layout-stage">
+            <div class="device desktop on" data-shot="orbit"><img src="/site/layout-orbit.webp" alt="The Orbit layout" width="2880" height="1800" loading="lazy" /></div>
+            <div class="device desktop" data-shot="lounge"><img src="/site/layout-lounge.webp" alt="The Lounge layout" width="2880" height="1800" loading="lazy" /></div>
+            <div class="device desktop" data-shot="workspace"><img src="/site/layout-workspace.webp" alt="The Workspace layout" width="2880" height="1800" loading="lazy" /></div>
+            <div class="device desktop" data-shot="classic"><img src="/site/layout-classic.webp" alt="The Classic layout" width="2880" height="1800" loading="lazy" /></div>
+          </div>
+          <figcaption id="layout-cap" aria-live="polite">Orbit: a calm home with your friends, their Moments and what's coming up.</figcaption>
         </figure>
       </section>
 
@@ -89,7 +111,7 @@
           <h2>Built for phones too</h2>
           <p>A real phone layout with a bottom tab bar, full-screen chats, press-and-hold menus, swipe to reply, and a floating call bubble so you can keep chatting during a call.</p>
         </div>
-        <img class="shot phone tall" src="/site/phone-chat.png" alt="A chat on a phone with a voice message and the message box" width="500" height="1000" loading="lazy" />
+        <div class="device phone"><img src="/site/phone-chat.webp" alt="A chat on a phone with the message box" width="780" height="1688" loading="lazy" /></div>
       </section>
 
       <section class="showcase reverse">
@@ -97,7 +119,7 @@
           <h2>Private by default</h2>
           <p>End-to-end encrypted chats when you want them, disappearing messages, quiet hours, and translations and voice transcripts that happen on your device. <a href="/privacy">How we handle your data</a>.</p>
         </div>
-        <img class="shot desktop" src="/site/layout-lounge.png" alt="Aether's Lounge layout with big friend cards and a Friends list" width="1280" height="760" loading="lazy" />
+        <div class="device desktop"><img src="/site/layout-lounge.webp" alt="Aether's Lounge layout with big friend cards and a Friends list" width="2880" height="1800" loading="lazy" /></div>
       </section>
 
       <section id="compare" class="compare">
@@ -111,6 +133,7 @@
               <li><b>Deep customization</b> of profiles, themes and the whole layout.</li>
               <li><b>Every platform,</b> plus a full web app with nothing to install.</li>
               <li><b>Updates itself</b> on Windows, macOS, Linux and Android.</li>
+              <li><b>Everything syncs:</b> chats, settings, theme and layout follow you to every device.</li>
               <li><b>Small and fast:</b> the Windows app is about 9 MB.</li>
             </ul>
           </div>

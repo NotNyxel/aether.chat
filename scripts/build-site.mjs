@@ -34,7 +34,7 @@ const page = ({ file, path, title, description, script, body }) => `<!doctype ht
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta property="og:title" content="${title}" />
     <meta property="og:description" content="${description}" />
-    <meta property="og:image" content="/site/layout-orbit.png" />
+    <meta property="og:image" content="/site/layout-orbit.webp" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
   </head>

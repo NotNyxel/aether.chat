@@ -49,31 +49,41 @@ if (primary || document.querySelector('.dl[data-asset]')) {
     .catch(() => {});
 }
 
-// Home: the layout switcher.
-const SHOTS: Record<string, { src: string; alt: string; cap: string }> = {
-  orbit: { src: '/site/layout-orbit.png', alt: 'The Orbit layout', cap: 'Orbit: a calm home with your friends, their Moments and what’s coming up.' },
-  lounge: { src: '/site/layout-lounge.png', alt: 'The Lounge layout', cap: 'Lounge: big friend cards and calls up front.' },
-  workspace: { src: '/site/layout-workspace.png', alt: 'The Workspace layout', cap: 'Workspace: tabs and a tree of spaces, for busy servers.' },
-  classic: { src: '/site/desktop.png', alt: 'The Classic layout', cap: 'Classic: the familiar look, with dozens of themes.' },
+// Home: the layout switcher (screenshots stacked; the chosen one fades in).
+const CAPS: Record<string, string> = {
+  orbit: 'Orbit: a calm home with your friends, their Moments and what’s coming up.',
+  lounge: 'Lounge: big friend cards and calls up front.',
+  workspace: 'Workspace: tabs and a tree of spaces, for busy servers.',
+  classic: 'Classic: the familiar look, with dozens of themes.',
 };
-const img = document.getElementById('layout-img') as HTMLImageElement | null;
 const cap = document.getElementById('layout-cap');
 const tabs = [...document.querySelectorAll<HTMLButtonElement>('.tabs [data-shot]')];
-const pick = (btn: HTMLButtonElement) => {
-  const s = SHOTS[btn.dataset.shot!];
-  if (!s || !img || !cap) return;
-  tabs.forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
-  img.src = s.src;
-  img.alt = s.alt;
-  cap.textContent = s.cap;
+const frames = [...document.querySelectorAll<HTMLElement>('.layout-stage [data-shot]')];
+let auto: ReturnType<typeof setInterval> | undefined;
+const pick = (name: string) => {
+  tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.shot === name)));
+  frames.forEach((f) => f.classList.toggle('on', f.dataset.shot === name));
+  if (cap) cap.textContent = CAPS[name] ?? '';
 };
 tabs.forEach((b, i) => {
-  b.addEventListener('click', () => pick(b));
+  b.addEventListener('click', () => {
+    clearInterval(auto);
+    pick(b.dataset.shot!);
+  });
   b.addEventListener('keydown', (e) => {
     const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
     if (!step) return;
+    clearInterval(auto);
     const next = tabs[(i + step + tabs.length) % tabs.length]!;
     next.focus();
-    pick(next);
+    pick(next.dataset.shot!);
   });
 });
+// Cycle through them until someone picks one.
+if (tabs.length && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  let n = 0;
+  auto = setInterval(() => {
+    n = (n + 1) % tabs.length;
+    pick(tabs[n]!.dataset.shot!);
+  }, 5000);
+}

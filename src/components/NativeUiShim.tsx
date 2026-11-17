@@ -78,10 +78,15 @@ export function NativeUiShim() {
 
   // <select>, colour and date inputs open our popovers instead of the browser's.
   useEffect(() => {
-    const target = (e: Event) => (e.target as HTMLElement | null)?.closest?.('select, input[type="color"], input[type="date"], input[type="datetime-local"], input[type="time"]') as
-      | HTMLSelectElement
-      | HTMLInputElement
-      | null;
+    const PICKERS = 'select, input[type="color"], input[type="date"], input[type="datetime-local"], input[type="time"]';
+    const target = (e: Event): HTMLSelectElement | HTMLInputElement | null => {
+      const t = e.target as HTMLElement | null;
+      const direct = t?.closest?.(PICKERS) as HTMLSelectElement | HTMLInputElement | null;
+      if (direct) return direct;
+      // A tap on a <label> focuses its control, which opens the system picker on iOS.
+      const control = (t?.closest?.('label') as HTMLLabelElement | null)?.control;
+      return control?.matches(PICKERS) ? (control as HTMLSelectElement | HTMLInputElement) : null;
+    };
     const open = (el: HTMLSelectElement | HTMLInputElement) => {
       if (el.disabled) return;
       if (el instanceof HTMLSelectElement) setPicker({ kind: 'select', el });
@@ -106,10 +111,41 @@ export function NativeUiShim() {
         open(el);
       }
     };
+    // Touch (iPhone, iPad, Android): the system picker opens from the tap itself, before any mouse
+    // event. Cancelling touchend stops it (and the synthetic mouse events); touchstart is left
+    // alone so scrolling over a dropdown still works.
+    let touch: { x: number; y: number; el: HTMLSelectElement | HTMLInputElement } | null = null;
+    const tStart = (e: TouchEvent) => {
+      const el = target(e);
+      const p = e.touches[0];
+      touch = el && p && e.touches.length === 1 ? { x: p.clientX, y: p.clientY, el } : null;
+    };
+    const tEnd = (e: TouchEvent) => {
+      const t = touch;
+      touch = null;
+      const p = e.changedTouches[0];
+      if (!t || !p || Math.hypot(p.clientX - t.x, p.clientY - t.y) > 10) return;
+      e.preventDefault();
+      open(t.el);
+    };
+    // Anything that still focuses a picker some other way (e.g. iOS's "next field" arrows).
+    const focus = (e: FocusEvent) => {
+      const el = target(e);
+      if (el && matchMedia('(pointer: coarse)').matches) {
+        el.blur();
+        open(el);
+      }
+    };
+    document.addEventListener('touchstart', tStart, { capture: true, passive: true });
+    document.addEventListener('touchend', tEnd, { capture: true, passive: false });
+    document.addEventListener('focusin', focus, true);
     document.addEventListener('mousedown', down, true);
     document.addEventListener('click', click, true);
     document.addEventListener('keydown', key, true);
     return () => {
+      document.removeEventListener('touchstart', tStart, true);
+      document.removeEventListener('touchend', tEnd, true);
+      document.removeEventListener('focusin', focus, true);
       document.removeEventListener('mousedown', down, true);
       document.removeEventListener('click', click, true);
       document.removeEventListener('keydown', key, true);

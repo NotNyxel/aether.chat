@@ -5,6 +5,7 @@
  * keeps working unchanged.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, PipetteIcon } from './icons';
 
 /** Sets a form element's value the way a user edit would, so React's onChange fires. */
@@ -147,6 +148,70 @@ const hexToRgb = (hex: string) => {
 const rgbToHex = (r: number, g: number, b: number) => `#${[r, g, b].map((x) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('')}`;
 
 /** Aether's colour picker: replaces every <input type="color"> in the app. */
+/**
+ * Eyedropper for devices without one (iPhone, iPad, Safari, Firefox): shows a photo full screen;
+ * touch or drag on it to sample a pixel, with a magnifier above your finger.
+ */
+function ImageSampler({ src, onPick, onClose }: { src: string; onPick: (hex: string) => void; onClose: () => void }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [at, setAt] = useState<{ x: number; y: number; hex: string } | null>(null);
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      const c = canvas.current;
+      if (!c) return;
+      const k = Math.min(1, 2048 / Math.max(img.width, img.height));
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      c.getContext('2d', { willReadFrequently: true })!.drawImage(img, 0, 0, c.width, c.height);
+    };
+    img.src = src;
+  }, [src]);
+  const sample = (e: React.PointerEvent) => {
+    const c = canvas.current!;
+    const b = c.getBoundingClientRect();
+    const px = Math.min(c.width - 1, Math.max(0, Math.floor(((e.clientX - b.left) / b.width) * c.width)));
+    const py = Math.min(c.height - 1, Math.max(0, Math.floor(((e.clientY - b.top) / b.height) * c.height)));
+    const [r, g, b2] = c.getContext('2d', { willReadFrequently: true })!.getImageData(px, py, 1, 1).data;
+    const hex = `#${[r, g, b2].map((v) => v!.toString(16).padStart(2, '0')).join('')}`;
+    setAt({ x: e.clientX, y: e.clientY, hex });
+    onPick(hex);
+  };
+  // Portalled to <body>: the popover's animation would otherwise trap a fixed overlay inside it.
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex flex-col bg-black/95 text-white" role="dialog" aria-modal="true" aria-label="Pick a colour from a photo" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <span className="text-sm font-semibold">Touch the photo to pick a colour</span>
+        {at && <span className="h-6 w-6 rounded-full border-2 border-white" style={{ background: at.hex }} />}
+        {at && <span className="font-mono text-xs">{at.hex}</span>}
+        <button type="button" onClick={onClose} className="ml-auto rounded-full bg-white px-4 py-1.5 text-sm font-bold text-black">
+          Done
+        </button>
+      </div>
+      <div className="flex min-h-0 flex-1 items-center justify-center p-3">
+        <canvas
+          ref={canvas}
+          className="h-full w-full cursor-crosshair touch-none object-contain [image-rendering:pixelated]"
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            sample(e);
+          }}
+          onPointerMove={(e) => e.buttons && sample(e)}
+          onPointerUp={() => setAt((a) => a && { ...a, x: -999 })}
+        />
+      </div>
+      {at && at.x > -999 && (
+        <span
+          className="pointer-events-none fixed h-16 w-16 -translate-x-1/2 rounded-full border-4 border-white shadow-[0_0_0_1px_#0008,0_6px_20px_#000a]"
+          style={{ left: at.x, top: at.y - 96, background: at.hex }}
+          aria-hidden="true"
+        />
+      )}
+    </div>,
+    document.body,
+  );
+}
+
 export function ColorPopover({ el, onClose }: { el: HTMLInputElement; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const original = useRef(el.value || '#7c5cff');
@@ -156,7 +221,16 @@ export function ColorPopover({ el, onClose }: { el: HTMLInputElement; onClose: (
   const [recent] = useState(recentColors);
   const rect = el.getBoundingClientRect();
   const pos = usePopoverPosition(rect, 272, 380);
+  // While the photo picker is open the window loses focus; don't close then.
+  const sampling = useRef(false);
+  const [sampler, setSamplerState] = useState<string | null>(null);
+  const samplerOpen = useRef(false);
+  const setSampler = (v: string | null) => {
+    samplerOpen.current = !!v;
+    setSamplerState(v);
+  };
   useDismiss(ref, () => {
+    if (sampling.current) return;
     rememberColor(hsvToHex(...hsvRef.current));
     onClose();
   });
@@ -198,7 +272,16 @@ export function ColorPopover({ el, onClose }: { el: HTMLInputElement; onClose: (
     set([(next[0] + 360) % 360, Math.min(1, Math.max(0, next[1])), Math.min(1, Math.max(0, next[2]))]);
   };
   const eyedropper = 'EyeDropper' in window;
+  const fileRef = useRef<HTMLInputElement>(null);
   const pickFromScreen = async () => {
+    if (!eyedropper) {
+      // No screen eyedropper here (Safari, iPhone, iPad, Firefox): pick from a photo instead.
+      sampling.current = true;
+      fileRef.current?.click();
+      // If the chooser is cancelled no event fires; stop ignoring blur once focus comes back.
+      window.addEventListener('focus', () => setTimeout(() => !samplerOpen.current && (sampling.current = false), 600), { once: true });
+      return;
+    }
     try {
       const res = await new (window as unknown as { EyeDropper: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper().open();
       set(hexToHsv(res.sRGBHex));
@@ -228,10 +311,37 @@ export function ColorPopover({ el, onClose }: { el: HTMLInputElement; onClose: (
         />
       </div>
       <div className="flex items-center gap-2">
-        {eyedropper && (
-          <button type="button" data-tip="Pick a colour from the screen" aria-label="Eyedropper" className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-ae-border text-ae-muted hover:text-ae-text" onClick={() => void pickFromScreen()}>
-            <PipetteIcon size={15} />
-          </button>
+        <button
+          type="button"
+          data-tip={eyedropper ? 'Pick a colour from the screen' : 'Pick a colour from a photo'}
+          aria-label="Eyedropper"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-ae-border text-ae-muted hover:text-ae-text"
+          onClick={() => void pickFromScreen()}
+        >
+          <PipetteIcon size={15} />
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            if (f) setSampler(URL.createObjectURL(f));
+            else sampling.current = false;
+          }}
+        />
+        {sampler && (
+          <ImageSampler
+            src={sampler}
+            onPick={(c) => set(hexToHsv(c))}
+            onClose={() => {
+              URL.revokeObjectURL(sampler);
+              setSampler(null);
+              sampling.current = false;
+            }}
+          />
         )}
         <div
           role="slider"

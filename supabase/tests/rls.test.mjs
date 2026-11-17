@@ -1495,6 +1495,30 @@ await expectOk('data export covers 2.0 data (folders, reminders, bug reports) an
   if (other.chat_folders.length !== 0 || other.bug_reports.length !== 0) throw new Error('leaked');
   await as(E, `delete from public.chat_folders`);
 });
+await expectOk('play history: own, people you share with, hidden, no backdating, clearable', async () => {
+  await as(A, `insert into public.game_sessions (game, started_at, ended_at) values ('VALORANT', now() - interval '2 hours', now() - interval '1 hour')`);
+  const own = (await as(A, `select * from public.play_history($1)`, [A])).rows;
+  if (own.length !== 1 || own[0].game !== 'VALORANT' || Number(own[0].seconds) < 3500) throw new Error('own ' + JSON.stringify(own));
+  // Pick someone who shares a space or is a friend, and someone who doesn't.
+  const people = (await db.query(`select id, public.are_friends(id, $1) or public.shares_server(id, $1) as near from public.users where id <> $1`, [A])).rows;
+  const near = people.find((p) => p.near)?.id;
+  const far = people.find((p) => !p.near)?.id;
+  if (near && (await as(near, `select * from public.play_history($1)`, [A])).rows.length !== 1) throw new Error('near should see it');
+  if (far && (await as(far, `select * from public.play_history($1)`, [A])).rows.length !== 0) throw new Error('stranger saw it');
+  if (near && (await as(near, `select count(*)::int n from public.game_sessions`)).rows[0].n !== 0) throw new Error('raw rows readable');
+  await as(A, `update public.users set show_play_history = false where id = $1`, [A]);
+  if (near && (await as(near, `select * from public.play_history($1)`, [A])).rows.length !== 0) throw new Error('hidden but visible');
+  await as(A, `update public.users set show_play_history = true where id = $1`, [A]);
+  let backdated = '';
+  try {
+    await as(A, `insert into public.game_sessions (game, started_at, ended_at) values ('x', now() - interval '10 days', now() - interval '10 days')`);
+  } catch (e) {
+    backdated = e.message;
+  }
+  if (!backdated) throw new Error('backdating allowed');
+  await as(A, `delete from public.game_sessions`);
+  if ((await as(A, `select * from public.play_history($1)`, [A])).rows.length !== 0) throw new Error('not cleared');
+});
 await expectOk('errors are grouped and counted; only admins can read them', async () => {
   for (const u of [E, E, B]) await as(u, `select public.log_client_error('abc123', 'TypeError: x is undefined', 'at foo', '2.0.0', 'web', '/app')`);
   const r = (await as(A, `select count, cardinality(users) n from public.client_errors where fingerprint = 'abc123'`)).rows[0];

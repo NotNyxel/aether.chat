@@ -2,6 +2,7 @@
 //! system WebView2. Rust hosts the window and the system tray, opens external links in the
 //! default browser, installs signed updates published to GitHub Releases, and exposes a few
 //! small OS helpers the web layer can't reach (idle time, running games).
+mod games;
 
 #[cfg(windows)]
 mod capture;
@@ -257,7 +258,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_deep_link::init())
-        .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, idle_seconds, running_processes, now_playing])
+        .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, idle_seconds, running_processes, now_playing, games::running_game])
         .run(tauri::generate_context!())
         .expect("error while running Aether");
 }
@@ -297,7 +298,7 @@ pub fn run() {
                 _ => PermissionResponse::Default,
             }
         })
-        .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, splash_finish, splash_busy, set_close_to_tray, idle_seconds, running_processes, save_export, now_playing])
+        .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, splash_finish, splash_busy, set_close_to_tray, idle_seconds, running_processes, save_export, now_playing, games::running_game])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open Aether", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Toggle mute", true, None::<&str>)?;

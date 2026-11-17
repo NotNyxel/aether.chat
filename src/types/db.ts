@@ -36,6 +36,8 @@ export interface UserProfile {
   decor?: import('../lib/cosmetics').Decor | null;
   profile_widgets: import('../lib/profileDecor').ProfileWidget[];
   discoverable: boolean;
+  /** 2.1: show "played this week" on your profile. */
+  show_play_history?: boolean;
   is_admin: boolean;
   status_emoji: string | null;
   bio: string | null;
@@ -74,6 +76,7 @@ export type EditableProfile = Pick<
   | 'profile_widgets'
   | 'decor'
   | 'discoverable'
+  | 'show_play_history'
   | 'read_receipts'
   | 'status_emoji'
   | 'bio'

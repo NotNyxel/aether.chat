@@ -5,13 +5,17 @@
 import { useEffect, useState } from 'react';
 import { isSafeGlobal, useFailedGlobalShortcuts } from '../hooks/useKeybinds';
 import { useActivityOf, useListeningOf } from '../hooks/usePresence';
-import { ListeningCard } from './ActivityCards';
+import { ListeningCard, PlayHistory } from './ActivityCards';
 import { GameArtIcon } from '../lib/activityArt';
 import { getAutostart, notify, runningProcesses, setAutostart } from '../lib/desktop';
 import { detectGame, KNOWN_GAMES } from '../lib/games';
 import { formatCombo } from '../lib/keybinds';
 import { isTauri } from '../lib/platform';
-import { useSettingsStore } from '../stores/settingsStore';
+import { PLAY_MODES, useSettingsStore } from '../stores/settingsStore';
+import { useProfile, useUpdateProfile } from '../hooks/useChatData';
+import { useClearPlayHistory } from '../hooks/usePlayHistory';
+import { ask } from './ConfirmDialog';
+import { toast } from './Toaster';
 import { CloseIcon } from './icons';
 import { inputCls, Section, Toggle } from './SettingsPanel';
 
@@ -151,6 +155,9 @@ export function ActivityTab({ userId }: { userId: string }) {
   const activity = useSettingsStore((s) => s.activity);
   const setActivity = useSettingsStore((s) => s.setActivity);
   const current = useActivityOf(userId);
+  const { data: me } = useProfile(userId);
+  const updateProfile = useUpdateProfile(userId);
+  const clearHistory = useClearPlayHistory();
   const track = useListeningOf(userId);
   const [exe, setExe] = useState('');
   const [name, setName] = useState('');
@@ -168,7 +175,7 @@ export function ActivityTab({ userId }: { userId: string }) {
     <div className="space-y-6">
       <Section
         title="Activity status"
-        description="Shows the game you're playing to friends and server members, e.g. “Playing VALORANT”. Detection runs on your computer every 30 seconds; only the game's name is shared, and only while you're online."
+        description="Shows the game you're playing to friends and server members, e.g. “Locked in VALORANT · 1h 12m”. Aether finds games installed by Steam, Epic, GOG, Ubisoft and Xbox, plus well-known ones and your own list below. Detection runs on your computer every 15 seconds; only the game's name is shared, and only while you're online."
       >
         {isTauri ? (
           <>
@@ -190,6 +197,38 @@ export function ActivityTab({ userId }: { userId: string }) {
         ) : (
           <p className="text-sm text-ae-muted">Game detection is available in the desktop app.</p>
         )}
+      </Section>
+
+      <Section title="How you're playing" description="Shown next to the game, so friends know whether to message you. Also in the menu on your profile at the bottom left.">
+        <div className="grid gap-2 sm:grid-cols-3">
+          {PLAY_MODES.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              aria-pressed={activity.mode === m.id}
+              onClick={() => setActivity({ mode: m.id })}
+              className={`rounded-ae border p-3 text-left ${activity.mode === m.id ? 'border-ae-accent ae-glow' : 'border-ae-border hover:border-ae-muted'}`}
+            >
+              <span className="block text-sm font-semibold">{m.label}</span>
+              <span className="block text-xs text-ae-muted">{m.hint}</span>
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Play history" description="While you share your activity, Aether keeps how long you play each game. Your profile can show the last week to friends and people in your spaces. Kept for 90 days.">
+        <Toggle label="Show my play history on my profile" checked={me?.show_play_history ?? true} onChange={(v) => updateProfile.mutate({ show_play_history: v })} />
+        <PlayHistory userId={userId} />
+        <button
+          type="button"
+          className="rounded-ae bg-ae-surface px-3 py-1.5 text-sm text-ae-danger hover:bg-ae-hover"
+          onClick={async () => {
+            if (!(await ask('Clear your whole play history? This can’t be undone.', { danger: true, confirmLabel: 'Clear' }))) return;
+            clearHistory.mutate(undefined, { onSuccess: () => toast.success('Play history cleared.'), onError: (e) => toast.error(e.message) });
+          }}
+        >
+          Clear play history
+        </button>
       </Section>
 
       <Section

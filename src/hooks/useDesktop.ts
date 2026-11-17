@@ -1,11 +1,11 @@
 /** App-level desktop behaviour: auto-idle, game activity, taskbar badge, tray, custom status expiry. */
-import { useEffect, useState } from 'react';
-import { idleSeconds, nowPlaying, runningProcesses, setBadge, setCloseToTray } from '../lib/desktop';
+import { useEffect, useMemo, useState } from 'react';
+import { idleSeconds, nowPlaying, runningGame, runningProcesses, setBadge, setCloseToTray } from '../lib/desktop';
 import { detectGame } from '../lib/games';
 import { isTauri } from '../lib/platform';
 import { useSettingsStore } from '../stores/settingsStore';
 import type { PresenceStatus, UserProfile } from '../types/db';
-import type { Listening } from './usePresence';
+import type { GameActivity, Listening } from './usePresence';
 import { useUpdateProfile } from './useChatData';
 
 /**
@@ -35,10 +35,14 @@ export function useAutoIdle(status: PresenceStatus): PresenceStatus {
   return status === 'online' && idle ? 'idle' : status;
 }
 
-/** Opt-in "Playing …" detection (desktop only): polls running processes every 30 seconds. */
-export function useGameActivity(): string | null {
-  const { shareActivity, customGames } = useSettingsStore((s) => s.activity);
-  const [game, setGame] = useState<string | null>(null);
+/**
+ * Opt-in "Playing …" detection (desktop only), checked every 15 seconds: your own games first, then
+ * any game installed by Steam, Epic, GOG, Ubisoft or Xbox, then a list of well-known games.
+ * Carries when you started and your playing mode (Playing / Locked in / AFK).
+ */
+export function useGameActivity(): GameActivity | null {
+  const { shareActivity, customGames, mode } = useSettingsStore((s) => s.activity);
+  const [game, setGame] = useState<{ name: string; since: number } | null>(null);
   useEffect(() => {
     if (!shareActivity || !isTauri) {
       setGame(null);
@@ -47,16 +51,19 @@ export function useGameActivity(): string | null {
     let stopped = false;
     const scan = async () => {
       const procs = await runningProcesses().catch(() => []);
-      if (!stopped) setGame(detectGame(procs, customGames));
+      const name = (customGames.length ? detectGame(procs, customGames.filter(Boolean)) : null) ?? (await runningGame()) ?? detectGame(procs, []);
+      if (stopped) return;
+      // Same game as before: keep its start time.
+      setGame((cur) => (name ? (cur?.name === name ? cur : { name, since: Date.now() }) : null));
     };
     void scan();
-    const t = setInterval(() => void scan(), 30_000);
+    const t = setInterval(() => void scan(), 15_000);
     return () => {
       stopped = true;
       clearInterval(t);
     };
   }, [shareActivity, customGames]);
-  return game;
+  return useMemo(() => (game ? { ...game, mode } : null), [game, mode]);
 }
 
 /** Opt-in Listening to Spotify: polls the media session every 5 s and publishes the track. */

@@ -26,6 +26,26 @@ export interface Listening {
   playing: boolean;
 }
 
+/** A game someone is playing (2.1): when they started and how they're playing. */
+export interface GameActivity {
+  name: string;
+  /** Epoch ms. */
+  since: number;
+  mode: 'playing' | 'locked' | 'afk';
+}
+
+function asGame(v: unknown): GameActivity | null {
+  const g = v as GameActivity | null;
+  if (!g || typeof g !== 'object' || typeof g.name !== 'string' || !g.name || g.name.length > 128) return null;
+  const since = Number(g.since);
+  return {
+    name: g.name,
+    // Never in the future, never before a day ago (a bad clock shouldn't show "Playing for 3 years").
+    since: Number.isFinite(since) ? Math.min(Date.now(), Math.max(Date.now() - 86_400_000, since)) : Date.now(),
+    mode: g.mode === 'locked' || g.mode === 'afk' ? g.mode : 'playing',
+  };
+}
+
 function asListening(v: unknown): Listening | null {
   const l = v as Listening | null;
   if (!l || typeof l !== 'object' || typeof l.title !== 'string' || !l.title || l.title.length > 300) return null;
@@ -42,14 +62,17 @@ function asListening(v: unknown): Listening | null {
 interface Meta {
   userId: string;
   status: VisibleStatus;
+  /** Game name only (what 2.0 and older read). */
   activity?: string | null;
+  /** 2.1: the game with its start time and mode. */
+  game?: GameActivity | null;
   listening?: Listening | null;
 }
 
 export function PresenceProvider({ userId, status, activity = null, listening = null, children }: {
   userId: string;
   status: PresenceStatus;
-  activity?: string | null;
+  activity?: GameActivity | null;
   listening?: Listening | null;
   children: ReactNode;
 }) {
@@ -61,6 +84,7 @@ export function PresenceProvider({ userId, status, activity = null, listening = 
   const activityRef = useRef(activity);
   const listeningRef = useRef(listening);
   const [tracks, setTracks] = useState<ReadonlyMap<string, Listening>>(new Map());
+  const [games, setGames] = useState<ReadonlyMap<string, GameActivity>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +99,7 @@ export function PresenceProvider({ userId, status, activity = null, listening = 
         const next = new Map<string, VisibleStatus>();
         const acts = new Map<string, string>();
         const music = new Map<string, Listening>();
+        const played = new Map<string, GameActivity>();
         const state = ch!.presenceState<Meta>();
         for (const metas of Object.values(state)) {
           const latest = metas[metas.length - 1];
@@ -83,16 +108,20 @@ export function PresenceProvider({ userId, status, activity = null, listening = 
           // Any of the user's open clients may be playing something.
           const playing = metas.map((x) => x.activity).find((a) => typeof a === 'string' && a.length > 0 && a.length <= 128);
           if (playing) acts.set(latest.userId, playing);
+          const game = metas.map((x) => asGame(x.game)).find(Boolean) ?? (playing ? { name: playing, since: 0, mode: 'playing' as const } : null);
+          if (game) played.set(latest.userId, game);
           const track = metas.map((x) => asListening(x.listening)).find(Boolean);
           if (track) music.set(latest.userId, track);
         }
         setOnline(next);
         setActivities(acts);
         setTracks(music);
+        setGames(played);
       });
       ch.subscribe((s) => {
         if (s === 'SUBSCRIBED' && statusRef.current !== 'invisible') {
-          void ch!.track({ userId, status: statusRef.current, activity: activityRef.current, listening: listeningRef.current });
+          const g = activityRef.current;
+          void ch!.track({ userId, status: statusRef.current, activity: g?.name ?? null, game: g, listening: listeningRef.current });
         }
       });
     })();
@@ -112,13 +141,15 @@ export function PresenceProvider({ userId, status, activity = null, listening = 
     const ch = channelRef.current;
     if (!ch) return;
     if (status === 'invisible') void ch.untrack();
-    else void ch.track({ userId, status, activity, listening });
+    else void ch.track({ userId, status, activity: activity?.name ?? null, game: activity, listening });
   }, [status, activity, listening, userId]);
 
   return (
     <PresenceContext.Provider value={online}>
       <ActivityContext.Provider value={activities}>
-        <ListeningContext.Provider value={tracks}>{children}</ListeningContext.Provider>
+        <ListeningContext.Provider value={tracks}>
+          <GameContext.Provider value={games}>{children}</GameContext.Provider>
+        </ListeningContext.Provider>
       </ActivityContext.Provider>
     </PresenceContext.Provider>
   );
@@ -129,6 +160,24 @@ export function useListeningOf(userId: string | null | undefined): Listening | n
   const map = useContext(ListeningContext);
   return (userId && map.get(userId)) || null;
 }
+
+const GameContext = createContext<ReadonlyMap<string, GameActivity>>(new Map());
+
+/** The game a user is playing with its start time (0 = unknown, from an older app) and mode. */
+export function useGameOf(userId: string | null | undefined): GameActivity | null {
+  const map = useContext(GameContext);
+  return (userId && map.get(userId)) || null;
+}
+
+/** "1h 12m", "25m", "just started". */
+export function playedFor(since: number, now = Date.now()): string | null {
+  if (!since) return null;
+  const mins = Math.floor((now - since) / 60_000);
+  if (mins < 1) return 'just started';
+  return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
+
+export const MODE_LABEL = { playing: 'Playing', locked: 'Locked in', afk: 'AFK' } as const;
 
 /** "Playing …" game name for a user, if they share it and are online. */
 export function useActivityOf(userId: string | null | undefined): string | null {

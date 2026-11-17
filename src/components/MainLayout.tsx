@@ -1,4 +1,5 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { useRecordPlaySessions } from '../hooks/usePlayHistory';
 import { LayoutEditor } from './LayoutEditor';
 import { useTrackWorkspaceTab, WorkspaceInbox, WorkspaceTabs, WorkspaceTree } from './Workspace';
 import { LoungeCalls, LoungeHome, LoungeNav } from './Lounge';
@@ -322,6 +323,7 @@ export function MainLayout({ userId, onSignOut }: { userId: string; onSignOut: (
   // Until the profile loads, stay untracked so an "invisible" user never flashes online.
   const status = useAutoIdle(me?.presence_status ?? 'invisible');
   const activity = useGameActivity();
+  useRecordPlaySessions(activity);
   const listening = useSpotifyListening();
   // Offline mode: messages written without a connection go out when it's back.
   useOutboxFlusher(userId);

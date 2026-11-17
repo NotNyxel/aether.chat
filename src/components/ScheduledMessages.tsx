@@ -22,6 +22,11 @@ interface ScheduledRow {
 /** Unsent text per chat for this session, so switching away and back never loses it. */
 const localDrafts = new Map<string, string>();
 
+/** Puts text in a chat's message box for when it opens (e.g. "Ask to join"), unless something is already typed there. */
+export function prefillDraft(scopeId: string, text: string) {
+  if (!localDrafts.get(scopeId)) localDrafts.set(scopeId, text);
+}
+
 const col = (scope: MessageScope) => (scope.kind === 'channel' ? 'channel_id' : 'conversation_id');
 
 /** Keeps the message box in sync with your saved draft for this chat. */

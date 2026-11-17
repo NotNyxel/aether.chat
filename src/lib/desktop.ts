@@ -254,6 +254,13 @@ export async function nowPlaying(): Promise<NowPlaying | null> {
 }
 
 /** Lower-cased executable names currently running (desktop only). */
+/** The game you're playing, found from where launchers installed it (2.1, Windows). */
+export async function runningGame(): Promise<string | null> {
+  if (!isTauri) return null;
+  const { invoke } = await import('@tauri-apps/api/core');
+  return invoke<string | null>('running_game').catch(() => null);
+}
+
 export async function runningProcesses(): Promise<string[]> {
   if (!isTauri) return [];
   const { invoke } = await import('@tauri-apps/api/core');

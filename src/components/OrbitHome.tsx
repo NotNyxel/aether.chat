@@ -7,7 +7,8 @@ import { useMemo } from 'react';
 import { useProfile } from '../hooks/useChatData';
 import { isRowUnread, useUnreadSummary } from '../hooks/useMessageExtras';
 import { useNotifyResolver } from '../hooks/useNotifications';
-import { useActivityOf, useListeningOf, usePresenceOf, PresenceDot } from '../hooks/usePresence';
+import { MODE_LABEL, playedFor, useActivityOf, useGameOf, useListeningOf, usePresenceOf, PresenceDot } from '../hooks/usePresence';
+import { useAskToJoin } from './ActivityCards';
 import { useReminders, whenText } from '../hooks/useReminders';
 import { useActiveCalls, useConversations, useFriendships } from '../hooks/useSocialData';
 import { AlbumArt, GameArtIcon } from '../lib/activityArt';
@@ -51,6 +52,8 @@ export function ActiveCard({ userId }: { userId: string }) {
   const game = useActivityOf(userId);
   const track = useListeningOf(userId);
   const openDm = useUiStore((s) => s.peekProfile);
+  const askToJoin = useAskToJoin();
+  const played = useGameOf(userId);
   const name = p?.display_name || p?.username || '';
   if (!game && !track) return null;
   return (
@@ -60,12 +63,20 @@ export function ActiveCard({ userId }: { userId: string }) {
         {game ? <GameArtIcon name={game} size={52} rounded="rounded-[14px]" /> : <AlbumArt title={track!.title} artist={track!.artist} size={52} />}
         <span className="min-w-0">
           <span className="block truncate font-bold">{game ?? track!.title}</span>
-          <span className="block truncate text-[13px] text-ae-muted">{game ? name : `${name} · ${track!.artist}`}</span>
+          <span className="block truncate text-[13px] text-ae-muted">
+            {game ? [name, played && MODE_LABEL[played.mode], played && playedFor(played.since)].filter(Boolean).join(' · ') : `${name} · ${track!.artist}`}
+          </span>
         </span>
       </div>
-      <button type="button" className="ae-press self-start rounded-full bg-ae-surface px-3.5 py-1.5 text-xs font-semibold hover:bg-ae-hover" onClick={(e) => openDm(userId, e.currentTarget)}>
-        {t('Say hi')}
-      </button>
+      {game ? (
+        <button type="button" className="ae-press self-start rounded-full bg-ae-accent px-3.5 py-1.5 text-xs font-bold text-ae-on-accent" onClick={() => askToJoin(userId, game)}>
+          {t('Ask to join')}
+        </button>
+      ) : (
+        <button type="button" className="ae-press self-start rounded-full bg-ae-surface px-3.5 py-1.5 text-xs font-semibold hover:bg-ae-hover" onClick={(e) => openDm(userId, e.currentTarget)}>
+          {t('Say hi')}
+        </button>
+      )}
     </article>
   );
 }

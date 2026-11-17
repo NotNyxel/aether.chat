@@ -2,8 +2,14 @@
  * Rich activity UI: "Listening to Spotify" with album art and a live progress bar, "Playing" with
  * real game art, a compact one-line activity subtitle for lists, and the profile widget board.
  */
+import { hoursText, usePlayHistory } from '../hooks/usePlayHistory';
+import { prefillDraft } from './ScheduledMessages';
+import { useConversationActions } from '../hooks/useSocialData';
+import { useUiStore } from '../stores/uiStore';
+import { useMeId } from '../hooks/useMe';
+import { t } from '../lib/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
-import { useActivityOf, useListeningOf, type Listening } from '../hooks/usePresence';
+import { MODE_LABEL, playedFor, useActivityOf, useGameOf, useListeningOf, type Listening } from '../hooks/usePresence';
 import { AlbumArt, GameArtIcon, GameBanner, SpotifyMark } from '../lib/activityArt';
 import type { ProfileWidget } from '../lib/profileDecor';
 import { MusicIcon, QuoteIcon } from './icons';
@@ -85,12 +91,16 @@ export function PlayingCard({ name, startedLabel }: { name: string; startedLabel
 
 /** Both activity cards for a user (renders nothing if they share neither). */
 export function ActivitySections({ userId }: { userId: string }) {
-  const playing = useActivityOf(userId);
+  const game = useGameOf(userId);
   const track = useListeningOf(userId);
-  if (!playing && !track) return null;
+  const now = useMinuteTick();
+  const me = useMeId();
+  if (!game && !track) return null;
+  const time = game ? playedFor(game.since, now) : null;
   return (
     <>
-      {playing && <PlayingCard name={playing} />}
+      {game && <PlayingCard name={game.name} startedLabel={[MODE_LABEL[game.mode], time && (time === 'just started' ? time : `for ${time}`)].filter(Boolean).join(' · ')} />}
+      {game && userId !== me && <AskToJoinButton userId={userId} game={game.name} />}
       {track && <ListeningCard track={track} />}
     </>
   );
@@ -98,17 +108,21 @@ export function ActivitySections({ userId }: { userId: string }) {
 
 /** One-line activity for member lists and friend rows. Returns null when there's nothing to show. */
 export function ActivityLine({ userId, fallback }: { userId: string; fallback?: ReactNode }) {
-  const playing = useActivityOf(userId);
+  const game = useGameOf(userId);
   const track = useListeningOf(userId);
-  if (playing)
+  const now = useMinuteTick();
+  if (game) {
+    const time = playedFor(game.since, now);
     return (
-      <span className="flex min-w-0 items-center gap-1">
-        <GameArtIcon name={playing} size={14} rounded="rounded-[3px]" />
+      <span className={`flex min-w-0 items-center gap-1 ${game.mode === 'afk' ? 'opacity-70' : ''}`}>
+        <GameArtIcon name={game.name} size={14} rounded="rounded-[3px]" />
         <span className="truncate">
-          Playing <b>{playing}</b>
+          {MODE_LABEL[game.mode]} <b>{game.name}</b>
+          {time && time !== 'just started' && ` · ${time}`}
         </span>
       </span>
     );
+  }
   if (track)
     return (
       <span className="flex min-w-0 items-center gap-1">
@@ -119,6 +133,66 @@ export function ActivityLine({ userId, fallback }: { userId: string; fallback?: 
       </span>
     );
   return fallback ? <>{fallback}</> : null;
+}
+
+/** "This week" on a profile (2.1): hours per game, biggest first. Nothing when there's none to show. */
+export function PlayHistory({ userId }: { userId: string }) {
+  const { data = [] } = usePlayHistory(userId);
+  if (!data.length) return null;
+  const top = data[0]!.seconds || 1;
+  const total = data.reduce((n, r) => n + r.seconds, 0);
+  return (
+    <section className="ae-enter">
+      <div className="flex items-center">
+        <SectionTitle>{t('Played this week')}</SectionTitle>
+        <span className="ml-auto text-[11px] text-ae-muted">{hoursText(total)}</span>
+      </div>
+      <ul className="space-y-1.5">
+        {data.slice(0, 5).map((r) => (
+          <li key={r.game} className="flex items-center gap-2 text-xs">
+            <GameArtIcon name={r.game} size={20} rounded="rounded" />
+            <span className="w-28 truncate">{r.game}</span>
+            <span className="h-2 flex-1 overflow-hidden rounded-full bg-ae-surface">
+              <span className="block h-full rounded-full bg-ae-accent" style={{ width: `${Math.max(4, (r.seconds / top) * 100)}%` }} />
+            </span>
+            <span className="w-12 text-right text-ae-muted">{hoursText(r.seconds)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** "Join me" (2.1): opens your DM with them with "Can I join you in …?" ready to send. */
+export function useAskToJoin() {
+  const convo = useConversationActions();
+  const openHome = useUiStore((s) => s.openHome);
+  return (userId: string, game: string) =>
+    convo.openDm.mutate(userId, {
+      onSuccess: (convId) => {
+        prefillDraft(convId, t('Can I join you in {game}?', { game }));
+        openHome(convId);
+      },
+    });
+}
+
+export function AskToJoinButton({ userId, game }: { userId: string; game: string }) {
+  const ask = useAskToJoin();
+  return (
+    <button type="button" className="ae-press mt-2 rounded-full bg-ae-accent px-3.5 py-1.5 text-xs font-bold text-ae-on-accent" onClick={() => ask(userId, game)}>
+      {t('Ask to join')}
+    </button>
+  );
+}
+
+/** Re-renders once a minute (for "playing for 1h 12m"). */
+function useMinuteTick(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
 }
 
 export function useHasActivity(userId: string): boolean {

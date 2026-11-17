@@ -11,7 +11,7 @@ import { openExternal } from '../lib/platform';
 import { DEFAULT_PROFILE_ACCENT, DEFAULT_PROFILE_PRIMARY, type ProfileWidget } from '../lib/profileDecor';
 import { isHexColor } from '../theme/presets';
 import type { UserProfile } from '../types/db';
-import { ActivitySections, WidgetBoard } from './ActivityCards';
+import { ActivitySections, PlayHistory, WidgetBoard } from './ActivityCards';
 import { CalendarIcon, CloseIcon, LinkIcon } from './icons';
 import { Avatar, avatarPlateStyle, BadgeRow, ProfileEffectLayer, StyledName } from './ProfileCard';
 import { ScopedCss } from './ThemeEngine';
@@ -154,6 +154,7 @@ export function FullProfile({
             <div className="grid gap-4 @2xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
               <div className="min-w-0 space-y-4">
                 <ActivitySections userId={profile.id} />
+                <PlayHistory userId={profile.id} />
                 {profile.bio ? (
                   <section>
                     <Label>About me</Label>

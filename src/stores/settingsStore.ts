@@ -155,7 +155,16 @@ export interface ActivityPrefs {
   /** Share the Spotify track you're listening to. */
   shareSpotify: boolean;
   customGames: CustomGame[];
+  /** How you're playing (2.1): shown next to the game. */
+  mode: PlayMode;
 }
+
+export type PlayMode = 'playing' | 'locked' | 'afk';
+export const PLAY_MODES: { id: PlayMode; label: string; hint: string }[] = [
+  { id: 'playing', label: 'Playing', hint: 'Happy to chat' },
+  { id: 'locked', label: 'Locked in', hint: 'Focused, maybe later' },
+  { id: 'afk', label: 'AFK', hint: 'Game open, not at the keyboard' },
+];
 
 interface SettingsState {
   theme: ThemeSettings;
@@ -229,7 +238,7 @@ export interface A11yPrefs {
   alwaysShowTimes: boolean;
 }
 export const DEFAULT_A11Y: A11yPrefs = { chatSize: 15, zoom: 100, highContrast: false, underlineLinks: false, alwaysShowTimes: false };
-export const DEFAULT_ACTIVITY: ActivityPrefs = { shareActivity: false, shareSpotify: false, customGames: [] };
+export const DEFAULT_ACTIVITY: ActivityPrefs = { shareActivity: false, shareSpotify: false, customGames: [], mode: 'playing' };
 
 export const useSettingsStore = create<SettingsState>()(
   persist(

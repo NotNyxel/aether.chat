@@ -1,4 +1,5 @@
 /** Signed-in shell: presence + call providers, server rail, Home or server view, settings, profile popover, ringing. */
+import { useTrackWorkspaceTab, WorkspaceInbox, WorkspaceTabs, WorkspaceTree } from './Workspace';
 import { LoungeCalls, LoungeHome, LoungeNav } from './Lounge';
 import { OrbitHome } from './OrbitHome';
 import { isPhoneLayout, isTabletLayout } from '../lib/phone';
@@ -165,6 +166,11 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
   const serverMentions = unread.filter((r) => r.server_id && r.scope_id !== channel?.id).reduce((n, r) => n + r.mention_count, 0);
   useTaskbarBadge(homeBadge + serverMentions);
 
+  // Workspace: every chat or channel you open becomes a tab.
+  const workspace = layout === 'workspace' && desktopShell;
+  useTrackWorkspaceTab(
+    workspace ? (server && channel && channel.type === 'text' ? { id: channel.id, serverId: server.id } : !server && conversation ? { id: conversation.id, serverId: null } : null) : null,
+  );
   // What the user is looking at right now (drives mark-as-read and notification sounds).
   const viewingScopeId = server ? (channel?.type === 'text' ? channel.id : null) : (conversation?.id ?? null);
   useActivityFeed(userId, viewingScopeId, me?.presence_status);
@@ -174,7 +180,7 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
     <WindowFrame
       bar={
         <TitleBar
-          title={server ? server.name : conversation ? 'Direct messages' : homeTarget === 'requests' ? 'Message requests' : homeTarget === 'now' && layout !== 'classic' ? (layout === 'lounge' ? 'Home' : 'Now') : homeTarget === 'calls' && layout === 'lounge' ? 'Calls' : 'Friends'}
+          title={server ? server.name : conversation ? 'Direct messages' : homeTarget === 'requests' ? 'Message requests' : homeTarget === 'now' && layout !== 'classic' ? (layout === 'lounge' ? 'Home' : layout === 'workspace' ? 'Inbox' : 'Now') : homeTarget === 'calls' && layout === 'lounge' ? 'Calls' : 'Friends'}
           lead={
             mobilePane === 'main' && (
               <button type="button" aria-label="Back" className="ae-mobile-only -ml-1 grid h-9 w-9 place-items-center rounded-full text-ae-muted hover:bg-ae-hover" onClick={() => setMobilePane('nav')}>
@@ -191,6 +197,13 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
     <div className="flex h-full flex-col text-ae-text">
     <AnnouncementBar />
     {layout === 'lounge' && desktopShell && <LoungeNav userId={userId} servers={servers.data ?? []} lastServerId={storedServerId} unreadChats={homeBadge} />}
+    {workspace && (
+      <WorkspaceTabs
+        userId={userId}
+        current={server ? (channel?.id ?? '') : (conversation?.id ?? (homeTarget === 'now' ? null : homeTarget))}
+        inboxCount={serverMentions}
+      />
+    )}
     <div
       className="ae-shell flex min-h-0 flex-1"
       data-pane={mobilePane}
@@ -201,7 +214,16 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
     >
       <ServerRail userId={userId} servers={servers.data ?? []} activeId={server?.id ?? null} homeBadge={homeBadge} />
 
-      {server ? (
+      {workspace ? (
+        <WorkspaceTree
+          userId={userId}
+          servers={servers.data ?? []}
+          activeChannelId={server ? (channel?.id ?? null) : null}
+          activeConvId={server ? null : (conversation?.id ?? null)}
+          onInbox={!server && !conversation && homeTarget === 'now'}
+          inboxCount={serverMentions}
+        />
+      ) : server ? (
         <ChannelSidebar userId={userId} server={server} channels={channels.data ?? []} activeChannelId={channel?.id ?? null} />
       ) : (
         <HomeSidebar userId={userId} />
@@ -226,6 +248,8 @@ function Shell({ userId, onSignOut }: { userId: string; onSignOut: () => void })
           <LoungeHome userId={userId} />
         ) : homeTarget === 'calls' && layout === 'lounge' && desktopShell ? (
           <LoungeCalls userId={userId} />
+        ) : homeTarget === 'now' && workspace ? (
+          <WorkspaceInbox userId={userId} servers={servers.data ?? []} />
         ) : (
           <FriendsView userId={userId} />
         )}

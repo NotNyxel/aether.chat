@@ -54,6 +54,10 @@ export type ThemePresetId =
   | 'lounge-night'
   | 'lounge-ember'
   | 'lounge-day'
+  // Made for the Workspace layout (2.1).
+  | 'workspace-amber'
+  | 'workspace-graphite'
+  | 'workspace-paper'
   // Secret themes (2.1): hidden until unlocked with a code (lib/secrets.ts).
   | 'secret-goblin'
   | 'secret-arcade'
@@ -94,6 +98,7 @@ export interface ThemePreset {
   tokens: ThemeTokens;
 }
 
+const FONT_INTER = `'Inter Variable', 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif`;
 const FONT_OUTFIT = `'Outfit Variable', 'Outfit', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif`;
 const SYSTEM_FONT = `'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Inter', sans-serif`;
 
@@ -414,6 +419,19 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
     backdrop: '#eef1fb', bg: '#ffffff', bgElevated: '#ffffff', bgSunken: '#eef1fb', surface: '#f1f3fb', surfaceHover: '#e6e9f6', border: '#e0e4f2',
     text: '#161a33', textMuted: '#5a6085', accent: '#0f9f7a', accentContrast: '#ffffff', radius: '18px', font: FONT_OUTFIT,
   }, true),
+  // ── Workspace layout themes: compact, flat, focused. ──
+  'workspace-amber': preset('workspace-amber', 'Workspace Amber', 'Charcoal with an amber highlight. Made for Workspace.', {
+    backdrop: '#0b0c0d', bg: '#111214', bgElevated: '#18191c', bgSunken: '#0f1012', surface: '#1d1f23', surfaceHover: '#26282d', border: '#26282d',
+    text: '#e8e8ea', textMuted: '#a1a3ab', accent: '#f2a93b', accentContrast: '#1a1203', radius: '8px', font: FONT_INTER,
+  }),
+  'workspace-graphite': preset('workspace-graphite', 'Workspace Graphite', 'Cool grey with a calm blue. Made for Workspace.', {
+    backdrop: '#0d0f12', bg: '#14171b', bgElevated: '#1a1e23', bgSunken: '#111317', surface: '#20252b', surfaceHover: '#29303a', border: '#2a3038',
+    text: '#e6e9ee', textMuted: '#9aa3ae', accent: '#6ea8fe', accentContrast: '#06142a', radius: '8px', font: FONT_INTER,
+  }),
+  'workspace-paper': preset('workspace-paper', 'Workspace Paper', 'Crisp and light, like a clean desk. Made for Workspace.', {
+    backdrop: '#f3f3f1', bg: '#ffffff', bgElevated: '#ffffff', bgSunken: '#f6f6f4', surface: '#f0f0ed', surfaceHover: '#e6e6e2', border: '#e2e2de',
+    text: '#1c1c1a', textMuted: '#5d5d58', accent: '#b25e00', accentContrast: '#ffffff', radius: '8px', font: FONT_INTER,
+  }, true),
   // ── Secret themes: never listed until unlocked. Each also has its own touches in index.css. ──
   'secret-goblin': preset('secret-goblin', 'Goblin Mode', 'Feral. Mossy. Slightly crooked. Unlocked with a secret code.', {
     bg: '#141a0d', bgElevated: '#1b2312', bgSunken: '#0f140a', surface: '#232d17', surfaceHover: '#2c391d', border: '#3a4a25',
@@ -504,6 +522,6 @@ export const SECRET_PRESETS: ThemePresetId[] = ['secret-goblin', 'secret-arcade'
 export const LAYOUT_THEMES: Record<'classic' | 'orbit' | 'workspace' | 'lounge', ThemePresetId[]> = {
   classic: ['oled-dark', 'midnight', 'aether-glass', 'daylight'],
   orbit: ['orbit-violet', 'orbit-dusk', 'orbit-dawn'],
-  workspace: [],
+  workspace: ['workspace-amber', 'workspace-graphite', 'workspace-paper'],
   lounge: ['lounge-night', 'lounge-ember', 'lounge-day'],
 };

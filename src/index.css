@@ -1356,3 +1356,44 @@ select,
     padding-bottom: 2px;
   }
 }
+
+/* ── 2.1 Workspace layout (desktop and wide browser windows): tabs across the top, one tree on
+   the left, flat edge-to-edge panels like an editor. ────────────────────────────────────── */
+:root[data-ae-layout='workspace']:not([data-ae-phone='true']):not([data-ae-tablet='true']) {
+  & .ae-ws-tabs {
+    background: var(--ae-backdrop, var(--ae-bg-sunken));
+    border-bottom: 1px solid var(--ae-border);
+  }
+  & .ae-shell {
+    gap: 0;
+    padding: 0;
+  }
+  /* The tree replaces the server column. */
+  & .ae-shell > nav {
+    display: none;
+  }
+  & .ae-ws-tree {
+    background: var(--ae-bg-sunken);
+    border-right: 1px solid var(--ae-border);
+  }
+  & .ae-shell > aside,
+  & .ae-shell > main {
+    border-radius: 0;
+    box-shadow: none;
+  }
+  & .ae-shell > main {
+    border: 0;
+    background: var(--ae-bg);
+  }
+  & .ae-chat-header {
+    height: 44px;
+  }
+  & .ae-userpanel {
+    border-top: 1px solid var(--ae-border);
+    background: transparent;
+  }
+  & .ae-msg {
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+}

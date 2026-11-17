@@ -154,7 +154,7 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
 const LAYOUTS: { id: LayoutId; name: string; blurb: string; ready: boolean }[] = [
   { id: 'classic', name: 'Classic', blurb: 'Server bar, channel list, chat. The layout you know.', ready: true },
   { id: 'orbit', name: 'Orbit', blurb: 'Floating panels and a “Now” home with what your friends are up to.', ready: true },
-  { id: 'workspace', name: 'Workspace', blurb: 'Tabs for open chats, one list for everything, keyboard-first.', ready: false },
+  { id: 'workspace', name: 'Workspace', blurb: 'Tabs for open chats, one list for everything, keyboard-first.', ready: true },
   { id: 'lounge', name: 'Lounge', blurb: 'Social-first: top navigation, a feed home, rooms as live cards.', ready: true },
 ];
 
@@ -205,7 +205,7 @@ function LayoutSection() {
     const first = LAYOUT_THEMES[id][0];
     setTheme({ layout: id, ...(first && !theme.custom?.enabled ? { presetId: first } : {}) });
     const ui = useUiStore.getState();
-    const nowHome = id === 'orbit' || id === 'lounge';
+    const nowHome = id !== 'classic';
     if (nowHome && ui.homeTarget === 'friends') ui.openHome('now');
     if (!nowHome && (ui.homeTarget === 'now' || ui.homeTarget === 'calls')) ui.openHome('friends');
     toast.success(`Layout: ${LAYOUTS.find((l) => l.id === id)!.name}`);
@@ -377,6 +377,7 @@ function AppearanceTab() {
                     {SECRET_PRESETS.includes(id) && <span className="ml-2 rounded bg-ae-accent/20 px-1.5 text-[10px] text-ae-accent">SECRET</span>}
                     {id.startsWith('orbit-') && <span className="ml-2 rounded bg-ae-accent/20 px-1.5 text-[10px] text-ae-accent">ORBIT</span>}
                     {id.startsWith('lounge-') && <span className="ml-2 rounded bg-ae-accent/20 px-1.5 text-[10px] text-ae-accent">LOUNGE</span>}
+                    {id.startsWith('workspace-') && <span className="ml-2 rounded bg-ae-accent/20 px-1.5 text-[10px] text-ae-accent">WORKSPACE</span>}
                   </p>
                   <p className="text-xs text-ae-muted">{preset.description}</p>
                 </div>

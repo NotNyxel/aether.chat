@@ -21,17 +21,9 @@ function initials(name: string): string {
     .join('');
 }
 
-export function ServerRail({ userId, servers, activeId, homeBadge }: {
-  userId: string;
-  servers: Server[];
-  /** Active server id, or null when Home is open. */
-  activeId: string | null;
-  /** Unread DMs + pending friend requests. */
-  homeBadge: number;
-}) {
-  const selectServer = useUiStore((s) => s.selectServer);
+/** The right-click menu for a server (also the Workspace tree's "⋯" menu). */
+export function useServerMenu(userId: string) {
   const openHome = useUiStore((s) => s.openHome);
-  const addServer = useAddServer((s) => s.set);
   const leave = useLeaveServer(userId);
   const invite = useCreateInvite();
   const markRead = useMarkRead();
@@ -72,6 +64,23 @@ export function ServerRail({ userId, servers, activeId, homeBadge }: {
       },
     ]);
   };
+  const { data: unread = [] } = useUnreadSummary();
+  const { map: notifyMap } = useNotifyResolver();
+  return serverMenu;
+}
+
+export function ServerRail({ userId, servers, activeId, homeBadge }: {
+  userId: string;
+  servers: Server[];
+  /** Active server id, or null when Home is open. */
+  activeId: string | null;
+  /** Unread DMs + pending friend requests. */
+  homeBadge: number;
+}) {
+  const selectServer = useUiStore((s) => s.selectServer);
+  const openHome = useUiStore((s) => s.openHome);
+  const addServer = useAddServer((s) => s.set);
+  const serverMenu = useServerMenu(userId);
   const { data: unread = [] } = useUnreadSummary();
   const { map: notifyMap } = useNotifyResolver();
   const perServer = useMemo(() => {

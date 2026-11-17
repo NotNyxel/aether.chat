@@ -201,9 +201,12 @@ export function InboxPanel({ userId, servers, onClose, inline = false }: { userI
         {tabBtn('unreads', t('Unreads'), unreadRows.length)}
         {tabBtn('saved', t('Saved'))}
         {tabBtn('reminders', t('Reminders'))}
-        <button type="button" title={t('Close')} className="ml-auto text-ae-muted hover:text-ae-text" onClick={onClose}>
-          <CloseIcon size={16} />
-        </button>
+        {/* Full-screen inbox (phone tab, Workspace home) has nothing to close. */}
+        {!inline && (
+          <button type="button" title={t('Close')} className="ml-auto text-ae-muted hover:text-ae-text" onClick={onClose}>
+            <CloseIcon size={16} />
+          </button>
+        )}
       </header>
 
       <div className="ae-scroll min-h-0 flex-1 overflow-y-auto p-3">

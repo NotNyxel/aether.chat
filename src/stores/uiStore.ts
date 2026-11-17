@@ -6,7 +6,7 @@ import { create } from 'zustand';
 /** True when a layout with a "Now" home (Orbit, Lounge) is on and the window shows the desktop layout. */
 export function nowHomeOnDesktop(): boolean {
   const layout = useSettingsStore.getState().theme.layout;
-  return (layout === 'orbit' || layout === 'lounge') && !isPhoneLayout() && !isTabletLayout();
+  return !!layout && layout !== 'classic' && !isPhoneLayout() && !isTabletLayout();
 }
 
 export type SettingsTab = 'account' | 'privacy' | 'profile' | 'appearance' | 'voice' | 'notifications' | 'keybinds' | 'bandwidth' | 'activity' | 'windows' | 'standing' | 'admin';

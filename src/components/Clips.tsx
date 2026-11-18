@@ -837,6 +837,19 @@ export function ClipsSettings() {
                     <input type="number" min={10} max={240} value={customFps ? s.fps : ''} placeholder="90" onChange={(e) => e.target.value && set({ fps: Math.min(240, Math.max(10, Number(e.target.value))) })} className="w-14 rounded bg-ae-sunken px-1 text-center" aria-label={t('Custom frame rate')} />
                   </label>
                 </Field>
+                <Field label={t('Capture')}>
+                  <button type="button" className={seg(s.capture === 'game')} onClick={() => set({ capture: 'game' })}>
+                    {t('Game only')}
+                  </button>
+                  <button type="button" className={seg(s.capture === 'screen')} onClick={() => set({ capture: 'screen' })}>
+                    {t('Full screen')}
+                  </button>
+                </Field>
+                <p className="text-xs text-ae-muted">
+                  {s.capture === 'game'
+                    ? t('Records just the game’s window, so notifications and other apps never end up in a clip. With no game open, the whole screen is recorded.')
+                    : t('Records everything on the screen below.')}
+                </p>
                 <Field label={t('Resolution')}>
                   {(['native', '2160', '1440', '1080', '720'] as const).map((r) => (
                     <button key={r} type="button" className={seg(s.resolution === r)} onClick={() => set({ resolution: r })}>
@@ -854,7 +867,14 @@ export function ClipsSettings() {
                 <p className="text-xs text-ae-muted">
                   {t('Recording runs on your graphics card, so it barely touches your CPU. A lower resolution than your screen is applied when a clip saves. Uses about {mb} MB of disk while recording.', { mb: Math.round(s.seconds * (s.quality === 'high' ? 4 : s.quality === 'medium' ? 2.5 : 1.4) * (s.fps / 60)) })}
                 </p>
-                <Toggle label={t('Record my microphone')} hint={t('Saved as its own track, so you can mute it later in the editor.')} checked={s.mic} onChange={(v) => set({ mic: v })} />
+                <Toggle label={t('Record my microphone')} hint={t('Levelled like in calls, and saved as its own track too, so you can mute it later in the editor.')} checked={s.mic} onChange={(v) => set({ mic: v })} />
+                {s.mic && (
+                  <label className="flex items-center gap-3 text-sm">
+                    <span className="w-28 shrink-0 text-ae-muted">{t('Mic volume')}</span>
+                    <input type="range" min={25} max={400} step={25} value={s.micVolume} onChange={(e) => set({ micVolume: Number(e.target.value) })} className="flex-1" aria-label={t('Mic volume')} />
+                    <span className="w-12 text-right tabular-nums">{s.micVolume}%</span>
+                  </label>
+                )}
                 <Toggle label={t('Include Aether calls')} hint={t('Off: only your game and other apps. On: friends’ voices from Aether calls too.')} checked={s.includeCalls} onChange={(v) => set({ includeCalls: v })} />
                 <Toggle label={t('Show the mouse cursor')} checked={s.cursor} onChange={(v) => set({ cursor: v })} />
                 <Toggle label={t('Play a sound when a clip saves')} checked={s.sound} onChange={(v) => set({ sound: v })} />

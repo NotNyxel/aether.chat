@@ -272,10 +272,10 @@ export async function nowPlayingCover(): Promise<string | null> {
 }
 
 /** The game you're playing, found from where launchers installed it (2.1, Windows). */
-export async function runningGame(): Promise<string | null> {
+export async function runningGame(): Promise<{ name: string; exe: string } | null> {
   if (!isTauri) return null;
   const { invoke } = await import('@tauri-apps/api/core');
-  return invoke<string | null>('running_game').catch(() => null);
+  return invoke<{ name: string; exe: string } | null>('running_game').catch(() => null);
 }
 
 export async function runningProcesses(): Promise<string[]> {

@@ -1,4 +1,5 @@
 /** Clips (2.4): the recorder controller, the background inbox, and library queries. */
+import { invoke } from '@tauri-apps/api/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useEffect, useRef, useState } from 'react';
@@ -67,7 +68,7 @@ export async function clipNow(qc?: ReturnType<typeof useQueryClient>, fromSquad?
     if (!st?.running) {
       // Off (or stopped by itself): start it, so the next press has something to save.
       if (!cfg.s.enabled) cfg.set({ enabled: true });
-      await startRecorder(cfg.s);
+      await startRecorder(cfg.s, useDetectedGame.getState().game?.exe ?? null);
       return tell(t('Clipping started'), t('Aether is recording now. Press the clip key again to save.'), true);
     }
     const id = fromSquad?.id ?? crypto.randomUUID();
@@ -112,7 +113,10 @@ export function useClipRecorder() {
   const s = useClipSettings((x) => x.s);
   const qc = useQueryClient();
   const game = useDetectedGame((x) => x.game?.name ?? null);
-  const settingsKey = JSON.stringify([s.fps, s.resolution, s.quality, s.seconds, s.mic, s.includeCalls, s.monitor, s.cursor, s.folder]);
+  // Game-only capture follows the game: a new game (or none) restarts recording on its window.
+  const gameExe = useDetectedGame((x) => x.game?.exe ?? null);
+  const target = s.capture === 'game' ? gameExe : null;
+  const settingsKey = JSON.stringify([s.fps, s.resolution, s.quality, s.seconds, s.mic, s.includeCalls, s.monitor, s.cursor, s.folder, s.capture, target]);
   const running = useRef<string | null>(null);
 
   const want = canRecord && s.enabled && (s.mode === 'always' || !!game);
@@ -131,7 +135,7 @@ export function useClipRecorder() {
       if (running.current === settingsKey && st?.running) return;
       if (!(await ffmpegReady())) return;
       try {
-        await startRecorder(s);
+        await startRecorder(s, target);
         if (!cancelled) running.current = settingsKey;
       } catch (e) {
         tell(t('Clipping couldn’t start'), e instanceof Error ? e.message : String(e), false);
@@ -146,10 +150,13 @@ export function useClipRecorder() {
   useEffect(() => {
     if (!canRecord || !want) return;
     const id = setInterval(() => {
-      void recorderStatus().then((st) => {
-        if (!st.running && running.current) {
+      void recorderStatus().then(async (st) => {
+        // Stopped by itself, or a game's window has opened since recording started on the screen.
+        const exe = useClipSettings.getState().s.capture === 'game' ? useDetectedGame.getState().game?.exe : null;
+        const windowNow = !!exe && st.running && !st.window && (await invoke<boolean>('clips_game_window', { exe }).catch(() => false));
+        if ((!st.running && running.current) || windowNow) {
           running.current = null;
-          void startRecorder(useClipSettings.getState().s).then(() => (running.current = settingsKey), () => undefined);
+          void startRecorder(useClipSettings.getState().s, useDetectedGame.getState().game?.exe ?? null).then(() => (running.current = settingsKey), () => undefined);
         }
       }, () => undefined);
     }, 30_000);

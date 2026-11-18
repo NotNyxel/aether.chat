@@ -29,7 +29,7 @@ mod clips {
             pub fn $name() -> Result<(), String> { Err("Clipping is only available on Windows.".into()) }
         )* };
     }
-    not_here!(clips_ready, clips_install_ffmpeg, clips_status, clips_start, clips_stop, clips_save, clips_default_folder, clips_list, clips_delete, clips_export, clips_set_meta, clips_sweep, clips_file_size, clips_read, clips_write, clips_hash, roblox_place, clips_pick_folder);
+    not_here!(clips_ready, clips_install_ffmpeg, clips_status, clips_start, clips_stop, clips_save, clips_default_folder, clips_list, clips_delete, clips_export, clips_set_meta, clips_sweep, clips_file_size, clips_read, clips_write, clips_hash, roblox_place, clips_pick_folder, clips_game_window);
 }
 
 /// Native capture is Windows-only (Windows Graphics Capture). Elsewhere the app uses the system's
@@ -323,7 +323,7 @@ pub fn run() {
                 _ => PermissionResponse::Default,
             }
         })
-        .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, splash_finish, splash_busy, set_close_to_tray, idle_seconds, running_processes, save_export, now_playing, games::running_game, media::media_action, media::now_playing_cover, clips::clips_ready, clips::clips_install_ffmpeg, clips::clips_status, clips::clips_start, clips::clips_stop, clips::clips_save, clips::clips_default_folder, clips::clips_list, clips::clips_delete, clips::clips_export, clips::clips_set_meta, clips::clips_sweep, clips::clips_file_size, clips::clips_read, clips::clips_write, clips::clips_hash, clips::roblox_place, clips::clips_pick_folder, hotkey::clips_set_hotkey])
+        .invoke_handler(tauri::generate_handler![capture::capture_sources, capture::capture_start, capture::capture_stop, splash_finish, splash_busy, set_close_to_tray, idle_seconds, running_processes, save_export, now_playing, games::running_game, media::media_action, media::now_playing_cover, clips::clips_ready, clips::clips_install_ffmpeg, clips::clips_status, clips::clips_start, clips::clips_stop, clips::clips_save, clips::clips_default_folder, clips::clips_list, clips::clips_delete, clips::clips_export, clips::clips_set_meta, clips::clips_sweep, clips::clips_file_size, clips::clips_read, clips::clips_write, clips::clips_hash, clips::roblox_place, clips::clips_pick_folder, clips::clips_game_window, hotkey::clips_set_hotkey])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open Aether", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Toggle mute", true, None::<&str>)?;

@@ -3,6 +3,16 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.4.6] - 2026-11-18
+
+### Clips
+
+- **Game only or full screen.** Settings → Clips → Capture: record just your game's window (the new default:
+  notifications, Discord pop-ups and other apps never end up in a clip) or the whole screen. With no game open,
+  the whole screen is recorded, and recording moves onto the game's window as soon as it opens.
+- **Your voice is clearly in clips.** The microphone is now levelled like it is in calls (headset mics are often
+  much quieter than the game), and there's a **Mic volume** slider for clips.
+
 ## [2.4.5] - 2026-11-17
 
 ### Fixes

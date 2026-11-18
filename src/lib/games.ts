@@ -84,8 +84,13 @@ export interface CustomGame {
 
 /** First matching game, custom entries first. */
 export function detectGame(processes: string[], custom: CustomGame[]): string | null {
+  return detectGameExe(processes, custom)?.name ?? null;
+}
+
+/** The running game and its program file (game-only clip capture records that program's window). */
+export function detectGameExe(processes: string[], custom: CustomGame[]): { name: string; exe: string } | null {
   const running = new Set(processes);
-  for (const g of custom) if (running.has(g.exe.trim().toLowerCase())) return g.name.trim() || g.exe;
-  for (const p of processes) if (KNOWN_GAMES[p]) return KNOWN_GAMES[p];
+  for (const g of custom) if (running.has(g.exe.trim().toLowerCase())) return { name: g.name.trim() || g.exe, exe: g.exe.trim().toLowerCase() };
+  for (const p of processes) if (KNOWN_GAMES[p]) return { name: KNOWN_GAMES[p], exe: p };
   return null;
 }

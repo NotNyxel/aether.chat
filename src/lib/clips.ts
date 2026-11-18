@@ -24,6 +24,10 @@ export interface ClipSettings {
   cursor: boolean;
   folder: string;
   sound: boolean;
+  /** Only the game's window (when a game is running), or the whole screen. */
+  capture: 'game' | 'screen';
+  /** Microphone volume in clips, in percent. */
+  micVolume: number;
   /** Received clips: download in the background ("smart": computers and Wi-Fi), always, or when tapped. */
   autoDownload: 'smart' | 'always' | 'tap';
   /** Received clips delete themselves after this many days unless kept (0 = keep). */
@@ -43,6 +47,8 @@ export const DEFAULT_CLIP_SETTINGS: ClipSettings = {
   cursor: false,
   folder: '',
   sound: true,
+  capture: 'game',
+  micVolume: 100,
   autoDownload: 'smart',
   keepDays: 7,
 };
@@ -109,13 +115,15 @@ export interface RecorderStatus {
   encoder: string | null;
   seconds: number;
   since: number;
+  /** Recording just the game's window. */
+  window: boolean;
 }
 export const recorderStatus = () => invoke<RecorderStatus>('clips_status');
 
-export async function startRecorder(s: ClipSettings) {
+export async function startRecorder(s: ClipSettings, gameExe: string | null = null) {
   const folder = s.folder || (await defaultFolder());
   await invoke('clips_start', {
-    settings: { fps: Math.round(s.fps), resolution: s.resolution, quality: s.quality, seconds: s.seconds, mic: s.mic, include_calls: s.includeCalls, monitor: s.monitor, cursor: s.cursor, folder },
+    settings: { fps: Math.round(s.fps), resolution: s.resolution, quality: s.quality, seconds: s.seconds, mic: s.mic, include_calls: s.includeCalls, monitor: s.monitor, cursor: s.cursor, folder, capture: s.capture, game_exe: gameExe, mic_volume: Math.round(s.micVolume) },
   });
 }
 export const stopRecorder = () => invoke<void>('clips_stop');
@@ -131,7 +139,8 @@ export async function currentGame(): Promise<{ game: string | null; detail: stri
 
 export async function saveClip(squad?: { id: string; by: string }): Promise<string> {
   const { game, detail } = await currentGame();
-  return invoke<string>('clips_save', { input: { game, detail, squad: squad?.id ?? null, squad_by: squad?.by ?? null } });
+  const micVolume = Math.round(useClipSettings.getState().s.micVolume);
+  return invoke<string>('clips_save', { input: { game, detail, squad: squad?.id ?? null, squad_by: squad?.by ?? null, mic_volume: micVolume } });
 }
 
 // ── Library (PC) ──────────────────────────────────────────────────────────────────────────────

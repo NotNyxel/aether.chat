@@ -344,6 +344,71 @@ pub struct ClipSettings {
     pub monitor: u32,
     pub cursor: bool,
     pub folder: String,
+    /// "game": only the game's window (when one is running), "screen": the whole monitor.
+    #[serde(default)]
+    pub capture: String,
+    /// The running game's program file, e.g. "robloxplayerbeta.exe" (for "game").
+    #[serde(default)]
+    pub game_exe: Option<String>,
+    /// Microphone volume in percent (100 = as levelled).
+    #[serde(default = "full_volume")]
+    pub mic_volume: u32,
+}
+fn full_volume() -> u32 {
+    100
+}
+
+/// Whether that program has a window to record yet.
+#[tauri::command]
+pub fn clips_game_window(exe: String) -> bool {
+    game_window(&exe).is_some()
+}
+
+/// The game's main window: the biggest visible, not minimised top-level window of that program.
+fn game_window(exe: &str) -> Option<isize> {
+    use windows::core::BOOL;
+    use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, RECT};
+    use windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION};
+    use windows::Win32::UI::WindowsAndMessaging::{EnumWindows, GetClientRect, GetWindow, GetWindowThreadProcessId, IsIconic, IsWindowVisible, GW_OWNER};
+    struct Search {
+        exe: String,
+        best: Option<(isize, i64)>,
+        names: HashMap<u32, String>,
+    }
+    unsafe extern "system" fn each(hwnd: HWND, lp: LPARAM) -> BOOL {
+        let s = unsafe { &mut *(lp.0 as *mut Search) };
+        unsafe {
+            if !IsWindowVisible(hwnd).as_bool() || IsIconic(hwnd).as_bool() || GetWindow(hwnd, GW_OWNER).map(|o| !o.0.is_null()).unwrap_or(false) {
+                return BOOL(1);
+            }
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, Some(&mut pid));
+            let name = s.names.entry(pid).or_insert_with(|| {
+                let Ok(h) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else { return String::new() };
+                let mut buf = [0u16; 1024];
+                let mut len = buf.len() as u32;
+                let path = if QueryFullProcessImageNameW(h, PROCESS_NAME_WIN32, windows::core::PWSTR(buf.as_mut_ptr()), &mut len).is_ok() { String::from_utf16_lossy(&buf[..len as usize]) } else { String::new() };
+                let _ = CloseHandle(h);
+                path.rsplit('\\').next().unwrap_or("").to_lowercase()
+            });
+            if *name != s.exe {
+                return BOOL(1);
+            }
+            let mut r = RECT::default();
+            if GetClientRect(hwnd, &mut r).is_ok() {
+                let area = (r.right - r.left) as i64 * (r.bottom - r.top) as i64;
+                if area > 64 * 64 && s.best.map(|(_, a)| area > a).unwrap_or(true) {
+                    s.best = Some((hwnd.0 as isize, area));
+                }
+            }
+        }
+        BOOL(1)
+    }
+    let mut s = Search { exe: exe.to_lowercase(), best: None, names: HashMap::new() };
+    unsafe {
+        let _ = EnumWindows(Some(each), LPARAM(&mut s as *mut Search as isize));
+    }
+    s.best.map(|(h, _)| h)
 }
 
 struct Recorder {
@@ -354,6 +419,8 @@ struct Recorder {
     game: Arc<Mutex<Ring>>,
     mic: Option<Arc<Mutex<Ring>>>,
     started_ms: u64,
+    /// Recording the game's own window (not the whole screen).
+    window: bool,
 }
 
 static RECORDER: Mutex<Option<Recorder>> = Mutex::new(None);
@@ -368,6 +435,8 @@ pub struct RecorderStatus {
     encoder: Option<String>,
     seconds: u32,
     since: u64,
+    /// Recording just the game's window.
+    window: bool,
 }
 
 #[tauri::command]
@@ -378,11 +447,11 @@ pub fn clips_status() -> RecorderStatus {
         if let Ok(Some(_)) = r.child.try_wait() {
             r.stop.store(true, Ordering::Relaxed);
             *g = None;
-            return RecorderStatus { running: false, encoder: None, seconds: 0, since: 0 };
+            return RecorderStatus { running: false, encoder: None, seconds: 0, since: 0, window: false };
         }
-        return RecorderStatus { running: true, encoder: (*ENCODER.lock().unwrap()).map(|x| x.to_string()), seconds: r.settings.seconds, since: r.started_ms };
+        return RecorderStatus { running: true, encoder: (*ENCODER.lock().unwrap()).map(|x| x.to_string()), seconds: r.settings.seconds, since: r.started_ms, window: r.window };
     }
-    RecorderStatus { running: false, encoder: None, seconds: 0, since: 0 }
+    RecorderStatus { running: false, encoder: None, seconds: 0, since: 0, window: false }
 }
 static ENCODER: Mutex<Option<&'static str>> = Mutex::new(None);
 
@@ -471,7 +540,13 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
         filters.extend(["hwdownload".into(), "format=bgra".into(), "format=yuv420p".into()]);
     }
     let mut args: Vec<String> = vec!["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i"].iter().map(s).collect();
-    args.push(format!("ddagrab=output_idx={}:framerate={}:draw_mouse={}", settings.monitor, fps, if settings.cursor { 1 } else { 0 }));
+    // Game only: Windows' window capture of the game's own window (nothing else on screen, and it
+    // follows the window). Otherwise, or when the game has no window yet, the whole monitor.
+    let window = if settings.capture == "game" { settings.game_exe.as_deref().and_then(game_window) } else { None };
+    match window {
+        Some(hwnd) => args.push(format!("gfxcapture=hwnd={}:max_framerate={}:capture_cursor={}:width=-2:height=-2", hwnd as usize, fps, if settings.cursor { 1 } else { 0 })),
+        None => args.push(format!("ddagrab=output_idx={}:framerate={}:draw_mouse={}", settings.monitor, fps, if settings.cursor { 1 } else { 0 })),
+    }
     if !filters.is_empty() {
         args.push("-vf".into());
         args.push(filters.join(","));
@@ -515,7 +590,7 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
     }
     // If FFmpeg dies straight away (no capture possible), say so now instead of on save.
     std::thread::sleep(Duration::from_millis(1500));
-    let mut rec = Recorder { child, dir, settings, stop, game, mic, started_ms: now_ms() };
+    let mut rec = Recorder { child, dir, settings, stop, game, mic, started_ms: now_ms(), window: window.is_some() };
     if let Ok(Some(status)) = rec.child.try_wait() {
         rec.stop.store(true, Ordering::Relaxed);
         let _ = fs::remove_dir_all(&rec.dir);
@@ -598,6 +673,9 @@ pub struct SaveInput {
     squad: Option<String>,
     #[serde(default)]
     squad_by: Option<String>,
+    /// Mic volume for this clip (read when saving, so changing it doesn't restart recording).
+    #[serde(default)]
+    mic_volume: Option<u32>,
 }
 
 /// Saves the last N seconds. Returns the new clip's path. Emits "clip-saved".
@@ -708,7 +786,11 @@ fn save_with(bin: &Path, dir: &Path, settings: &ClipSettings, game_ring: &Arc<Mu
         // separate tracks are kept so the editor can turn either one off.
         let mut fc: Vec<String> = Vec::new();
         if let Some(m) = mic_idx {
-            fc.push(format!("[1:a][{m}:a]amix=inputs=2:duration=longest:normalize=0[mix]"));
+            // The mic as people hear it in calls: quiet speech brought up (raw headset mics are
+            // often far quieter than the game), then your mic volume.
+            let vol = input.mic_volume.unwrap_or(settings.mic_volume).clamp(0, 400) as f32 / 100.0;
+            fc.push(format!("[{m}:a]speechnorm=e=8:r=0.0005:l=1,volume={vol:.2},asplit=2[mica][micb]"));
+            fc.push("[1:a][mica]amix=inputs=2:duration=longest:normalize=0[mix]".into());
         }
         if scale {
             fc.push(if gpu_scale { format!("[0:v]scale_cuda=-2:{want_h}[v]") } else { format!("[0:v]scale=-2:{want_h}:flags=bicubic,format=yuv420p[v]") });
@@ -721,8 +803,8 @@ fn save_with(bin: &Path, dir: &Path, settings: &ClipSettings, game_ring: &Arc<Mu
             args.extend(["-map", "[mix]"].iter().map(s));
         }
         args.extend(["-map", "1:a"].iter().map(s));
-        if let Some(i) = mic_idx {
-            args.extend(["-map".into(), format!("{i}:a")]);
+        if mic_idx.is_some() {
+            args.extend(["-map", "[micb]"].iter().map(s));
         }
         if let Some(i) = thumb_idx {
             args.extend(["-map".into(), format!("{i}:v")]);
@@ -1327,7 +1409,7 @@ mod tests {
         let work = std::env::temp_dir().join(format!("aether-clip-test-{}", now_ms()));
         let buf = work.join("buffer");
         let out = work.join("out");
-        let settings = ClipSettings { fps: 144, resolution: "720".into(), quality: "high".into(), seconds: 6, mic: true, include_calls: false, monitor: 0, cursor: true, folder: out.to_string_lossy().into() };
+        let settings = ClipSettings { fps: 144, resolution: "720".into(), quality: "high".into(), seconds: 6, mic: true, include_calls: false, monitor: 0, cursor: true, folder: out.to_string_lossy().into(), capture: if std::env::var("CLIPS_WINDOW").is_ok() { "game".into() } else { "screen".into() }, game_exe: std::env::var("CLIPS_WINDOW").ok(), mic_volume: 100 };
         println!("encoder: {:?}", pick_encoder_with(&bin));
         start_with(bin.clone(), buf.clone(), settings.clone()).expect("start");
         std::thread::sleep(Duration::from_secs(9));
@@ -1337,7 +1419,7 @@ mod tests {
             (r.game.clone(), r.mic.clone())
         };
         let started = std::time::Instant::now();
-        let path = save_with(&bin, &buf, &settings, &game, mic.as_ref(), &SaveInput { game: Some("Roblox".into()), detail: Some("Test Place".into()), squad: None, squad_by: None }).expect("save");
+        let path = save_with(&bin, &buf, &settings, &game, mic.as_ref(), &SaveInput { game: Some("Roblox".into()), detail: Some("Test Place".into()), squad: None, squad_by: None, mic_volume: Some(150) }).expect("save");
         println!("saved in {:?}: {}", started.elapsed(), path.display());
         stop_now();
         let probe = run(&tools.join("ffprobe.exe"), &["-v", "error", "-show_entries", "format=duration,size:format_tags=title,comment:stream=codec_name,codec_type,width,height,avg_frame_rate:stream_disposition=attached_pic:stream_tags=handler_name", "-of", "json", &path.to_string_lossy()].iter().map(s).collect::<Vec<_>>()).expect("probe");

@@ -183,7 +183,8 @@ mod imp {
         library()
     }
 
-    pub fn running_game() -> Option<String> {
+    /// The game's name and its program file (e.g. "game.exe"), for game-only clip capture.
+    pub fn running_game() -> Option<(String, String)> {
         let lib = library();
         if lib.is_empty() {
             return None;
@@ -194,19 +195,25 @@ mod imp {
                 continue;
             }
             if let Some((_, name)) = lib.iter().find(|(dir, _)| path.starts_with(dir.as_str())) {
-                return Some(name.clone());
+                return Some((name.clone(), file.to_string()));
             }
         }
         None
     }
 }
 
+#[derive(serde::Serialize)]
+pub struct RunningGame {
+    name: String,
+    exe: String,
+}
+
 /// The game you're playing, if it was installed by a launcher Aether knows. Windows only.
 #[tauri::command]
-pub async fn running_game() -> Option<String> {
+pub async fn running_game() -> Option<RunningGame> {
     #[cfg(windows)]
     {
-        tauri::async_runtime::spawn_blocking(imp::running_game).await.ok().flatten()
+        tauri::async_runtime::spawn_blocking(imp::running_game).await.ok().flatten().map(|(name, exe)| RunningGame { name, exe })
     }
     #[cfg(not(windows))]
     {

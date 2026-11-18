@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useMemo, useState } from 'react';
 import { create } from 'zustand';
 import { idleSeconds, nowPlaying, runningGame, runningProcesses, setBadge, setCloseToTray } from '../lib/desktop';
-import { detectGame } from '../lib/games';
+import { detectGameExe } from '../lib/games';
 import { lookupAlbumArt } from '../lib/activityArt';
 
 /** Covers found this session, per song. */
@@ -51,6 +51,8 @@ export interface DetectedGame {
   since: number;
   /** e.g. the Roblox experience. */
   detail: string | null;
+  /** The game's program file, e.g. "robloxplayerbeta.exe" (game-only clip capture). */
+  exe: string | null;
 }
 
 /**
@@ -60,14 +62,15 @@ export interface DetectedGame {
  */
 export const useDetectedGame = create<{ game: DetectedGame | null }>(() => ({ game: null }));
 
-export async function detectRunningGame(custom = useSettingsStore.getState().activity.customGames): Promise<{ name: string; detail: string | null } | null> {
+export async function detectRunningGame(custom = useSettingsStore.getState().activity.customGames): Promise<{ name: string; detail: string | null; exe: string | null } | null> {
   if (!isTauri) return null;
   const procs = await runningProcesses().catch(() => [] as string[]);
-  const name = detectGame(procs, custom.filter(Boolean)) ?? (await runningGame());
-  if (!name) return null;
+  const found = detectGameExe(procs, custom.filter(Boolean)) ?? (await runningGame());
+  if (!found) return null;
+  const { name, exe } = found;
   // Roblox: which experience (read from Roblox's own log, name looked up once).
   const detail = /roblox/i.test(name) ? ((await invoke<{ place_id: number; name: string | null } | null>('roblox_place').catch(() => null))?.name ?? null) : null;
-  return { name, detail };
+  return { name, detail, exe };
 }
 
 /** Keeps useDetectedGame current. Mounted once in the main layout of the desktop app. */
@@ -81,7 +84,7 @@ export function useGameDetector() {
       if (stopped) return;
       const cur = useDetectedGame.getState().game;
       // Same game as before: keep its start time (switching Roblox experiences keeps your play time).
-      const next = found ? (cur?.name === found.name ? (cur.detail === found.detail ? cur : { ...cur, detail: found.detail }) : { ...found, since: Date.now() }) : null;
+      const next = found ? (cur?.name === found.name ? (cur.detail === found.detail && cur.exe === found.exe ? cur : { ...cur, detail: found.detail, exe: found.exe }) : { ...found, since: Date.now() }) : null;
       if (next !== cur) useDetectedGame.setState({ game: next });
     };
     void scan();

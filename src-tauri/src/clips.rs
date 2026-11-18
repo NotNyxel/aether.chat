@@ -397,7 +397,8 @@ fn game_window(exe: &str) -> Option<isize> {
             let mut r = RECT::default();
             if GetClientRect(hwnd, &mut r).is_ok() {
                 let area = (r.right - r.left) as i64 * (r.bottom - r.top) as i64;
-                if area > 64 * 64 && s.best.map(|(_, a)| area > a).unwrap_or(true) {
+                // Big enough to be the game itself, not a launcher or loading splash.
+                if (r.right - r.left) >= 640 && (r.bottom - r.top) >= 360 && s.best.map(|(_, a)| area > a).unwrap_or(true) {
                     s.best = Some((hwnd.0 as isize, area));
                 }
             }
@@ -526,11 +527,23 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
     if !SWEPT.swap(true, Ordering::Relaxed) {
         kill_leftover_recorders(&bin);
     }
+    // Game only, but the game's window can't be recorded (it closed while Roblox was loading, or
+    // Windows refused): record the whole screen instead of not recording at all.
+    match launch(&bin, &dir, &settings, true) {
+        Err((_, true)) => launch(&bin, &dir, &settings, false).map_err(|(m, _)| m),
+        r => r.map_err(|(m, _)| m),
+    }
+}
+
+/// Starts FFmpeg. On failure, also says whether it was recording a window.
+fn launch(bin: &Path, dir: &Path, settings: &ClipSettings, allow_window: bool) -> Result<(), (String, bool)> {
+    let (bin, dir, settings) = (bin.to_path_buf(), dir.to_path_buf(), settings.clone());
+    let e = |x: String| (x, false);
     stop_now();
-    let enc = pick_encoder_with(&bin)?;
+    let enc = pick_encoder_with(&bin).map_err(e)?;
     *ENCODER.lock().unwrap() = Some(enc);
     let _ = fs::remove_dir_all(&dir);
-    fs::create_dir_all(&dir).map_err(e)?;
+    fs::create_dir_all(&dir).map_err(|x| e(x.to_string()))?;
     let fps = settings.fps.clamp(10, 240);
     let hw = enc == "h264_nvenc" || enc == "h264_amf";
     // Frames never leave the GPU while recording (NVENC/AMF read them straight from the capture),
@@ -542,7 +555,7 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
     let mut args: Vec<String> = vec!["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i"].iter().map(s).collect();
     // Game only: Windows' window capture of the game's own window (nothing else on screen, and it
     // follows the window). Otherwise, or when the game has no window yet, the whole monitor.
-    let window = if settings.capture == "game" { settings.game_exe.as_deref().and_then(game_window) } else { None };
+    let window = if allow_window && settings.capture == "game" { settings.game_exe.as_deref().and_then(game_window) } else { None };
     match window {
         Some(hwnd) => args.push(format!("gfxcapture=hwnd={}:max_framerate={}:capture_cursor={}:width=-2:height=-2", hwnd as usize, fps, if settings.cursor { 1 } else { 0 })),
         None => args.push(format!("ddagrab=output_idx={}:framerate={}:draw_mouse={}", settings.monitor, fps, if settings.cursor { 1 } else { 0 })),
@@ -554,7 +567,10 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
     args.extend(encoder_args(enc, &settings.quality, fps));
     args.extend(["-an", "-f", "segment", "-segment_time", "1", "-reset_timestamps", "1", "-segment_format", "mpegts"].iter().map(s));
     args.push(dir.join("seg%06d.ts").to_string_lossy().to_string());
-    let child = Command::new(&bin).args(&args).creation_flags(NO_WINDOW).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().map_err(e)?;
+    // FFmpeg's own error messages, so a failure can say what went wrong.
+    let log = dir.with_file_name("recorder.log");
+    let err_out = fs::File::create(&log).map(Stdio::from).unwrap_or_else(|_| Stdio::null());
+    let child = Command::new(&bin).args(&args).creation_flags(NO_WINDOW).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(err_out).spawn().map_err(|x| e(x.to_string()))?;
     tie_to_app(&child);
 
     let keep = settings.seconds as u64 + 6;
@@ -594,7 +610,12 @@ fn start_with(bin: PathBuf, dir: PathBuf, settings: ClipSettings) -> Res<()> {
     if let Ok(Some(status)) = rec.child.try_wait() {
         rec.stop.store(true, Ordering::Relaxed);
         let _ = fs::remove_dir_all(&rec.dir);
-        return Err(format!("Recording couldn't start (FFmpeg exited with {status}). Try another resolution or update your graphics driver."));
+        let why = fs::read_to_string(&log).ok().and_then(|t| t.lines().rev().find(|l| !l.trim().is_empty()).map(|l| l.trim().to_string()));
+        let msg = match why {
+            Some(w) => format!("Recording couldn't start: {w}"),
+            None => format!("Recording couldn't start (FFmpeg exited with {status}). Try another resolution or update your graphics driver."),
+        };
+        return Err((msg, window.is_some()));
     }
     *RECORDER.lock().unwrap() = Some(rec);
     Ok(())
@@ -1434,5 +1455,37 @@ mod tests {
         assert!(j["format"]["tags"]["comment"].as_str().unwrap().contains("Test Place"));
         std::thread::sleep(Duration::from_secs(4));
         let _ = fs::remove_dir_all(&work);
+    }
+}
+
+#[cfg(test)]
+mod window_fallback {
+    use super::*;
+
+    /// A "game" window that closes while recording starts (like Roblox's loading window): recording
+    /// must carry on with the whole screen. Needs FFmpeg (CLIPS_FFMPEG), opens a test window.
+    #[test]
+    #[ignore]
+    fn closing_window_falls_back_to_screen() {
+        let tools = PathBuf::from(std::env::var("CLIPS_FFMPEG").expect("CLIPS_FFMPEG"));
+        let mut form = Command::new("powershell")
+            .args(["-NoProfile", "-Command", "Add-Type -A System.Windows.Forms; $f = New-Object Windows.Forms.Form; $f.Text = 'Aether test game'; $f.Width = 1000; $f.Height = 700; [void]$f.ShowDialog()"])
+            .spawn()
+            .unwrap();
+        std::thread::sleep(Duration::from_secs(3));
+        assert!(game_window("powershell.exe").is_some(), "test window not found");
+        let pid = form.id();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(600));
+            let _ = Command::new("taskkill").args(["/PID", &pid.to_string(), "/F"]).output();
+        });
+        let work = std::env::temp_dir().join(format!("aether-clip-fallback-{}", now_ms()));
+        let settings = ClipSettings { fps: 60, resolution: "native".into(), quality: "medium".into(), seconds: 5, mic: false, include_calls: false, monitor: 0, cursor: false, folder: work.join("out").to_string_lossy().into(), capture: "game".into(), game_exe: Some("powershell.exe".into()), mic_volume: 100 };
+        let r = start_with(tools.join("ffmpeg.exe"), work.join("buf"), settings);
+        let _ = form.wait();
+        let st = clips_status();
+        println!("start: {r:?}, running {}, window {}", st.running, st.window);
+        stop_now();
+        assert!(r.is_ok() && st.running && !st.window);
     }
 }

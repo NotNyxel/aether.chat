@@ -3,6 +3,15 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.4.7] - 2026-11-18
+
+### Fixes
+
+- **"Clipping couldn't start" with Game only.** If the game's window can't be recorded (for example Roblox's
+  loading window closing just as recording starts), Aether records the whole screen instead, and switches to the
+  game's window once it's open. Small launcher and splash windows are no longer mistaken for the game, and if
+  recording really can't start, the message now says why.
+
 ## [2.4.6] - 2026-11-18
 
 ### Clips

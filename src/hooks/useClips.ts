@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useEffect, useRef, useState } from 'react';
-import { autoDownloadAllowed, pruneSeeds, receiveClip, startSeeding, type ClipShare } from '../lib/clipShare';
+import { autoDownloadAllowed, pruneSeeds, receiveClip, startSeeding, syncClip, type ClipShare } from '../lib/clipShare';
 import {
   canRecord,
   ffmpegReady,
@@ -48,6 +48,8 @@ export function useRecorderStatus(): RecorderStatus | null {
 }
 
 let saving = false;
+/** Where new clips sync to (set by the inbox once signed in). */
+let syncTo: { sb: ReturnType<typeof useSupabase>; me: string } | null = null;
 /** Tell the user, in the app or (when it's in the background, e.g. mid-game) as a Windows notification. */
 function tell(title: string, body: string, ok: boolean) {
   if (document.hasFocus()) (ok ? toast.success : toast.error)(body ? `${title}: ${body}` : title);
@@ -73,7 +75,15 @@ export async function clipNow(qc?: ReturnType<typeof useQueryClient>, fromSquad?
     }
     const id = fromSquad?.id ?? crypto.randomUUID();
     if (!fromSquad && squad) void squad.channel.send({ type: 'broadcast', event: 'clip', payload: { id, by: squad.name, from: squad.me } });
-    await saveClip(fromSquad ?? (squad ? { id, by: squad.name } : undefined));
+    const saved = await saveClip(fromSquad ?? (squad ? { id, by: squad.name } : undefined));
+    // Sync to your other devices, when that's on.
+    if (cfg.s.syncDevices && syncTo) {
+      const { sb, me } = syncTo;
+      void listClips()
+        .then((all) => all.find((c) => c.path === saved))
+        .then((clip) => clip && syncClip(sb, me, clip))
+        .catch(() => undefined);
+    }
     if (cfg.s.sound) playSound('messageSent', true);
     tell(fromSquad ? t('Squad clip saved') : t('Clip saved'), fromSquad ? t('{name} clipped, so your side of it was saved too.', { name: fromSquad.by }) : '', true);
     void qc?.invalidateQueries({ queryKey: ['clips'] });
@@ -254,14 +264,15 @@ export function useClipInbox(me: string) {
       if (!autoDownloadAllowed()) return;
       const have = localCopies();
       for (const r of rows) {
-        if (r.sender_id === me || r.status === 'gone' || have[r.id] || received.has(r.id) || queue.some((q) => q.id === r.id)) continue;
+        // Your own shares are skipped, except clips you synced from another device.
+        if ((r.sender_id === me && r.scope_id !== me) || r.status === 'gone' || have[r.id] || received.has(r.id) || queue.some((q) => q.id === r.id)) continue;
         queue.push(r);
       }
       void pump();
     };
     const scan = async () => {
       const since = new Date(Date.now() - 72 * 3600_000).toISOString();
-      const { data } = await sb.from('clip_shares').select('*').neq('sender_id', me).neq('status', 'gone').gt('created_at', since).order('created_at').limit(50);
+      const { data } = await sb.from('clip_shares').select('*').or(`sender_id.neq.${me},scope_id.eq.${me}`).neq('status', 'gone').gt('created_at', since).order('created_at').limit(50);
       const rows = (data ?? []) as ClipShare[];
       if (!rows.length) return;
       const { data: rec } = await sb.from('clip_receipts').select('share_id').eq('user_id', me).in('share_id', rows.map((r) => r.id));
@@ -291,6 +302,7 @@ export function useClipInbox(me: string) {
       () => void scan(),
     );
     const stopSeeding = startSeeding(sb, me);
+    syncTo = { sb, me };
     return () => {
       stopped = true;
       clearTimeout(first);

@@ -28,6 +28,8 @@ export interface ClipSettings {
   capture: 'game' | 'screen';
   /** Microphone volume in clips, in percent. */
   micVolume: number;
+  /** Send every new clip to your other devices. */
+  syncDevices: boolean;
   /** Received clips: download in the background ("smart": computers and Wi-Fi), always, or when tapped. */
   autoDownload: 'smart' | 'always' | 'tap';
   /** Received clips delete themselves after this many days unless kept (0 = keep). */
@@ -49,6 +51,7 @@ export const DEFAULT_CLIP_SETTINGS: ClipSettings = {
   sound: true,
   capture: 'game',
   micVolume: 100,
+  syncDevices: false,
   autoDownload: 'smart',
   keepDays: 7,
 };

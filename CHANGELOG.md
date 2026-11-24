@@ -3,6 +3,16 @@
 All notable changes to Aether (called aether.chat before 1.6.0). Versions follow [semver](https://semver.org); every version is published on the
 GitHub Releases page, and installs from 0.3.0 onward update themselves.
 
+## [2.5.0] - 2026-11-24
+
+### Clips on all your devices
+
+- **Send to my devices** in the clip editor puts a clip on your phone, laptop and other PCs. They download it
+  straight from the PC that recorded it, or from a copy kept online for 3 days.
+- **Sync new clips to my devices** (Settings → Clips) does it for every new clip automatically.
+- Clips → **On your other devices** lists synced clips this device doesn't have yet, with a Download button.
+  Computers (and phones on Wi-Fi) download them in the background, following your auto-download setting.
+
 ## [2.4.7] - 2026-11-18
 
 ### Fixes

@@ -185,11 +185,13 @@ export async function shareClip(
       if (!up.error) await sb.from('clip_shares').update({ thumb_path: `${me}/${id}/thumb.jpg` }).eq('id', id);
     }
 
-    // The card in the chat (old app versions just see the text).
-    const text = `🎬 ${opts.title || 'Clip'}`;
-    const content = encrypt ? await encrypt(text) : text;
-    const msg = await sb.from('messages').insert({ [scope.kind === 'channel' ? 'channel_id' : 'conversation_id']: scope.id, content, clip_id: id });
-    if (msg.error) throw new Error(msg.error.message);
+    // The card in the chat (old app versions just see the text). Synced to your own devices: no chat.
+    if (scope.id !== me) {
+      const text = `🎬 ${opts.title || 'Clip'}`;
+      const content = encrypt ? await encrypt(text) : text;
+      const msg = await sb.from('messages').insert({ [scope.kind === 'channel' ? 'channel_id' : 'conversation_id']: scope.id, content, clip_id: id });
+      if (msg.error) throw new Error(msg.error.message);
+    }
 
     // The relay copy, for anyone who can't get it directly.
     for (let i = 0; i < chunks; i++) {
@@ -408,6 +410,11 @@ export function autoDownloadAllowed(): boolean {
   if (isTauri) return true;
   const c = (navigator as unknown as { connection?: { type?: string; saveData?: boolean } }).connection;
   return !!c && !c.saveData && (c.type === 'wifi' || c.type === 'ethernet');
+}
+
+/** Sends a clip to your other devices (phones, laptops): they download it from this PC or the relay. */
+export function syncClip(sb: SupabaseClient, me: string, clip: ClipInfo) {
+  return shareClip(sb, me, clip, { kind: 'conversation', id: me } as MessageScope, { quality: 'original', start: 0, end: clip.duration, gameAudio: true, mic: true, title: clip.title }, null, null);
 }
 
 // ── Seeding: answer direct requests for clips this PC shared ─────────────────────────────────

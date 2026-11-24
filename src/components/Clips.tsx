@@ -11,7 +11,7 @@ import { useServers } from '../hooks/useChatData';
 import { clipNow, getClip, useClipLibrary, useClipShare, useRecorderStatus, useStoredClips } from '../hooks/useClips';
 import { useMeId } from '../hooks/useMe';
 import { useConversations } from '../hooks/useSocialData';
-import { shareClip, useTransfers, type ClipShare } from '../lib/clipShare';
+import { shareClip, syncClip, useTransfers, type ClipShare } from '../lib/clipShare';
 import {
   canRecord,
   defaultFolder,
@@ -230,7 +230,9 @@ function Gallery({ pickFor, onClose }: { pickFor: { scope: MessageScope } | null
                 <span key={i} className="ae-skeleton aspect-video rounded-2xl" />
               ))}
             </div>
-          ) : shown.length === 0 ? (
+          ) : null}
+          {!pickFor && <OtherDevices />}
+          {loading ? null : shown.length === 0 ? (
             <Empty pickFor={!!pickFor} />
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
@@ -344,8 +346,61 @@ function RecorderPill() {
 
 // ── Editor ──────────────────────────────────────────────────────────────────────────────────
 
+/** Clips synced from your other devices that aren't on this one yet (2.5). */
+function OtherDevices() {
+  const sb = useSupabase();
+  const me = useMeId();
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState<string | null>(null);
+  const { data = [] } = useQuery({
+    queryKey: ['clips', 'synced', me],
+    enabled: !!me,
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await sb.from('clip_shares').select('*').eq('sender_id', me!).eq('scope_id', me!).neq('status', 'gone').order('created_at', { ascending: false }).limit(50);
+      if (error) throw new Error(error.message);
+      return data as ClipShare[];
+    },
+  });
+  const have = localCopies();
+  const missing = data.filter((c) => !have[c.id]);
+  if (!missing.length) return null;
+  return (
+    <section className="mb-5">
+      <h2 className="mb-2 text-xs font-bold tracking-wide text-ae-muted uppercase">{t('On your other devices')}</h2>
+      <ul className="grid gap-2 sm:grid-cols-2">
+        {missing.map((c) => (
+          <li key={c.id} className="flex items-center gap-3 rounded-xl border border-ae-border bg-ae-surface px-3 py-2">
+            <PlayIcon size={15} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">{c.title}</span>
+              <span className="text-xs text-ae-muted">{[c.detail ?? c.game, fmtDuration(c.duration), fmtSize(c.size_bytes)].filter(Boolean).join(' · ')}</span>
+            </span>
+            <button
+              type="button"
+              disabled={busy === c.id}
+              className="flex items-center gap-1.5 rounded-full bg-ae-accent px-3 py-1.5 text-xs font-bold text-ae-on-accent disabled:opacity-60"
+              onClick={() => {
+                setBusy(c.id);
+                getClip(sb, me!, c)
+                  .then(() => void qc.invalidateQueries({ queryKey: ['clips'] }))
+                  .catch((e: unknown) => toast.error(e instanceof Error ? e.message : String(e)))
+                  .finally(() => setBusy(null));
+              }}
+            >
+              <DownloadIcon size={13} /> {busy === c.id ? t('Downloading…') : t('Download')}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function Editor({ item, onClose, onShare }: { item: Item; onClose: () => void; onShare: () => void }) {
   const qc = useQueryClient();
+  const sbE = useSupabase();
+  const meE = useMeId();
   const [src, setSrc] = useState<string | null>(null);
   const [range, setRange] = useState<[number, number]>([0, item.duration]);
   const [gameAudio, setGameAudio] = useState(true);
@@ -474,6 +529,22 @@ function Editor({ item, onClose, onShare }: { item: Item; onClose: () => void; o
             {item.pc && (
               <button type="button" disabled={!!busy} onClick={onShare} className="flex items-center gap-2 rounded-full bg-ae-accent px-4 py-2 text-sm font-bold text-ae-on-accent">
                 <SendIcon size={15} /> {t('Share')}
+              </button>
+            )}
+            {item.pc && !item.received && meE && (
+              <button
+                type="button"
+                disabled={!!busy}
+                onClick={() => {
+                  toast(t('Sending to your other devices…'));
+                  syncClip(sbE, meE, item.pc!).then(
+                    () => toast.success(t('On your other devices now. Open Clips there to download it.')),
+                    (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
+                  );
+                }}
+                className="flex items-center gap-2 rounded-full border border-ae-border px-4 py-2 text-sm font-semibold hover:bg-ae-hover"
+              >
+                <DownloadIcon size={15} /> {t('Send to my devices')}
               </button>
             )}
             {item.pc && !item.received && changed && (
@@ -878,6 +949,7 @@ export function ClipsSettings() {
                 <Toggle label={t('Include Aether calls')} hint={t('Off: only your game and other apps. On: friends’ voices from Aether calls too.')} checked={s.includeCalls} onChange={(v) => set({ includeCalls: v })} />
                 <Toggle label={t('Show the mouse cursor')} checked={s.cursor} onChange={(v) => set({ cursor: v })} />
                 <Toggle label={t('Play a sound when a clip saves')} checked={s.sound} onChange={(v) => set({ sound: v })} />
+                <Toggle label={t('Sync new clips to my devices')} hint={t('Every new clip goes to your phone and other computers too (kept online for 3 days, or sent straight from this PC).')} checked={s.syncDevices} onChange={(v) => set({ syncDevices: v })} />
                 <Field label={t('Screen')}>
                   {[0, 1, 2].map((m) => (
                     <button key={m} type="button" className={seg(s.monitor === m)} onClick={() => set({ monitor: m })}>
